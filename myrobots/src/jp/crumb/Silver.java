@@ -6,6 +6,8 @@ import java.awt.Graphics2D;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Vector;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import robocode.*;
 
 
@@ -94,12 +96,16 @@ static class Point {
     double x;
     double y;
 
+    public Point() {
+    }
+    public Point(Point in) {
+        this.x = in.x;
+        this.y = in.y;
+    }
+
     public Point(double x, double y) {
         this.x = x;
         this.y = y;
-    }
-
-    public Point() {
     }
 
     public Point add(Point p) {
@@ -125,9 +131,33 @@ static class Point {
     public String toString(){
         return String.format("(%2.2f,%2.2f)", x,y);
     }
-}
+    }
 
-static class Robot extends Point {
+static class Prospector extends Point {
+
+        public Prospector() {
+        }
+
+        public Prospector(Prospector in) {
+            super(in);
+        }
+    
+}
+static class Robot extends Prospector {
+    long time;
+    String name;
+    double distance;
+    double bearing;
+    double bearingRadians;
+    double heading;
+    double headingRadians;
+    double velocity;
+    long deltaTime = 0;
+    double deltaVelocity;
+    double deltaHeading;
+    double deltaHeadingRadians;
+    double deltaX;
+    double deltaY;
 
     public Robot(AdvancedRobot my, ScannedRobotEvent e) {
         this.time = e.getTime();
@@ -144,57 +174,92 @@ static class Robot extends Point {
         this.headingRadians = e.getHeadingRadians();
         this.velocity = e.getVelocity();
     }
+        public Robot(long time, String name, double x, double y,double distance, double bearing, double bearingRadians, double heading, double headingRadians, double velocity, double deltaVelocity, double deltaHeading, double deltaHeadingRadians, double deltaX, double deltaY) {
+            this.time = time;
+            this.name = name;
+            this.x = x;
+            this.y = y;        
+            this.distance = distance;
+            this.bearing = bearing;
+            this.bearingRadians = bearingRadians;
+            this.heading = heading;
+            this.headingRadians = headingRadians;
+            this.velocity = velocity;
+            this.deltaVelocity = deltaVelocity;
+            this.deltaHeading = deltaHeading;
+            this.deltaHeadingRadians = deltaHeadingRadians;
+            this.deltaX = deltaX;
+            this.deltaY = deltaY;
+        }
+
+    public Robot(Robot in) {
+        super(in);
+        this.time = in.time;
+        this.name = in.name;
+        this.distance = in.distance;
+        this.bearing = in.bearing;
+        this.bearingRadians = in.bearingRadians;
+        this.heading = in.heading;
+        this.headingRadians = in.headingRadians;
+        this.velocity = in.velocity;
+        this.deltaVelocity = in.deltaVelocity;
+        this.deltaHeading = in.deltaHeading;
+        this.deltaHeadingRadians = in.deltaHeadingRadians;
+        this.deltaX = in.deltaX;
+        this.deltaY = in.deltaY;
+    }
 
     public Robot() {
         this.name = "";
     }
-    long time;
-    String name;
-    double distance;
-    double bearing;
-    double bearingRadians;
-    double heading;
-    double headingRadians;
-    double velocity;
-    Point acc = new Point(0, 0);
-//  ScannedRobotEvent e;
-//  AdvancedRobot my;
-    double prospectX;
-    double prospectY;
 
-    public Point inertia(double interval, Point base) {
+    public void inertia(double interval ) {
         double dist = velocity * interval;
-        return new Point(
+        this.add(
+                new Point(
                 Util.calcX(headingRadians, dist),
-                Util.calcY(headingRadians, dist)).add(base);
-
+                Util.calcY(headingRadians, dist))
+                );
     }
 
-    public Point inertia(double interval) {
-        Point ret = inertia(interval, this);
-        ret.limit(Util.battleFieldWidth, Util.battleFieldHeight);
-        return ret;
+    public void setPrev(Robot prev) {
+        deltaTime = time - prev.time;
+        deltaVelocity = velocity - prev.velocity;
+        deltaHeading = heading - prev.heading;
+        deltaHeadingRadians = headingRadians - prev.headingRadians;
+        deltaX = x - prev.x;
+        deltaY = y - prev.y;
     }
-
-    public Point prospect(double interval, Point base) {
-        Point ret = inertia(interval, base);
-        ret.x -= acc.x * interval;
-        ret.y -= acc.y * interval;
-        return ret;
+    public void prospectNext(Robot base) {
+        if (deltaHeading != 0) {
+            double turnSpeed = Util.turnSpeed(base.velocity);
+            double turnRadians = Math.toRadians(turnSpeed);
+            base.heading += turnSpeed;
+            base.headingRadians += turnRadians;
+        }
+        double turnX = Util.calcX(base.headingRadians, base.velocity);
+        double turnY = Util.calcY(base.headingRadians, base.velocity);
+        base.velocity += deltaVelocity/deltaTime;
+        base.velocity = (base.velocity > 8) ? 8 : base.velocity;
+        base.velocity = (base.velocity < -8) ? -8 : base.velocity;
+        base.x += turnX;
+        base.y += turnY;
     }
-
     public Point prospect(double interval) {
-        Point ret = prospect(interval, this);
-        ret.limit(Util.battleFieldWidth, Util.battleFieldHeight);
+        // inertia & turn
+        Robot ret = new Robot(this);
+        if ( deltaTime == 0 ) {
+            ret.inertia(interval);
+        }else{
+            for ( int i = 1 ; i <= interval; i++ ) {
+                prospectNext(ret);
+            }
+        }
+        ret.limit(Util.runnableWidth, Util.runnableHeight);
         return ret;
     }
-    //            System.out.println("D:("+(prevR.x+delta.x-r.x) +" , "+ (prevR.y+delta.y-r.y)+")");
-//            System.out.println("DD:("+(prevR.x+delta.x-r.x - prevR.acc.x*deltaTime ) +" , "+ (prevR.y+delta.y-r.y - prevR.acc.y*deltaTime)+")");
-}
-    static final long RADAR_INTERVAL = 8;
-    static final long THINKING_INTERVAL = 1;
+    }
     static final long VALID_ACC_INTERVAL = 2;
-    static final long LIMIT_ACC_INTERVAL = 10;
     static final int SHOT_RANGE = 70;
     static final int LOCKON_RANGE = 150;
     static final int CHASE_RANGE = 250;
@@ -217,6 +282,7 @@ static class Robot extends Point {
     double curRadarHeadingRadians;
     double curRadarHeading;
     double gunHeat;
+    int others;
 
     double curTurnRemaining;
     double curTurnRemainingRadians;       
@@ -225,10 +291,17 @@ static class Robot extends Point {
     double curRadarTurnRemaining;            
     double curRadarTurnRemainingRadians;
     
+    static final int LOGLV = 5;
     void log(String format, Object... args){
         System.out.println(String.format("%3d : ",now) + String.format(format, args) );
     }
+    void trace(String format, Object... args){
+        if ( LOGLV >= 10 ) {
+            System.out.println(String.format("%3d : ",now) + String.format(format, args) );
+        }
+    }
     void current() {
+        this.setInterruptible(true);
         long n = getTime();
         if ( now == n ) {
             return;
@@ -245,7 +318,7 @@ static class Robot extends Point {
         curRadarHeadingRadians = getRadarHeadingRadians();
         curRadarHeading = getRadarHeading();
         gunHeat = getGunHeat();
-        
+        others = getOthers();
         curTurnRemaining = getTurnRemaining();
         curTurnRemainingRadians = getTurnRemainingRadians();
         curGunTurnRemaining = getGunTurnRemaining();
@@ -254,10 +327,6 @@ static class Robot extends Point {
         curRadarTurnRemainingRadians = getRadarTurnRemainingRadians();
     }
 
-    @Override
-    public void execute() {
-        super.execute();
-    }
 
     Condition eachTickTimer = new Condition("eachTickTimer",10) {
         @Override
@@ -266,19 +335,10 @@ static class Robot extends Point {
             return true;
         }
     };
-    
-    Condition radarTimer = new Condition("radarTimer",10) {
-        private long prev = 0;
+    Condition waitTimer = new Condition("waitTimer",10) {
         @Override
         public boolean test() {
-            long now = getTime();
-            if ( mode == MODE_NORMAL && prev + RADAR_INTERVAL < now) {
-                prev = now;
-                setTurnRadarRight(405);
-                return true;
-            } else {
-                return false;
-            }
+            return false;
         }
     };
 //    RadarTurnCompleteCondition radarTurnCompleteCondition = new RadarTurnCompleteCondition(this);
@@ -300,10 +360,23 @@ static class Robot extends Point {
 //	this.setEventPriority("WinEvent",10);
 //	this.setEventPriority("DeathEvent",10);
      }
+
+
+
+//
+//    @Override
+//    public void onScannedRobot(ScannedRobotEvent event) {
+//        current();
+//        System.out.println("**************");
+//        myOnScannedRobot(event);
+//        setInterruptible(true);
+//    }
+    
     
     @Override
     public void run() {
         setColors(new Color(255, 255, 255), new Color(0, 0, 0), new Color(200, 200, 50)); // body,gun,radar
+        this.setBulletColor(new Color(200,255,100));
         energy = getEnergy();
         Util.init(
                 getBattleFieldWidth(),
@@ -313,33 +386,34 @@ static class Robot extends Point {
                 getGunCoolingRate()
                 );
         initEventPriority();
-        current();
-        //     setMaxVelocity(8);
+//     setMaxVelocity(8);
 //     setMaxTurnRate(10);
         setAdjustGunForRobotTurn(true);
         setAdjustRadarForGunTurn(true);
         
-        addCustomEvent(this.radarTimer);
         addCustomEvent(this.eachTickTimer);
+//        setTurnRadarRight(4050);
 
-//        addCustomEvent(new RadarTurnCompleteCondition(this));
-//        addCustomEvent(new TurnCompleteCondition(this));
-//        addCustomEvent(new MoveCompleteCondition(this));
-//        addCustomEvent(new GunTurnCompleteCondition(this));
-
+//        waitFor(waitTimer);
 //        while (true) {
 //            System.out.println(this.getAllEvents().size());
 //            ahead(100);
 //            back(100);
 //        }
-        setDestination(new Point(200,200));
-        execute();
+//        setDestination(new Point(200,200));
+
+
     }
     Point dst;
     void setDestination(Point dst){
         this.dst = dst;
     }
+    
+    void antiCollision(){
+        // Todo: yet
+    }
     void goPoint(){
+        antiCollision();
         if ( this.dst == null ) {
             return;
         }
@@ -418,12 +492,9 @@ static class Robot extends Point {
 
     static final int MAX_CALC = 5;
     static final int LOCKON_ANGLE = 20;
-    static final int SCAN_STALE = 7;
+    static final int SCAN_STALE = 10;
     void lockOnRadar(Robot lockOnTarget) {
-        if (lockOnTarget == null) {
-            return;
-        }
-        if ( (now - lockOnTarget.time) > SCAN_STALE ) {
+        if (lockOnTarget == null || (now - lockOnTarget.time) > SCAN_STALE ) {
             mode = MODE_NORMAL;
             return;
         }
@@ -451,51 +522,81 @@ static class Robot extends Point {
             return 0.0;
         }
     }
+    double isFire(){
+        return 0;
+    }
     
+    boolean locking = false;
     Point lockOnPoint = null;
     void lockOn(Robot lockOnTarget) {
         if (lockOnTarget == null) {
             return;
         }
+        double fire = isFire();
+        // @@@
+        
         double dist = lockOnTarget.distance;
         double power = selectPowerFromDistance(dist);
         double gunTurn = 0;
-        double allTime = dist / Util.bultSpeed(power);
+        double allTime = dist / Util.bultSpeed(power)+1; // 1 = next turn
+
+        
+        Robot my = new Robot(
+                now, 
+                "my",
+                curX,
+                curY,
+                0, 
+                0, 
+                0,
+                curHeading, 
+                curHeadingRadians, 
+                velocity, 
+                0, 
+                curTurnRemaining, 
+                curTurnRemainingRadians, 
+                0,
+                0);
+        my.prospectNext(my);
         
         for (int i = 0 ; i < MAX_CALC ; i++ ) {
             Point prospect = lockOnTarget.prospect(allTime);
-            dist = Util.calcD(curX, curY, prospect.x, prospect.y);
+//            dist = Util.calcD(curX, curY, prospect.x, prospect.y);
+            dist = Util.calcD(my.x, my.y, prospect.x, prospect.y);
             power = this.selectPowerFromDistance(dist);
             double bultTime = dist / Util.bultSpeed(power);
-            gunTurn = calcAbsGunTurn(Util.calcT(curX, curY, prospect.x, prospect.y));
-            double gunTurnTime = Util.gunTurnSpeed(gunTurn);
-//            System.out.println("ALL: " + bultTime + " : "+  gunTurnTime  + " : "+  allTime);
+//            gunTurn = calcAbsGunTurn(Util.calcT(curX, curY, prospect.x, prospect.y));
+            gunTurn = calcAbsGunTurn(Util.calcT(my.x, my.y, prospect.x, prospect.y));            
+            double gunTurnTime = Util.gunTurnSpeed(gunTurn)+1; // 1 = next turn
+            
+            // Todo:
             if (Math.abs(allTime - (bultTime + gunTurnTime)) < 1) {
-//                System.out.println("@@@: " + allTime);
                 lockOnPoint = prospect;
                 break;
             }
             allTime = bultTime + gunTurnTime;
         }
+        log("GUN (%2.2f) %2.2f",curGunTurnRemaining,gunTurn);
         setTurnGunRight(gunTurn);
-
-        log("GUN (%2.2f) %2.2f",power,gunTurn);
+//        if ( mode == MODE_RADAR_LOCKON ) {
+//            locking = true;
+//        }else{
+//            locking = false;
+//        }
         if ( power > 0 ) {
-            if ( Math.abs(gunTurn) < 0.8 ) {
+//            if ( locking && curGunTurnRemaining == 0.0 ) {
+            if ( Math.abs(gunTurn) < 1.0 ) {
                 fire(power);
             }
         }
+        
     }
+    
     Map<String, Robot> robotMap = new HashMap<>();
-    long lastThinking = 0;
 
     static final double PREPARE_LOCK_TIME=6;
     
     void thinking() {
-        if (now - lastThinking < THINKING_INTERVAL) {
-            return;
-        }
-        lastThinking = now;
         Robot lockOnTarget = null;
         for (Map.Entry<String, Robot> e : robotMap.entrySet()) {
             Robot r = e.getValue();
@@ -504,32 +605,37 @@ static class Robot extends Point {
                 lockOnTarget = r;
             }
         }
+        mode = MODE_NORMAL;
         if ( lockOnTarget != null ) {
             lockon = lockOnTarget.name;
-             if ( lockOnTarget.distance < RADAR_LOCKON_RANGE && (gunHeat/Util.gunCoolingRate) < PREPARE_LOCK_TIME ) {
+             if ( lockOnTarget.distance < RADAR_LOCKON_RANGE && (gunHeat/Util.gunCoolingRate) < PREPARE_LOCK_TIME ||
+                     others == 1 ) {
                  mode = MODE_RADAR_LOCKON;
-             }else{
-                 mode = MODE_NORMAL;
-                 lockOn(lockOnTarget);        
              }
         }
-        System.out.println("MODE: " + mode);
+        if ( mode == MODE_NORMAL) {
+            setTurnRadarRight(180);
+            lockOn(lockOnTarget);
+        }
+        log("MODE: %d",mode);
     }
 
-
+    Point aimPoint;
+    Point firePoint;
     @Override
     public void fire(double p) {
         if (gunHeat <= 0) {
-            System.out.println("FIRE : " + "(" + p + ") => " + gunHeat);
+            log("FIRE : ( %2.2f )",p);
+            mode = MODE_NORMAL;
+            firePoint = new Point(curX,curY);
+            aimPoint  = new Point(lockOnPoint);
             super.fire(p);
-            energy -= p;
         }
     }
 
     @Override
     public void onHitByBullet(HitByBulletEvent e) {
         current();
-//        back(10);
         execute();
     }
 
@@ -549,7 +655,7 @@ static class Robot extends Point {
     }
 
     void myOnRadarTurnComplete() {
-        log("myRadarTurnComplete");
+        trace("myRadarTurnComplete");
         if ( mode == MODE_RADAR_LOCKON ) {
             Robot lockOnTarget = robotMap.get(lockon);
             lockOnRadar(lockOnTarget);
@@ -574,12 +680,12 @@ static class Robot extends Point {
                 );
     }
     void myOnNearingDestination(){
-        log("myOnNearingDestination");        
+        trace("myOnNearingDestination");        
         setDestination(randomPoint());        
     }
     
     void myOnCompleteMove() {
-        log("myOnCompleteMove");        
+        trace("myOnCompleteMove");        
         setDestination(randomPoint());
     }
 
@@ -588,35 +694,18 @@ static class Robot extends Point {
         Robot r = calcAbsRobot(e);
         log("%15s : %s",r.name,r);
         Robot prevR = robotMap.get(r.name);
-        if (prevR != null) {
-            long deltaTime = r.time - prevR.time;
-            if (deltaTime > 0 && deltaTime < LIMIT_ACC_INTERVAL) {
-                Point inertia = prevR.inertia(deltaTime);
-//            System.out.println("D:("+(inertia.x-r.x) +" , "+ (inertia.y-r.y)+")");
-//            System.out.println("DD:("+(inertia.x-r.x - prevR.acc.x*deltaTime ) +" , "+ (inertia.y-r.y - prevR.acc.y*deltaTime)+")");
-                r.acc = new Point(
-                        (inertia.x - r.x) / deltaTime,
-                        (inertia.y - r.y) / deltaTime);
-            }
+        if ( prevR != null && (r.time != prevR.time) && (r.time-prevR.time) < SCAN_STALE ) {
+            r.setPrev(prevR);
         }
         robotMap.put(r.name, r);
-//    System.out.println(r.name+ " : "  + "("+r.x+","+ r.y+")");
     }
+    
     
     @Override
     public void onCustomEvent(CustomEvent e) {
         current();
-        if (e.getCondition() instanceof RadarTurnCompleteCondition) {
-        } else if (e.getCondition() instanceof GunTurnCompleteCondition) {
-//      System.out.println(now + " : " + e.getCondition().getName());
-//      removeCustomEvent(e.getCondition());
-            // thinking();
-            // lockOn();
-        } else if (e.getCondition() instanceof TurnCompleteCondition) {
-        } else if (e.getCondition() instanceof MoveCompleteCondition) {
-        } else if (e.getCondition().equals(this.eachTickTimer) ) {
+        if (e.getCondition().equals(this.eachTickTimer) ) {
 System.out.println("------"+now+"------");
-            this.setInterruptible(true);
             for ( ScannedRobotEvent sre: this.getScannedRobotEvents() ) {
                 this.myOnScannedRobot(sre);
             }
@@ -628,9 +717,8 @@ System.out.println("------"+now+"------");
                 myOnCompleteMove();
             }
             this.goPoint();
-            this.onPaint(getGraphics());
-
         }
+        this.onPaint(getGraphics());
         execute();
     }
 
@@ -640,16 +728,16 @@ System.out.println("------"+now+"------");
 
     @Override
     public void onPaint(Graphics2D g) {
-        log("ONPAINT");
         double x = getX();
         double y = getY();
         g.setStroke(new BasicStroke(1.0f));
         g.setColor(new Color(0, 255, 0));
         drawRound(g, x, y, SHOT_RANGE * 2);
-        g.setColor(new Color(100, 255, 100));
         drawRound(g, x, y, LOCKON_RANGE * 2);
-        g.setColor(new Color(200, 255, 200));
         drawRound(g, x, y, RADAR_LOCKON_RANGE * 2);
+        g.drawLine((int)curX,(int)curY,(int)(Math.sin(curGunHeadingRadians)*1000+curX),(int)(Math.cos(curGunHeadingRadians)*1000+curY));
+
+        
         if (mode == MODE_NORMAL) {
             g.setColor(new Color(0, 255, 0));
         } else {
@@ -660,14 +748,30 @@ System.out.println("------"+now+"------");
         g.drawString(String.format("heat: %2.2f", getGunHeat()), (int) x - 20, (int) y- 65);
         g.drawString(String.format("velo: %2.1f", getVelocity()), (int) x - 20, (int) y- 75);
 
-        g.setColor(new Color(0, 255, 255));
         for (Map.Entry<String, Robot> e : robotMap.entrySet()) {
+            g.setColor(new Color(0, 255, 255));
             Robot r = e.getValue();
             drawRound(g, r.x, r.y, 35);            
             g.drawString(String.format("( %2.2f , %2.2f )", r.x , r.y), (int) r.x - 20, (int) r.y- 45);
             g.drawString(String.format("dist: %2.2f", r.distance), (int) r.x - 20, (int) r.y - 55);
             g.drawString(String.format("velo: %2.2f", r.velocity), (int) r.x - 20, (int) r.y - 65);
+
+            g.setColor(new Color(50, 255, 150));
+            for ( int i = 1 ; i < 15; i++) {
+                Point p = r.prospect(i);
+                drawRound(g,p.x,p.y,5+1.5*i);
+            }
         }
+        g.setStroke(new BasicStroke(4.0f));
+        if ( lockOnPoint != null ) {
+            g.setColor(new Color(255, 0, 0));
+            drawRound(g, lockOnPoint.x, lockOnPoint.y, 5);
+        }
+        if ( aimPoint != null && firePoint != null ) {
+            g.setStroke(new BasicStroke(1.0f));
+            g.drawLine((int)firePoint.x,(int)firePoint.y,(int)aimPoint.x,(int)aimPoint.y);
+        }
+
         g.setStroke(new BasicStroke(4.0f));
         if ( dst != null ) {
             g.setColor(new Color(0, 255, 0));
@@ -675,19 +779,15 @@ System.out.println("------"+now+"------");
         }
         Robot r = robotMap.get(lockon);
         if (r != null) {
-            if ( lockOnPoint != null ) {
-                g.setColor(new Color(0, 0, 255));
-                drawRound(g, lockOnPoint.x, lockOnPoint.y, 35);                    
-            }
 //            g.setColor(new Color(0, 0, 255));
 //            Point i = r.inertia(now - r.time);
 //            drawRound(g, i.x, i.y, 40);
 //            g.setColor(new Color(255, 0, 255));
 //            Point p = r.prospect(now - r.time);
 //            drawRound(g, p.x, p.y, 40);
-            g.setColor(new Color(255, 0, 0));
-//      drawRound(g,r.prospect.x,r.prospect.y,10);
+
 
         }
+        execute();
     }
 }
