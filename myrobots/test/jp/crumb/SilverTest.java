@@ -4,9 +4,8 @@
  */
 package jp.crumb;
 
+import jp.crumb.utils.Enemy;
 import java.awt.Graphics2D;
-import jp.crumb.Silver.Point;
-import jp.crumb.Silver.Robot;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -49,15 +48,15 @@ public class SilverTest {
      */
     @Test
     public void testA() {
-        Robot r = new Robot();
+        Enemy r = new Enemy();
         r.velocity = 8.0;
         r.heading = 90;
         r.headingRadians = Math.toRadians(r.heading);
         r.x = 343.05330679052315;
         r.y = 553.0008357847164;
-        r.prospectNext(r);
+        r.prospectNext();
         System.out.println(r.x +","+r.y);
-        r.prospectNext(r);
+        r.prospectNext();
         System.out.println(r.x +","+r.y);
     }
 
