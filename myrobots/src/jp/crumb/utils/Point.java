@@ -17,13 +17,16 @@ public class Point {
     }
 
     public Point(Point in) {
-        this.x = in.x;
-        this.y = in.y;
+        this.set(in);
     }
 
     public Point(double x, double y) {
         this.x = x;
         this.y = y;
+    }
+    public void set(Point in) {
+        this.x = in.x;
+        this.y = in.y;
     }
 
     public Point add(Point p) {
@@ -31,20 +34,22 @@ public class Point {
         this.y += p.y;
         return this;
     }
-
-    public Point limit(double limitX, double limitY) {
-        if (x < 0) {
-            x = 0;
-        } else if (x > limitX) {
-            x = limitX;
-        }
-        if (y < 0) {
-            y = 0;
-        } else if (y > limitY) {
-            y = limitY;
-        }
+    public Point diff(Point p) {
+        this.x -= p.x;
+        this.y -= p.y;
         return this;
     }
+    public Point prod(double q) {
+        this.x *= q;
+        this.y *= q;
+        return this;
+    }
+    public Point quot(double q) {
+        this.x /= q;
+        this.y /= q;
+        return this;
+    }
+
 
     @Override
     public String toString() {

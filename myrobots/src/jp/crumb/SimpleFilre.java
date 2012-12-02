@@ -11,14 +11,13 @@ import jp.crumb.utils.Logger;
 import jp.crumb.utils.Point;
 import jp.crumb.utils.TimedPoint;
 import jp.crumb.utils.Util;
-import robocode.ScannedRobotEvent;
 
 
 
 /**
  * Silver - a robot by (your name here)
  */
-public class Polnareff extends CrumbRobo {
+public class SimpleFilre extends CrumbRobo {
     static final double PREPARE_LOCK_TIME=2;
     static final int MAX_HIT_TIME = 20; 
 
@@ -31,8 +30,8 @@ public class Polnareff extends CrumbRobo {
     double ENEMY_DIM = 1.8;
     double G_WEIGHT = 25;
     double G_DIM = 1;
-    double GT_WEIGHT = 200;
-    double GT_DIM = 2.5;
+    double GT_WEIGHT = 25;
+    double GT_DIM = 1;
     long   G_EXPIRE = 5;
     long   G_DISTANCE_THRESHIOLD = 80;
     double LOCKON_APPROACH = 4;
@@ -48,26 +47,6 @@ public class Polnareff extends CrumbRobo {
 
     Point lockOnPoint; // for view
     Enemy lockOnTarget;
-    
-    
-    @Override
-    protected Enemy calcAbsRobot(ScannedRobotEvent e) {
-        return new Enemy(my, e , Enemy.AIM_TYPE_INERTIA);
-    }    
-    
-    @Override
-    protected void prospectNext(Enemy enemy) {
-        if ( enemy.aimType == Enemy.AIM_TYPE_ACCERARATE ) {
-            enemy.prospectNext(my);
-        }else if ( enemy.aimType == Enemy.AIM_TYPE_INERTIA ) {
-            enemy.inertia(1);
-            enemy.calcPosition(my);
-        }else if ( enemy.aimType == Enemy.AIM_TYPE_DIFF_ERROR ) {
-            
-        }
-    }
-    
-    
     
     @Override
     protected void cbMoving(){
@@ -94,16 +73,20 @@ public class Polnareff extends CrumbRobo {
         
         double gDistance     = my.calcDistance(G);
         double nextGDistance = nextMy.calcDistance(G);
+//        if ( distance < (Util.getBrakingDistance(my.velocity)+my.velocity) ) {
         if ( destination != null && (G_DISTANCE_THRESHIOLD > 80 || my.time - G.time > G_EXPIRE )) { 
+//            if ( mode == MODE_NORMAL ) {
                 double gr = my.calcRadians(destination);
                 Point g = Util.calcPoint(gr,50).prod(-1).add(my);
                 g = Util.getRandomPoint(g,55);
                 G = new TimedPoint(g,my.time);
+//            }else if ( mode == MODE_RADAR_LOCKON || lockOnTarget != null ){
             if ( mode == MODE_RADAR_LOCKON && lockOnTarget != null ){
                 double tr = my.calcRadians(lockOnTarget);
                 double td = my.calcDistance(lockOnTarget);
                 double fullDistance = Util.calcPoint(Util.battleFieldWidth,Util.battleFieldHeight).calcDistance(new Point());
                 Point random = Util.calcPoint(tr,(td-fullDistance)/LOCKON_APPROACH).add(my);
+//                random = Util.getRandomPoint(G.add(random).quot(2),50);
                 GT = new TimedPoint(random,my.time);
             }else{
                 GT = null;
@@ -116,43 +99,18 @@ public class Polnareff extends CrumbRobo {
         if ( GT != null ) {
             dst.diff(Util.getGrabity(my, GT, GT_WEIGHT,GT_DIM));
         }
+        
         setDestination(dst);
+
+//        }
     }
     
     @Override
     protected void cbFiring(){
         if ( mode == MODE_RADAR_LOCKON && gunHeat == 0.0 ) {
-            if (   lockOnTarget != null && lockOnTarget.delta != null && 
-                   lockOnTarget.delta.time == 1 &&  // acculate measured
-                   my.time == lockOnTarget.time) {  // newest data
-                double firePower = 0.0;
-                Enemy prospectTarget = new Enemy(lockOnTarget);
-
-                double maxPower = 0.0;
-                double aimDistance = 0.0;
-                for ( int i = 1; i <= MAX_HIT_TIME; i++ ) {
-                    double d = Util.calcPointToLineRange(my,prospectTarget,curGunHeadingRadians);
-                    if ( d < (Util.tankWidth/2) ) { // hit ?
-                        double bultDistance = Util.calcPointToLineDistance(my,prospectTarget,curGunHeadingRadians);
-                        double bultSpeed = bultDistance/i;
-                        double power = Util.bultPower( bultSpeed );
-                        if ( maxPower < power ) {
-                            Logger.gun3("POWER: (%2.2f) => (%2.2f)", maxPower,power);
-                            maxPower = power;
-                            aimDistance = bultDistance;
-                        }
-                    }
-                    prospectTarget.prospectNext(my);
-                }
-                if ( lockOnTarget.energy == 0 ) {
-                    fire(0.00001,aimDistance,lockOnTarget.name);
-                }                    
-                if ( maxPower > 0 ) {
-                    if ( others > 1 ) {
-                        setMode(MODE_NORMAL);
-                    }
-                    fire(maxPower,aimDistance,lockOnTarget.name);
-                }
+            if ( curGunTurnRemaining == 0.0 ) {
+                setMode(MODE_NORMAL);
+                fire(3.0,0,"");
             }
         }
     }
@@ -207,6 +165,9 @@ public class Polnareff extends CrumbRobo {
             setMode(MODE_NORMAL);
             return;
         }
+        
+
+        
         double radarTurn = calcAbsRadarTurn(lockOnTarget.bearing);
         if ( Math.abs(radarTurn) < Util.radarTurnSpeed() ) {
             double diffDegree = Util.calcTurn(curRadarHeading,lockOnTarget.bearing);
@@ -229,7 +190,7 @@ public class Polnareff extends CrumbRobo {
             return 0; // High priority
         }
         if ( e.energy< AIM_ENAGY_THRESHOLD ) {
-            return e.distance/10; // High priority
+            return 10; // High priority
         }
         AimType aimType = e.getAimType();
         if ( aimType.aim < AIM_TIMES_THRESHOLD || e.distance < aimType.hitrange ) {
@@ -295,7 +256,7 @@ public class Polnareff extends CrumbRobo {
 
     @Override
     public void run() {
-        setColors(new Color(255, 255, 255), new Color(0, 0, 0), new Color(255, 255, 150)); // body,gun,radar
+        setColors(new Color(0, 0, 0), new Color(0, 0, 0), new Color(0, 0, 0)); // body,gun,radar
         this.setBulletColor(new Color(200,255,100));
         super.run();
     }

@@ -6,6 +6,7 @@ package jp.crumb;
 
 import jp.crumb.utils.Enemy;
 import java.awt.Graphics2D;
+import jp.crumb.utils.MovingPoint;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -54,9 +55,9 @@ public class SilverTest {
         r.headingRadians = Math.toRadians(r.heading);
         r.x = 343.05330679052315;
         r.y = 553.0008357847164;
-        r.prospectNext();
+        r.prospectNext(new MovingPoint());
         System.out.println(r.x +","+r.y);
-        r.prospectNext();
+        r.prospectNext(new MovingPoint());
         System.out.println(r.x +","+r.y);
     }
 

@@ -12,8 +12,10 @@ public class Util {
 
     public static double battleFieldWidth;
     public static double battleFieldHeight;
-    public static double runnableWidth;
-    public static double runnableHeight;
+    public static double runnableMinX;
+    public static double runnableMaxX;
+    public static double runnableMinY;
+    public static double runnableMaxY;
     public static double tankWidth;
     public static double tankHeight;
     public static double gunCoolingRate;
@@ -24,15 +26,17 @@ public class Util {
         Util.tankWidth = tankWidth;
         Util.tankHeight = tankWidth;
         Util.gunCoolingRate = gunCoolingRate;
-        Util.runnableWidth = battleFieldWidth - tankWidth;
-        Util.runnableHeight = battleFieldHeight - tankHeight;
+        Util.runnableMinX = 17.9;
+        Util.runnableMaxX = battleFieldWidth - 17.9;
+        Util.runnableMinY = 17.9;
+        Util.runnableMaxY = battleFieldHeight - 17.9;
     }
     public static long NOW;
-    public static double calcX(double radians, double distance) {
+    private static double calcX(double radians, double distance) {
         return Math.sin(radians) * distance;
     }
 
-    public static double calcY(double radians, double distance) {
+    private static double calcY(double radians, double distance) {
         return Math.cos(radians) * distance;
     }
     public static Point calcPoint(double radians, double distance) {
@@ -54,8 +58,11 @@ public class Util {
         return power;
     }
 
-    public static long gunTurnSpeed(double degree) {
-        return (long) Math.ceil(degree / 20);
+    public static double radarTurnSpeed() {
+        return 45;
+    }
+    public static double gunTurnSpeed() {
+        return 20;
     }
 
     public static double turnSpeed(double velocity) {
@@ -88,13 +95,13 @@ public class Util {
     
     public static Point getRandomPoint( Point center,double extent  ){
         double xmin = center.x - extent;
-        xmin = (xmin<Util.tankWidth)?Util.tankWidth:xmin;
+        xmin = (xmin<Util.runnableMinX)?Util.runnableMinX:xmin;
         double xmax = center.x + extent;
-        xmax = (xmax>Util.runnableWidth)?Util.runnableWidth:xmax;
-        double ymin = center.x - extent;
-        ymin = (ymin<Util.tankHeight)?Util.tankHeight:ymin;
-        double ymax = center.x + extent;
-        ymax = (ymax>Util.runnableHeight)?Util.runnableHeight:ymax;
+        xmax = (xmax>Util.runnableMaxX)?Util.runnableMaxX:xmax;
+        double ymin = center.y - extent;
+        ymin = (ymin<Util.runnableMinY)?Util.runnableMinY:ymin;
+        double ymax = center.y + extent;
+        ymax = (ymax>Util.runnableMaxY)?Util.runnableMaxY:ymax;
 
         return new Point(
                 Util.getRandom(xmin, xmax),
@@ -111,4 +118,30 @@ public class Util {
                 radians-base.calcRadians(target)
                 ) * base.calcDistance(target));
     }
+    
+    public static Point getGrabity(Point base,Point target,double weight,double dim){
+        double distance = base.calcDistance(target);
+        double radians  = base.calcRadians(target);
+        double force = weight/Math.pow(distance/10,dim)*10;
+        return calcPoint(radians, force);
+    }
+    public static double calcTurn(double src,double dst){
+        double diffDegree = (dst - src) % 360;
+        if (diffDegree > 180) {
+            diffDegree = diffDegree - 360;
+        } else if (diffDegree < -180) {
+            diffDegree = diffDegree + 360;
+        }
+        return diffDegree;
+    }
+    public static double calcTurnRadians(double src,double dst){
+        double diffRadians = (dst - src) % (2*Math.PI);
+        if (diffRadians > Math.PI) {
+            diffRadians = diffRadians - 2*Math.PI;
+        } else if (diffRadians < -Math.PI) {
+            diffRadians = diffRadians + 2*Math.PI;
+        }
+        return diffRadians;
+    }
+    
 }
