@@ -9,18 +9,16 @@ import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.Polygon;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import jp.crumb.utils.DeltaMovingPoint;
 import jp.crumb.utils.Enemy;
 import jp.crumb.utils.Logger;
 import jp.crumb.utils.MovingPoint;
+import jp.crumb.utils.Pair;
 import jp.crumb.utils.Point;
 import jp.crumb.utils.TimedPoint;
 import jp.crumb.utils.Util;
@@ -38,7 +36,6 @@ import robocode.HitWallEvent;
 import robocode.RobotDeathEvent;
 import robocode.RoundEndedEvent;
 import robocode.ScannedRobotEvent;
-import robocode.SkippedTurnEvent;
 import robocode.StatusEvent;
 
 /**
@@ -272,19 +269,18 @@ abstract class CrumbRobo extends AdvancedRobot {
     }
     
     
-    private void goPoint(){
+    protected Pair<Double,Double> calcGoPoint(){
+        Pair<Double,Double> ret = new Pair<>(0.0,0.0);
         if ( this.destination == null ) {
-            return;
+            return ret;
         }
         double bearing = my.calcDegree(destination);
         double distance = my.calcDistance(destination);
         
         if ( distance < MOVE_COMPLETE_THRESHOLD ) { 
-            setAhead(0);
-            setTurnRight(0);
-            this.destination = null;
-            return;
+            return ret;
         }
+
         double aheadTurnDegree = calcAbsTurn(bearing);
         double backTurnDegree  = calcAbsTurn(bearing-180);
         double runTime = Util.calcRoughRunTime(distance,my.velocity);
@@ -302,8 +298,18 @@ abstract class CrumbRobo extends AdvancedRobot {
         if ( runTime <= turnTime ) {
             distance = 0;
         }
-        setAhead(distance);
-        setTurnRight(turnDegree);
+        ret.first = distance;
+        ret.second= bearing;
+        return ret;
+    }
+
+    private void goPoint(){
+        Pair<Double,Double> go = calcGoPoint();
+        if ( go.first == 0.0 && go.second == 0.0 ) {
+            this.destination = null;
+        }
+        setAhead(go.first);
+        setTurnRight(go.second);
     }
 
     
@@ -468,7 +474,7 @@ abstract class CrumbRobo extends AdvancedRobot {
         
         if ( PATTERN ) {
             List<MovingPoint> patternList = enemyPatternMap.get(r.name);
-            if ( patternList.size() == 0 ) {
+            if ( patternList.isEmpty() ) {
                 MovingPoint first = new MovingPoint();
                 first.time = r.time;
                 patternList.add(first);
@@ -492,18 +498,24 @@ abstract class CrumbRobo extends AdvancedRobot {
 
     
     @Override
-    public void setTurnGunRight(double degrees) {
-        Logger.gun2("TURN: %2.2f : %2.2f => %2.2f",curGunHeading,curGunTurnRemaining,degrees);
-        super.setTurnGunRight(degrees);
-        curGunTurnRemaining = degrees;
-        curGunTurnRemainingRadians = Math.toRadians(degrees);
+    public void setAhead(double distance) {
+        super.setAhead(distance);
+        curDistanceRemaining = distance;
     }
-
+    
     @Override
     public void setTurnRight(double degrees) {
         super.setTurnRight(degrees);
         curTurnRemaining = degrees;
         curTurnRemainingRadians = Math.toRadians(degrees);
+    }
+
+    @Override
+    public void setTurnGunRight(double degrees) {
+        Logger.gun2("TURN: %2.2f : %2.2f => %2.2f",curGunHeading,curGunTurnRemaining,degrees);
+        super.setTurnGunRight(degrees);
+        curGunTurnRemaining = degrees;
+        curGunTurnRemainingRadians = Math.toRadians(degrees);
     }
 
     @Override
@@ -514,12 +526,6 @@ abstract class CrumbRobo extends AdvancedRobot {
         curRadarTurnRemainingRadians = Math.toRadians(degrees);
     }
 
-    @Override
-    public void setAhead(double distance) {
-        super.setAhead(distance);
-        curDistanceRemaining = distance;
-    }
-    
     private Condition eachTickTimer = new Condition("eachTickTimer",10) {
         @Override
         public boolean test() {
@@ -556,7 +562,7 @@ abstract class CrumbRobo extends AdvancedRobot {
     private void forSystemBug(){
 
         List<String> stales = new ArrayList<>();
-        if ( nextEnemyMap.size() == 0 ) {
+        if ( nextEnemyMap.isEmpty() ) {
             return;
         }
         boolean allStale = true;

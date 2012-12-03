@@ -8,11 +8,9 @@ import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Graphics2D;
 import java.util.Map;
-import jp.crumb.utils.DeltaMovingPoint;
 import jp.crumb.utils.Enemy;
 import jp.crumb.utils.Logger;
 import jp.crumb.utils.Point;
-import jp.crumb.utils.Util;
 
 /**
  *
