@@ -25,8 +25,8 @@ public class DeltaMovingPoint extends MovingPoint {
     
     public MovingPoint delta;
     
-    public void setPrev(DeltaMovingPoint prev) {
-        delta = new DeltaMovingPoint();
+    public void setPrev(MovingPoint prev) {
+        delta = new MovingPoint();
         delta.x = x - prev.x;
         delta.y = y - prev.y;
         delta.time = time - prev.time;
@@ -34,31 +34,30 @@ public class DeltaMovingPoint extends MovingPoint {
         delta.headingRadians = headingRadians - prev.headingRadians;
         delta.velocity = velocity - prev.velocity;
     }
-
-    public boolean islimit() {
-        if (    x < Util.runnableMinX ||
-                x > Util.runnableMaxX ||
-                y < Util.runnableMinY ||
-                y > Util.runnableMaxY) {
-            return true;
-        }
-        return false;
-    }
-    
-    
+    public void setDelta(MovingPoint delta) {
+        this.delta = delta;
+    }    
     public void prospectNext() {
         DeltaMovingPoint backup = new DeltaMovingPoint(this);
         if ( delta == null ) {
             inertia(1);
         }else {
             if (delta.heading != 0) {
-                double turnSpeed = Util.turnSpeed(velocity);
-                double turnRadians = Math.toRadians(turnSpeed);
-                heading += turnSpeed;
-                headingRadians += turnRadians;
+                double deltaHeading = delta.heading / delta.time;
+                deltaHeading = (Math.abs(deltaHeading)<Util.turnSpeed(velocity))?deltaHeading:Util.turnSpeed(velocity)*Math.abs(deltaHeading)/deltaHeading;
+                double deltaRadians = Math.toRadians(deltaHeading);
+                heading += deltaHeading;
+                headingRadians += deltaRadians;
             }
+            
             Point deltaByTurn = Util.calcPoint(headingRadians, velocity);
-            velocity += delta.velocity / delta.time;
+            double deltaVelocity = delta.velocity / delta.time;
+            if ( deltaVelocity > 1 ) {
+                deltaVelocity = 1;
+            }else if (deltaVelocity < -2 ) {
+                deltaVelocity = -2;
+            }
+            velocity += deltaVelocity;
             velocity = (velocity > 8) ? 8 : velocity;
             velocity = (velocity < -8) ? -8 : velocity;
             x += deltaByTurn.x;

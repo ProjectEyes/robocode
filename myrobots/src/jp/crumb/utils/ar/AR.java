@@ -16,6 +16,7 @@ public class AR extends Gradient {
     public AR(int N) {
         this.N = N;
     }
+    Logger logger = new Logger();
 
     Double getX(int n,List<Double> listX) {
         Double x = 0.0;
@@ -31,7 +32,7 @@ public class AR extends Gradient {
             Double a = params.get(i);
             Double r = x*a;
             ret += r;
-            Logger.debug4("Xi(%d): , x(%d):%f , a(%d):%f = %f", (head + 1), head - i + 1, x, i, a, ret);
+            logger.debug4("Xi(%d): , x(%d):%f , a(%d):%f = %f", (head + 1), head - i + 1, x, i, a, ret);
         }
         return ret;
     }
@@ -41,7 +42,7 @@ public class AR extends Gradient {
         for (int i = 1; i < params.size(); i++) {
             Double xans = getX(i, listX);
             Double ans = calcXt(listX, i-1);
-            Logger.debug4("Xi(%d): %f, calc(%d):%f", i, xans,i-1,ans);
+            logger.debug4("Xi(%d): %f, calc(%d):%f", i, xans,i-1,ans);
             diffSum += Math.abs(xans - ans);
         }
         return diffSum;

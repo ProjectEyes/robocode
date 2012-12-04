@@ -4,11 +4,13 @@
  */
 package jp.crumb.utils;
 
+import java.io.Serializable;
+
 /**
  *
  * @author crumb
  */
-public class Point {
+public class Point implements Serializable{
 
     public double x;
     public double y;

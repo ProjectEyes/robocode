@@ -17,6 +17,15 @@ public class MovingPoint extends TimedPoint {
     public MovingPoint() {
     }
 
+    public MovingPoint(double x,double y,long time,double heading, double headingRadians, double velocity) {
+        this.x = x;
+        this.y = y;
+        this.time = time;
+        this.heading = heading;
+        this.headingRadians = headingRadians;
+        this.velocity = velocity;
+    }
+
 
     public MovingPoint(MovingPoint in) {
         this.set(in);
@@ -33,5 +42,14 @@ public class MovingPoint extends TimedPoint {
     public void inertia(double interval) {
         double dist = velocity * interval;
         this.add(Util.calcPoint(headingRadians, dist));
+    }
+    public boolean islimit() {
+        if (    x < Util.runnableMinX ||
+                x > Util.runnableMaxX ||
+                y < Util.runnableMinY ||
+                y > Util.runnableMaxY) {
+            return true;
+        }
+        return false;
     }
 }

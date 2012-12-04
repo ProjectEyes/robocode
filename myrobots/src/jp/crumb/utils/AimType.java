@@ -4,11 +4,13 @@
  */
 package jp.crumb.utils;
 
+import java.io.Serializable;
+
 /**
  *
  * @author crumb
  */
-public class AimType implements Comparable<AimType> {
+public class AimType implements Comparable<AimType> , Serializable{
     
     public int aim;
     public int hit;

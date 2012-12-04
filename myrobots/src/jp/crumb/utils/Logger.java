@@ -36,109 +36,117 @@ public class Logger {
     public static final int LOGLV_DEBUG4  = 0x80000000;
     public static final int LOGLV_DEBUG    = 0xF0000000;
 //    public static int LOGLV = LOGLV_ALL;
-    public static int LOGLV = LOGLV_CRASH | LOGLV_GUN1;
+    public int LOGLV = LOGLV_CRASH |  LOGLV_GUN1 | LOGLV_GUN2;
 //    public static int LOGLV = LOGLV_DEBUG1 | LOGLV_DEBUG2;
+
+    public Logger(int loglv) {
+        LOGLV = loglv;
+    }
+
+    public Logger() {
+        this(LOGLV_CRASH | LOGLV_GUN1);
+    }
 
     public static void log(String format, Object... args){
         System.out.println(String.format("%3d : ",Util.NOW) + String.format(format, args) );
     }
-    public static void scan(String format, Object... args){
+    public void scan(String format, Object... args){
         if ( (LOGLV&LOGLV_SCAN) != 0 ) {
             log(format,args);
         }
     }
-    public static void move_log(String format, Object... args){
+    public void move_log(String format, Object... args){
         if ( (LOGLV&LOGLV_MOVE) != 0 ) {
             log(format,args);
         }
     }
-    public static void crash(String format, Object... args){
+    public void crash(String format, Object... args){
         if ( (LOGLV&LOGLV_CRASH) != 0 ) {
             log(format,args);
         }
     }
-    public static void gun1(String format, Object... args){
+    public  void gun1(String format, Object... args){
         if ( (LOGLV&LOGLV_GUN1) != 0 ) {
             log("GUN::"+format,args);
         }
     }
-    public static void gun2(String format, Object... args){
+    public  void gun2(String format, Object... args){
         if ( (LOGLV&LOGLV_GUN2) != 0 ) {
             log("GUN::"+format,args);
         }
     }
-    public static void gun3(String format, Object... args){
+    public  void gun3(String format, Object... args){
         if ( (LOGLV&LOGLV_GUN3) != 0 ) {
             log("GUN::"+format,args);
         }
     }
-    public static void gun4(String format, Object... args){
+    public  void gun4(String format, Object... args){
         if ( (LOGLV&LOGLV_GUN4) != 0 ) {
             log("GUN::"+format,args);
         }
     }
-    public static void radar1(String format, Object... args){
+    public  void radar1(String format, Object... args){
         if ( (LOGLV&LOGLV_RADAR1) != 0 ) {
             log("RADAR::"+format,args);
         }
     }
-    public static void radar2(String format, Object... args){
+    public  void radar2(String format, Object... args){
         if ( (LOGLV&LOGLV_RADAR2) != 0 ) {
             log("RADAR::"+format,args);
         }
     }
-    public static void radar3(String format, Object... args){
+    public  void radar3(String format, Object... args){
         if ( (LOGLV&LOGLV_RADAR3) != 0 ) {
             log("RADAR::"+format,args);
         }
     }
-    public static void radar4(String format, Object... args){
+    public  void radar4(String format, Object... args){
         if ( (LOGLV&LOGLV_RADAR4) != 0 ) {
             log("RADAR::"+format,args);
         }
     }
-    public static void ctrl1(String format, Object... args){
+    public  void ctrl1(String format, Object... args){
         if ( (LOGLV&LOGLV_CTRL1) != 0 ) {
             log("CTRL::"+format,args);
         }
     }
-    public static void ctrl2(String format, Object... args){
+    public  void ctrl2(String format, Object... args){
         if ( (LOGLV&LOGLV_CTRL2) != 0 ) {
             log("CTRL::"+format,args);
         }
     }
-    public static void ctrl3(String format, Object... args){
+    public  void ctrl3(String format, Object... args){
         if ( (LOGLV&LOGLV_CTRL3) != 0 ) {
             log("CTRL::"+format,args);
         }
     }
-    public static void ctrl4(String format, Object... args){
+    public  void ctrl4(String format, Object... args){
         if ( (LOGLV&LOGLV_CTRL4) != 0 ) {
             log("CTRL::"+format,args);
         }
     }
 
-    public static void trace(String format, Object... args){
+    public  void trace(String format, Object... args){
         if ( (LOGLV&LOGLV_TRACE) != 0 ) {
             log(format,args);
         }
     }
-    public static void debug1(String format, Object... args){
+    public  void debug1(String format, Object... args){
         if ( (LOGLV&LOGLV_DEBUG1) != 0 ) {
             log(format,args);
         }
     }
-    public static void debug2(String format, Object... args){
+    public  void debug2(String format, Object... args){
         if ( (LOGLV&LOGLV_DEBUG2) != 0 ) {
             log(format,args);
         }
     }
-    public static void debug3(String format, Object... args){
+    public  void debug3(String format, Object... args){
         if ( (LOGLV&LOGLV_DEBUG3) != 0 ) {
             log(format,args);
         }
     }
-    public static void debug4(String format, Object... args){
+    public  void debug4(String format, Object... args){
         if ( (LOGLV&LOGLV_DEBUG4) != 0 ) {
             log(format,args);
         }

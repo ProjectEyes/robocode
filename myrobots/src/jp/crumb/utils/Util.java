@@ -4,6 +4,9 @@
  */
 package jp.crumb.utils;
 
+import java.util.HashMap;
+import java.util.Map;
+
 /**
  *
  * @author crumb
@@ -19,6 +22,7 @@ public class Util {
     public static double tankWidth;
     public static double tankHeight;
     public static double gunCoolingRate;
+    public static double fieldFullDistance;
 
     public static void init(double battleFieldWidth, double battleFieldHeight, double tankWidth, double tankHeight, double gunCoolingRate) {
         Util.battleFieldWidth = battleFieldWidth;
@@ -30,6 +34,7 @@ public class Util {
         Util.runnableMaxX = battleFieldWidth - 17.9;
         Util.runnableMinY = 17.9;
         Util.runnableMaxY = battleFieldHeight - 17.9;
+        Util.fieldFullDistance = new Point(Util.battleFieldWidth,Util.battleFieldHeight).calcDistance(new Point());
     }
     public static long NOW;
     private static double calcX(double radians, double distance) {
@@ -43,11 +48,8 @@ public class Util {
         return new Point(calcX(radians,distance),calcY(radians,distance));
     }
 
-
-
     public static double bultSpeed(double power) {
         return (20 - 3 * power);
-
     }
 
     public static double bultPower(double speed) {
@@ -67,6 +69,7 @@ public class Util {
 
     public static double turnSpeed(double velocity) {
         return 10 - 0.75 * Math.abs(velocity);
+//        return 10 - 0.95 * Math.abs(velocity);
     }
 
     public static double calcRoughRunTime(double distance, double velocity) {
@@ -143,5 +146,13 @@ public class Util {
         }
         return diffRadians;
     }
-    
+
+    public static <K,V> HashMap<K,V> deepCopyHashMap(Map<K,V> in , Copy<V> copy){
+        HashMap<K,V> ret = new HashMap<>();
+        for ( Map.Entry<K,V> e : in.entrySet() ) {
+            ret.put(e.getKey(), copy.copy(e.getValue()) );
+        }
+        return ret;
+    }
+
 }

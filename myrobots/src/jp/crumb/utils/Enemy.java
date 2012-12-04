@@ -13,8 +13,6 @@ import robocode.ScannedRobotEvent;
  *
  * @author crumb
  */
-
-
 public class Enemy extends DeltaMovingPoint {
     static public final int AIM_TYPE_INERTIA    = 1;
     static public final int AIM_TYPE_ACCERARATE = 2;
@@ -29,16 +27,16 @@ public class Enemy extends DeltaMovingPoint {
     public int aimType = AIM_TYPE_ACCERARATE;
     public Map<Integer,AimType> aimTypeMap = new HashMap();
 
-    public Enemy(DeltaMovingPoint my, ScannedRobotEvent e,int aimType) {
+    public Enemy(MovingPoint my, ScannedRobotEvent e,int aimType) {
         super(); // default constractor
         this.time = e.getTime();
         this.bearing = (e.getBearing() + my.heading)%(360);
         this.bearingRadians = (e.getBearingRadians() + my.headingRadians)%(Math.PI*2);
         this.name = e.getName();
         this.distance = e.getDistance();
-        this.set(Util.calcPoint(bearingRadians, distance).add(my));
-//        this.x = Util.calcX(bearingRadians, distance) + my.getX();
-//        this.y = Util.calcY(bearingRadians, distance) + my.getY();
+        Point d =Util.calcPoint(bearingRadians, distance).add(my);
+        this.x = d.x;
+        this.y = d.y;
         this.heading = e.getHeading();
         this.headingRadians = e.getHeadingRadians();
         this.velocity = e.getVelocity();
@@ -46,7 +44,7 @@ public class Enemy extends DeltaMovingPoint {
         this.aimType = aimType;
         this.changeAimType(this.aimType);
     }
-    public Enemy(DeltaMovingPoint my, ScannedRobotEvent e) {
+    public Enemy(MovingPoint my, ScannedRobotEvent e) {
         this(my, e,AIM_TYPE_ACCERARATE);
     }
 
@@ -66,6 +64,7 @@ public class Enemy extends DeltaMovingPoint {
     }
 
     public Enemy() {
+        changeAimType(AIM_TYPE_ACCERARATE);
     }
     public AimType getAimType(int type) {
         return this.aimTypeMap.get(type);

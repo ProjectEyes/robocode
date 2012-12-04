@@ -13,6 +13,7 @@ import jp.crumb.utils.Logger;
  * @author crumb
  */
 abstract public class Gradient {
+    Logger logger = new Logger();
     static final double DEFAULT_DELTA = 0.0000000001;
     static final double DEFAULT_INIT_ACCERARATOR = 0.1;
     static final double DEFAULT_THRESHOLD = 0.000000001;
@@ -72,7 +73,7 @@ abstract public class Gradient {
             List<Double> backupPrames = params;
             params = newParams;
             cur = formula();
-            Logger.debug3("dyw: (%f / %f , %f) : %s", cur,prev, accerarate,params.toString());
+            logger.debug3("dyw: (%f / %f , %f) : %s", cur,prev, accerarate,params.toString());
             
             if (Math.abs(cur - prev) < THRESHOLD) {
                 break;
@@ -87,8 +88,7 @@ abstract public class Gradient {
             accerarate *= INCREASE_ACCERARATOR;
             prev = cur;
         }
-        Logger.debug2("DYW(%d): (%f / %f , %f) : %s", n,cur,prev, accerarate,params.toString());
-
+        logger.debug2("DYW(%d): (%f / %f , %f) : %s", n,cur,prev, accerarate,params.toString());
     }
 }
 
