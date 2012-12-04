@@ -147,17 +147,18 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
             setDestination(dst);
         }
         Pair<Double,Double> go = this.calcGoPoint();
+        ctx.my = new MyPoint(nextMy);
+        if ( go != null ) {
 //        this.cbThinking();
 //        
-        MovingPoint delta = new MovingPoint();
-        delta.time = 1;
-        delta.heading = go.second;
-        delta.headingRadians = Math.toRadians(go.second);
-        delta.velocity = go.first;
-//        delta.velocity = 0;
-        ctx.my = new MyPoint(nextMy);
-        nextMy.setDelta(delta);
-        nextMy.prospectNext();
+            MovingPoint delta = new MovingPoint();
+            delta.time = 1;
+            delta.heading = go.second;
+            delta.headingRadians = Math.toRadians(go.second);
+            delta.velocity = go.first;
+            nextMy.setDelta(delta);
+            nextMy.prospectNext();
+        }
         nextMy.time++;
         ctx = backupContext;
 //        if ( true ) {
@@ -251,6 +252,9 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
     }
     
     public void fire(double power, double distance,String targetName ) {
+        if ( ctx.gunHeat != 0 ) {
+            return;
+        }
         logger.gun2("FIRE( power => bearing): ( %2.2f ) => %2.2f",power,ctx.curGunHeading);
         this.paint(getGraphics());
         Enemy enemy = enemyMap.get(targetName);
@@ -329,14 +333,11 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
     }
     
     protected Pair<Double,Double> calcGoPoint(){
-        Pair<Double,Double> ret = new Pair<>(0.0,0.0);
-
+        if ( ctx.destination == null ) {
+            return null;
+        }
         double bearing = ctx.my.calcDegree(ctx.destination);
         double distance = ctx.my.calcDistance(ctx.destination);
-        
-        if ( distance < MOVE_COMPLETE_THRESHOLD ) { 
-            return ret;
-        }
 
         double aheadTurnDegree = calcAbsTurn(bearing);
         double backTurnDegree  = calcAbsTurn(bearing-180);
@@ -355,17 +356,28 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
         if ( runTime <= turnTime ) {
             distance = 0;
         }
-        ret.first = distance;
-        ret.second= turnDegree;
-        return ret;
+        if ( Math.abs(distance) < MOVE_COMPLETE_THRESHOLD ) { 
+            return new Pair<>(0.0,turnDegree);
+        }
+        return new Pair<>(distance,turnDegree);
     }
 
     private void goPoint(){
         Pair<Double,Double> go = calcGoPoint();
+        if ( go == null ) {
+            return;
+        }
         setAhead(go.first);
+        if ( go.first == 0 ) {
+            cbMoveComplete();
+        }
         setTurnRight(go.second);
+        if ( go.second == 0 ) {
+            cbTurnComplete();
+        }
     }
-
+    protected void cbMoveComplete(){  }
+    protected void cbTurnComplete(){  }
     
     protected double calcAbsTurn(double absDegree) {
         return Util.calcTurn(ctx.my.heading,absDegree);
@@ -812,7 +824,9 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
         }
         g.setStroke(new BasicStroke(4.0f));
         g.setColor(new Color(0, 1.0f, 0,PAINT_OPACITY));
-        drawRound(g,ctx.destination.x,ctx.destination.y,10);
+        if ( ctx.destination != null ) {
+            drawRound(g,ctx.destination.x,ctx.destination.y,10);
+        }
 
         g.setStroke(new BasicStroke(1.0f));
         for (Map.Entry<String, Enemy> e : enemyMap.entrySet()) {

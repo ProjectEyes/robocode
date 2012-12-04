@@ -73,7 +73,8 @@ public class Util {
     }
 
     public static double calcRoughRunTime(double distance, double velocity) {
-        velocity = (velocity == 0.0) ? 0.0000000000001 : 1;
+        velocity = Math.abs(velocity);
+        velocity = (velocity == 0.0) ? 0.0000000000001 : velocity;
         return distance / velocity;
     }
 

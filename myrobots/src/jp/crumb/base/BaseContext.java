@@ -50,7 +50,6 @@ public class BaseContext implements Serializable{
     public Map<String,BulletInfo> nextBulletList = new HashMap<>();
 
     public BaseContext() {
-        destination = new Point(my);
     }
 
     public BaseContext(BaseContext in){
@@ -70,7 +69,9 @@ public class BaseContext implements Serializable{
         this.others = in.others;
         this.enemies = in.enemies;
         this.prevRadarHeadingRadians = in.prevRadarHeadingRadians;
-        this.destination = new Point(in.destination);
+        if ( this.destination != null ) {
+            this.destination = new Point(in.destination);
+        }
         this.my = new MyPoint(in.my);
         this.nextMy = new MyPoint(in.nextMy);
         

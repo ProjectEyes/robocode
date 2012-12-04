@@ -27,13 +27,32 @@ public class TurnTest extends BaseRobo<BaseContext> {
 
     @Override
     protected Point cbMoving() {
-        return new Point(Util.runnableMaxX,Util.runnableMaxY);
+        setTurnGunRight(this.calcAbsGunTurn(270));
+        setTurnRadarRight(this.calcAbsRadarTurn(270));
+        return new Point(Util.runnableMaxX-2,Util.runnableMaxY-2);
+    }
+    boolean isMove = true;
+    @Override
+    protected void cbMoveComplete() {
+        setTurnRight(this.calcAbsTurn(270));
+    }
+    boolean isFire = false;
+    @Override
+    protected void cbTurnComplete() {
+        if (isMove ) {
+            isFire = true;
+        }
     }
 
     @Override
     protected void cbThinking() {
-        this.setTurnGunRight(this.calcAbsGunTurn(270));
-        this.setTurnRadarRight(this.calcAbsRadarTurn(270));
+    }
+
+    @Override
+    protected void cbFiring() {
+        if ( isFire) {
+            fire(3.0,Util.fieldFullDistance,"UNKNOWN");
+        }
     }
     
 }

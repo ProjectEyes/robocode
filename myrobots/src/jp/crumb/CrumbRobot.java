@@ -127,7 +127,7 @@ abstract public class CrumbRobot extends BaseRobo<CrumbContext> {
         
         double gDistance     = ctx.my.calcDistance(ctx.G);
         double nextGDistance = ctx.nextMy.calcDistance(ctx.G);
-        if ( G_DISTANCE_THRESHIOLD > 80 || ctx.my.time - ctx.G.time > G_EXPIRE ) { 
+        if ( ctx.destination != null && (G_DISTANCE_THRESHIOLD > 80 || ctx.my.time - ctx.G.time > G_EXPIRE) ) { 
                 double gr = ctx.my.calcRadians(ctx.destination);
                 Point g = Util.calcPoint(gr,50).prod(-1).add(ctx.my);
                 g = Util.getRandomPoint(g,55);
@@ -207,27 +207,6 @@ abstract public class CrumbRobot extends BaseRobo<CrumbContext> {
     @Override
     protected void cbFiring(){
         firing(1,0);
-        
-
-//        Enemy lockOnTarget = getLockOnTarget(ctx.lockonTarget);
-//        if ( (ctx.mode & MODE_GUN_LOCKON) != 0 && ctx.gunHeat == 0.0 &&
-//                lockOnTarget != null && lockOnTarget.delta != null &&
-//                lockOnTarget.delta.time == 1  &&  // acculate measured
-//                ctx.my.time == lockOnTarget.time) {// newest data
-//            Pair<Double,Double> result = calcFire(lockOnTarget);
-//            double maxPower = result.first;
-//            double aimDistance = result.second;
-//            if ( lockOnTarget.energy == 0 ) {
-//                fire(0.00001,aimDistance,lockOnTarget.name);
-//            }                    
-//            if ( maxPower > 0 ) {
-//                if ( ctx.enemies > 1 ) {
-//                    setMode(MODE_NORMAL);
-//                }
-//                fire(maxPower,aimDistance,lockOnTarget.name);
-//            }
-//        }
-    
     }
     
     double selectPowerFromDistance(double distance) {
