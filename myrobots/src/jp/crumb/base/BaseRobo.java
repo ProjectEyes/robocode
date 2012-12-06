@@ -58,26 +58,44 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
     protected Logger logger = new Logger();
     protected T ctx = createContext(null);
     
-    abstract protected T createContext(T in);
-    protected BaseContext defalutCreateContext(BaseContext in) {
-        if ( in == null ) {
-            return new BaseContext();
-        }else{
-            return new BaseContext(in);
-        }
-    }
    
     protected static Set<String> teammate = new HashSet<>();
     protected static boolean isLeader = false;
-    
+    protected static String leader = null;
     // Current informations
     private static Map<String, Enemy> enemyMap = new HashMap<>();
     private Map<String,BulletInfo> bulletList = new HashMap<>();
+    protected static Map<String, List<MovingPoint> > enemyPatternMap = new HashMap<>();
 
     protected static String name;
     
-    protected boolean PATTERN = false;
-    
+    private Condition eachTickTimer = new Condition("eachTickTimer",10) {
+        @Override
+        public boolean test() {
+            return true;
+        }
+    };
+    private Condition firstTickTimer = new Condition("firstTickTimer",90) {
+        @Override
+        public boolean test() {
+            return true;
+        }
+    };
+    private void initEventPriority(){
+	this.setEventPriority("ScannedRobotEvent",10);
+	this.setEventPriority("HitRobotEvent",10);
+	this.setEventPriority("HitWallEvent",10);
+	this.setEventPriority("HitByBulletEvent",10);
+	this.setEventPriority("BulletHitEvent",10);
+	this.setEventPriority("BulletHitBulletEvent",10);
+	this.setEventPriority("BulletMissedEvent",10);
+	this.setEventPriority("RobotDeathEvent",10);
+	this.setEventPriority("CustomEvent",10);
+//	this.setEventPriority("SkippedTurnEvent",10);
+//	this.setEventPriority("WinEvent",10);
+//	this.setEventPriority("DeathEvent",10);
+     }
+
     private void current() {
         Util.NOW = getTime();
         if ( Util.NOW == ctx.my.time ) {
@@ -113,61 +131,9 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
         ctx.my.setPrev(prevMy);
         ctx.nextMy = new MyPoint(ctx.my);
         prospectNextMy(ctx.nextMy,null);
-        
     }        
-    protected Point cbMoving() {
-        return new Point(ctx.my);
-    }
-    protected void cbFiring() {}
-    protected void cbThinking() {}
-    protected void cbFirst() {}
-    protected void cbRadarTurnComplete() {}
-    protected void cbCompleteMove() {}
-    protected void cbHitByBullet(HitByBulletEvent e) {}
 
-    protected void prospectNextEnemy(Enemy enemy) {
-        enemy.prospectNext(ctx.my);
-    }
-    protected void prospectNextEnemy(Enemy enemy,int interval) {
-        for (int i = 1; i <= interval; i++) {
-            prospectNextEnemy(enemy);
-        }
-    }
-    protected T prospectNextMy(MyPoint nextMy,T curContext) {
-//        nextMy.prospectNext();
-        T backupContext = ctx;
-        if ( curContext == null ) {
-            curContext =  createContext(ctx);
-        }
-        ctx = curContext;
-        ctx.nextMy = nextMy;
-        this.prospectNext();
-        Point dst = this.cbMoving();
-        if ( dst != null ) {
-            setDestination(dst);
-        }
-        Pair<Double,Double> go = this.calcGoPoint();
-        ctx.my = new MyPoint(nextMy);
-        if ( go != null ) {
-//        this.cbThinking();
-//        
-            MovingPoint delta = new MovingPoint();
-            delta.time = 1;
-            delta.heading = go.second;
-            delta.headingRadians = Math.toRadians(go.second);
-            delta.velocity = go.first;
-            nextMy.setDelta(delta);
-            nextMy.prospectNext();
-        }
-        nextMy.time++;
-        ctx = backupContext;
-//        if ( true ) {
-//            return null;
-//        }
-        return curContext;
-    }
-    
-    protected Map.Entry<String,BulletInfo> calcBulletSrc(Bullet bullet) {
+    private Map.Entry<String,BulletInfo> calcBulletSrc(Bullet bullet) {
         Point dst = new Point(bullet.getX(),bullet.getY());
         double bulletRadians = bullet.getHeadingRadians();
         
@@ -194,14 +160,14 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
         logger.log("Unknown bullet: ");
         return null;
     }
-    protected void cbBulletMissed(BulletMissedEvent e) {
+    private void bulletMissed(BulletMissedEvent e) {
         Bullet bullet = e.getBullet();
         Point dst = new Point(bullet.getX(),bullet.getY());
         calcBulletSrc(bullet);
         logger.gun1("MISS: %s",dst);
     }
     
-    protected void cbBulletHit(BulletHitEvent e){
+    private void bulletHit(BulletHitEvent e){
         Bullet bullet = e.getBullet();
         Point dst = new Point(bullet.getX(),bullet.getY());
         String victim = bullet.getVictim();
@@ -230,7 +196,7 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
             }
         }
     }
-    protected void cbBulletHitBullet(BulletHitBulletEvent e){
+    private void bulletHitBullet(BulletHitBulletEvent e){
         Bullet bullet = e.getBullet();
         Point dst = new Point(bullet.getX(),bullet.getY());
         logger.gun1("INTERCEPT: %s",dst);
@@ -250,8 +216,201 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
         ctx.nextBulletList.remove(key);
         bulletList.remove(key);
     }
+    private void sendMyInfo(){
+        Enemy my = new Enemy();
+        my.time = ctx.my.time +1;
+        my.name = name;
+        my.x = ctx.nextMy.x;
+        my.y = ctx.nextMy.y;
+        my.heading = ctx.nextMy.heading;
+        my.headingRadians = ctx.nextMy.headingRadians;
+        my.velocity = ctx.nextMy.velocity;
+        my.energy = ctx.energy;
+        broadcastMessage(new TeammateInfoEvent(my,isLeader));
+    }
+    private void dispatchMessage(MessageEvent e) {
+        Serializable event = e.getMessage();
+        if (event instanceof ScanEnemyEvent ) {
+            ScanEnemyEvent ev = (ScanEnemyEvent)event;
+            Enemy enemy = ev.e;
+            enemy.calcPosition(ctx.my);
+            scanedRobot(enemy);
+        }else if (event instanceof TeammateInfoEvent ) {
+            ctx.enemies--;
+            TeammateInfoEvent ev = (TeammateInfoEvent)event;
+            if ( ev.isLeader ) {
+                leader = ev.e.name;
+            }
+            Enemy enemy = ev.e;
+            enemy.calcPosition(ctx.my);
+            scanedRobot(enemy);
+        }else if (event instanceof FireEvent ) {
+            FireEvent ev = (FireEvent)event;
+            setBulletInfo(ev.bulletInfo);
+        }else if (event instanceof ImpactEvent ) {
+            ImpactEvent ev = (ImpactEvent)event;
+            impactBullet(ev.key);
+        }else{
+            cbExtMessage(e);
+        }
+        
+    }
+    private void goPoint(){
+        Pair<Double,Double> go = calcGoPoint();
+        if ( go == null ) {
+            return;
+        }
+        setAhead(go.first);
+        setTurnRight(go.second);
+    }
+    private void scanedRobot(ScannedRobotEvent e) {
+        Enemy r = calcAbsRobot(e);
+        if ( ! isTeammate(r.name)) {
+            Enemy next = new Enemy(r);
+            prospectNextEnemy(next);
+            next.time++;
+            this.broadcastMessage(new ScanEnemyEvent(next));
+        }
+        scanedRobot(r);
+    }        
+    private void scanedRobot(Enemy r) {
+        logger.scan("%15s : %s : %d",r.name,r,r.time);
+        Enemy prevR = enemyMap.get(r.name);
+        if ( prevR != null && prevR.time == r.time ) {
+            return;
+        }
+        Enemy nextEnemy =  getEnemy(r.name);
+@@
+        if ( prevR != null ) {
+//            if ( r.time != prevR.time && (r.time-prevR.time) < SCAN_STALE || (nextEnemy != null && nextEnemy.calcDistance(r) < 20 ) ){
+            if ( r.time != prevR.time && (r.time-prevR.time) < SCAN_STALE ) {
+                r.setPrev(prevR);
+            }
+            r.setAimType(prevR.getAimType());
+        }
+        
+        enemyMap.put(r.name, r);
+        
+        if ( ! enemyPatternMap.containsKey(r.name)) {
+            enemyPatternMap.put(r.name,new ArrayList());
+        }
+        
+
+        List<MovingPoint> patternList = enemyPatternMap.get(r.name);
+        if ( patternList.isEmpty() ) {
+            MovingPoint first = new MovingPoint();
+            first.time = r.time;
+            patternList.add(first);
+        }else{
+            MovingPoint lastPattern = patternList.get(patternList.size()-1);
+            long deltaTime = r.time - lastPattern.time;
+            for (int i = 1 ; i <= deltaTime ; i++ ) {
+                MovingPoint p = new MovingPoint(r).diff(nextEnemy).quot(deltaTime);
+                p.time = lastPattern.time + i;
+                patternList.add(p);
+            }
+        }
+
+        ctx.nextEnemyMap.put(r.name, new Enemy(r));
+    }
+    private void cbRobotDeath(RobotDeathEvent e) {
+        // ctx.nextEnemyMap.remove(e.getName());
+        Enemy enemy = getEnemy(e.getName());
+        if ( enemy != null ) {
+            enemy.time = 0;
+        }
+    }    
+        
+    protected final void setDestination(Point dst){
+        logger.move_log("DST: %s", dst);
+        this.ctx.destination = dst;
+    }
+    private void prospectNext(){
+        for (Map.Entry<String, Enemy> e : ctx.nextEnemyMap.entrySet()) {
+            Enemy r = e.getValue();
+            prospectNextEnemy(r);
+        }
+        for (Map.Entry<String, BulletInfo> e : ctx.nextBulletList.entrySet()) {
+            BulletInfo info = e.getValue();
+            info.src.inertia(1);
+        }
+    }    
     
-    public void fire(double power, double distance,String targetName ) {
+    protected final Pair<Double,Double> calcGoPoint(){
+        if ( ctx.destination == null ) {
+            return null;
+        }
+        double bearing = ctx.my.calcDegree(ctx.destination);
+        double distance = ctx.my.calcDistance(ctx.destination);
+
+        double runTime = Util.calcRoughRunTime(distance,ctx.my.velocity);
+
+        Pair<Double,Integer> turn = ctx.calcAbsTurn(bearing);
+        double turnDegree = turn.first;
+        distance *= turn.second;
+        
+        
+//        double nextBearing = ctx.nextMy.calcDegree(ctx.destination);
+//        double nextDistance = ctx.nextMy.calcDistance(ctx.destination);
+//        Pair<Double,Integer> nextTurn = this.calcAbsTurn(nextBearing);
+//        if ( Math.abs(nextTurn.first) > Math.abs(turnDegree) || Math.abs(nextDistance) > Math.abs(distance) ) {
+//            distance = 0;
+//        }
+        
+        double turnTime = Math.abs(turnDegree/Util.turnSpeed(ctx.my.velocity));
+        if ( runTime <= turnTime ) {
+            distance = 0;
+        }
+        if ( Math.abs(distance) < MOVE_COMPLETE_THRESHOLD ) { 
+            distance = 0.0;
+        }
+        return new Pair<>(distance,turnDegree);
+    }
+    
+    protected final BaseContext defalutCreateContext(BaseContext in) {
+        if ( in == null ) {
+            return new BaseContext();
+        }else{
+            return new BaseContext(in);
+        }
+    }
+
+    protected final T prospectNextMy(MyPoint nextMy,T curContext) {
+        if ( ctx.my.time == 1 ) {
+            return null;
+        }
+//        nextMy.prospectNext();
+        T backupContext = ctx;
+        if ( curContext == null ) {
+            curContext =  createContext(ctx);
+        }
+        ctx = curContext;
+        ctx.nextMy = nextMy;
+        this.prospectNext();
+        Point dst = this.cbMoving();
+        setDestination(dst);
+
+        Pair<Double,Double> go = this.calcGoPoint();
+        ctx.my = new MyPoint(nextMy);
+        if ( go != null ) {
+//        this.cbThinking();
+//        
+            MovingPoint delta = new MovingPoint();
+            delta.time = 1;
+            delta.heading = go.second;
+            delta.headingRadians = Math.toRadians(go.second);
+            delta.velocity = go.first;
+            nextMy.setDelta(delta);
+            nextMy.prospectNext();
+        }
+        nextMy.time++;
+        ctx = backupContext;
+//        if ( true ) {
+//            return null;
+//        }
+        return curContext;
+    }
+    protected final void fire(double power, double distance,String targetName ) {
         if ( ctx.gunHeat != 0 ) {
             return;
         }
@@ -273,6 +432,42 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
     }
     
     
+    public boolean isStale(Enemy e) {
+         if ( (ctx.my.time - e.time) > SCAN_STALE ) {
+             return false;
+         }
+         return true;
+    }
+    public Enemy getEnemy(String name) {
+        Enemy ret = ctx.nextEnemyMap.get(name);
+        if ( isStale(ret) ) {
+            return null;
+        }
+        return ret;
+    }
+    
+    
+    abstract protected T createContext(T in);
+    protected Point cbMoving() {
+        return ctx.destination;
+    }
+    protected void cbUnprospectedMoving() {
+    }
+    protected void cbFiring() {}
+    protected void cbThinking() {}
+    protected void cbFirst() {}
+    protected void cbRadarTurnComplete() {}
+    protected void cbHitByBullet(HitByBulletEvent e) {}
+
+    protected void prospectNextEnemy(Enemy enemy) {
+        enemy.prospectNext(ctx.my);
+    }
+    protected void prospectNextEnemy(Enemy enemy,int interval) {
+        for (int i = 1; i <= interval; i++) {
+            prospectNextEnemy(enemy);
+        }
+    }
+
     protected void cbStatus(StatusEvent e){}
 
     protected void cbHitWall(HitWallEvent e) {
@@ -284,261 +479,63 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
     protected void cbExtMessage(MessageEvent e) {
         
     }
-    
-    protected void cbMessage(MessageEvent e) {
-        Serializable event = e.getMessage();
-        if (event instanceof ScanEnemyEvent ) {
-            ScanEnemyEvent ev = (ScanEnemyEvent)event;
-            Enemy enemy = ev.e;
-            enemy.calcPosition(ctx.my);
-            scanedRobot(enemy);
-        }else if (event instanceof TeammateInfoEvent ) {
-            ctx.enemies--;
-            TeammateInfoEvent ev = (TeammateInfoEvent)event;
-            Enemy enemy = ev.e;
-            enemy.calcPosition(ctx.my);
-            scanedRobot(enemy);
-        }else if (event instanceof FireEvent ) {
-            FireEvent ev = (FireEvent)event;
-            setBulletInfo(ev.bulletInfo);
-        }else if (event instanceof ImpactEvent ) {
-            ImpactEvent ev = (ImpactEvent)event;
-            impactBullet(ev.key);
-        }else{
-            cbExtMessage(e);
-        }
-        
-    }
-
-        
-    private void initEventPriority(){
-	this.setEventPriority("ScannedRobotEvent",10);
-	this.setEventPriority("HitRobotEvent",10);
-	this.setEventPriority("HitWallEvent",10);
-	this.setEventPriority("HitByBulletEvent",10);
-	this.setEventPriority("BulletHitEvent",10);
-	this.setEventPriority("BulletHitBulletEvent",10);
-	this.setEventPriority("BulletMissedEvent",10);
-	this.setEventPriority("RobotDeathEvent",10);
-	this.setEventPriority("CustomEvent",10);
-//	this.setEventPriority("SkippedTurnEvent",10);
-//	this.setEventPriority("WinEvent",10);
-//	this.setEventPriority("DeathEvent",10);
-     }
-    
-    
-    private void setDestination(Point dst){
-        logger.move_log("DST: %s", dst);
-        this.ctx.destination = dst;
-    }
-    
-    protected Pair<Double,Double> calcGoPoint(){
-        if ( ctx.destination == null ) {
-            return null;
-        }
-        double bearing = ctx.my.calcDegree(ctx.destination);
-        double distance = ctx.my.calcDistance(ctx.destination);
-
-        double aheadTurnDegree = calcAbsTurn(bearing);
-        double backTurnDegree  = calcAbsTurn(bearing-180);
-        double runTime = Util.calcRoughRunTime(distance,ctx.my.velocity);
-        
-        double turnDegree;
-        
-        if ( Math.abs(aheadTurnDegree) < Math.abs(backTurnDegree)) { // ahead
-            turnDegree = aheadTurnDegree;
-            double turnTime = Math.abs(aheadTurnDegree/Util.turnSpeed(ctx.my.velocity));
-        }else { // back
-            turnDegree = backTurnDegree;
-            distance *= -1; // back
-        }
-        double turnTime = Math.abs(turnDegree/Util.turnSpeed(ctx.my.velocity));
-        if ( runTime <= turnTime ) {
-            distance = 0;
-        }
-        if ( Math.abs(distance) < MOVE_COMPLETE_THRESHOLD ) { 
-            return new Pair<>(0.0,turnDegree);
-        }
-        return new Pair<>(distance,turnDegree);
-    }
-
-    private void goPoint(){
-        Pair<Double,Double> go = calcGoPoint();
-        if ( go == null ) {
-            return;
-        }
-        setAhead(go.first);
-        if ( go.first == 0 ) {
-            cbMoveComplete();
-        }
-        setTurnRight(go.second);
-        if ( go.second == 0 ) {
-            cbTurnComplete();
-        }
-    }
-    protected void cbMoveComplete(){  }
-    protected void cbTurnComplete(){  }
-    
-    protected double calcAbsTurn(double absDegree) {
-        return Util.calcTurn(ctx.my.heading,absDegree);
-    }
-
-    
-    
-    private double calcAbsGunTurnDiff(double diffDegree){
-        long time = 0;
-        double turnRemaining = ctx.curTurnRemaining;
-        double sumGunTurn = 0.0;
-        
-        for (int i = 0 ;i < 100;i++){
-            double nextTurn     = 0;
-            double nextGunTurn  = 0;
-            time++;
-            if ( turnRemaining != 0.0 ) {
-                nextTurn = Util.turnSpeed(ctx.my.velocity)*(Math.abs(turnRemaining)/turnRemaining);
-                if ( Math.abs(nextTurn) > Math.abs(turnRemaining) ) {
-                    nextTurn = turnRemaining;
-                }
-                turnRemaining -= nextTurn;
-            }
-//System.out.println(diffDegree + " t:" + nextTurn + " g:" + nextGunTurn);            
-            diffDegree -= nextTurn;
-            if ( diffDegree != 0.0 ) {
-                nextGunTurn = Util.gunTurnSpeed()*(Math.abs(diffDegree)/diffDegree);
-                if ( Math.abs(nextGunTurn) >  Math.abs(diffDegree) ) {
-                    nextGunTurn = diffDegree;
-                }
-                diffDegree -= nextGunTurn;
-                sumGunTurn += nextGunTurn;
-            }
-            if ( diffDegree == 0.0 ) {
-                break;
-            }
-        }
-        return sumGunTurn;
-    }
-    
-    
-    private double calcAbsRadarTurnDiff(double diffDegree){
-        long time = 0;
-        double turnRemaining = ctx.curTurnRemaining;
-        double gunTurnRemaining = ctx.curGunTurnRemaining;
-
-        double sumRadarTurn = 0.0;
-        
-        for (int i = 0 ;i < 100;i++){
-            double nextTurn     = 0;
-            double nextGunTurn  = 0;
-            double nextRadarTurn= 0;
-            time++;
-            if ( turnRemaining != 0.0 ) {
-                nextTurn = Util.turnSpeed(ctx.my.velocity)*(Math.abs(turnRemaining)/turnRemaining);
-                if ( Math.abs(nextTurn) > Math.abs(turnRemaining) ) {
-                    nextTurn = turnRemaining;
-                }
-                turnRemaining -= nextTurn;
-            }
-
-            if ( gunTurnRemaining != 0.0 ) {
-                nextGunTurn = Util.gunTurnSpeed()*(Math.abs(gunTurnRemaining)/gunTurnRemaining);
-                if ( Math.abs(nextGunTurn) >  Math.abs(gunTurnRemaining) ) {
-                    nextGunTurn = gunTurnRemaining;
-                }
-                gunTurnRemaining -= nextGunTurn;
-                nextGunTurn += nextTurn;
-            }
-//System.out.println(diffDegree + " t:" + nextTurn + " g:" + nextGunTurn);            
-            diffDegree -= nextGunTurn;
-            if ( diffDegree != 0.0 ) {
-                nextRadarTurn = Util.radarTurnSpeed()*(Math.abs(diffDegree)/diffDegree);
-                if ( Math.abs(nextRadarTurn) >  Math.abs(diffDegree) ) {
-                    nextRadarTurn = diffDegree;
-                }
-                diffDegree -= nextRadarTurn;
-                sumRadarTurn += nextRadarTurn;
-            }
-            if ( diffDegree == 0.0 ) {
-                break;
-            }
-        }
-        return sumRadarTurn;
-    }
-
-    protected double calcAbsGunTurn(double absDegree) {
-        double diffDegree1 = (absDegree - ctx.curGunHeading) % 360;
-        if (diffDegree1 > 180) {
-            diffDegree1 = diffDegree1 - 360;
-        } else if (diffDegree1 < -180) {
-            diffDegree1 = diffDegree1 + 360;
-        }
-        double diffDegree2;
-        if ( diffDegree1 < 0 ) {
-            diffDegree2 = 360+diffDegree1;
-        }else{
-            diffDegree2 = diffDegree1-360;
-        }
-        double realDegree1 = calcAbsGunTurnDiff(diffDegree1);
-        double realDegree2 = calcAbsGunTurnDiff(diffDegree2);
-        logger.gun4("CALC: %2.2f => %2.2f : 1 = %2.2f(%2.2f) : 2 = %2.2f(%2.2f)",ctx.curGunHeading,absDegree,diffDegree1,realDegree1,diffDegree2,realDegree2);
-        if ( Math.abs(realDegree2) < Math.abs(realDegree1) ) {
-            return realDegree2;
-        }
-        return realDegree1;
-    }
-    
-    protected double calcAbsRadarTurn(double absDegree) {
-        double diffDegree1 = (absDegree - ctx.curRadarHeading) % 360;
-        if (diffDegree1 > 180) {
-            diffDegree1 = diffDegree1 - 360;
-        } else if (diffDegree1 < -180) {
-            diffDegree1 = diffDegree1 + 360;
-        }
-        double diffDegree2;
-        if ( diffDegree1 < 0 ) {
-            diffDegree2 = 360+diffDegree1;
-        }else{
-            diffDegree2 = diffDegree1-360;
-        }
-        double realDegree1 = calcAbsRadarTurnDiff(diffDegree1);
-        double realDegree2 = calcAbsRadarTurnDiff(diffDegree2);
-        logger.radar4("CALC: %2.2f => %2.2f : 1 = %2.2f(%2.2f) : 2 = %2.2f(%2.2f)",ctx.curRadarHeading,absDegree,diffDegree1,realDegree1,diffDegree2,realDegree2);
-        if ( Math.abs(realDegree2) < Math.abs(realDegree1) ) {
-            return realDegree2;
-        }
-        return realDegree1;
-    }
 
     protected Enemy calcAbsRobot(ScannedRobotEvent e) {
         return new Enemy(ctx.my, e);
     }    
+
+
+    
+    
+    
   
 
-    private void prospectNext(){
+
+    private void forSystemBug(){
+
+        if ( ctx.nextEnemyMap.isEmpty() ) {
+            return;
+        }
+        boolean allStale = true;
         for (Map.Entry<String, Enemy> e : ctx.nextEnemyMap.entrySet()) {
             Enemy r = e.getValue();
-            prospectNextEnemy(r);
+            if ( ctx.my.time - r.time < SYSTEM_BUG_TICKS) {
+                allStale = false;
+                break;
+            }
         }
-        for (Map.Entry<String, BulletInfo> e : ctx.nextBulletList.entrySet()) {
-            BulletInfo info = e.getValue();
-            info.src.inertia(1);
+        if ( allStale ){
+            logger.log("ALL STALE !!!!!!!!!!! : "); 
+            execute();
         }
-        
     }
     
     @Override
+    public void run() {
+        Util.init(
+                getBattleFieldWidth(),
+                getBattleFieldHeight(),
+                getWidth(),
+                getHeight(),
+                getGunCoolingRate()
+                );
+        initEventPriority();
+        name = getName();
+        String [] array =this.getTeammates();
+        if ( array != null ) {
+            teammate.addAll(Arrays.asList(array));
+            if ( getEnergy() == 200 ) {
+                isLeader = true;
+                leader = name;
+            }
+        }
+        addCustomEvent(this.firstTickTimer);
+        addCustomEvent(this.eachTickTimer);
+        execute();
+    }
+  @Override
     public boolean isTeammate(String name) {
         return teammate.contains(name);
-    }
-    
-    private void scanedRobot(ScannedRobotEvent e) {
-        Enemy r = calcAbsRobot(e);
-        if ( ! isTeammate(r.name)) {
-            Enemy next = new Enemy(r);
-            prospectNextEnemy(next);
-            next.time++;
-            this.broadcastMessage(new ScanEnemyEvent(next));
-        }
-        scanedRobot(r);
     }
 
     @Override
@@ -549,53 +546,15 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
             logger.log("Send message error %s", ex.getMessage() );
         }
     }
-
-    private void scanedRobot(Enemy r) {
-        logger.scan("%15s : %s : %d",r.name,r,r.time);
-        Enemy prevR = enemyMap.get(r.name);
-        if ( prevR != null && prevR.time == r.time ) {
-            return;
+    @Override
+    public void sendMessage(String name,Serializable e ){
+        try {
+            super.sendMessage(name,e);
+        } catch (IOException ex) {
+            logger.log("Send message error %s", ex.getMessage() );
         }
-        Enemy nextEnemy = ctx.nextEnemyMap.get(r.name);
-
-        if ( prevR != null ) {
-            if ( r.time != prevR.time && (r.time-prevR.time) < SCAN_STALE || (nextEnemy != null && nextEnemy.calcDistance(r) < 20 ) ){
-                r.setPrev(prevR);
-            }
-            r.setAimType(prevR.getAimType());
-        }
-        
-        enemyMap.put(r.name, r);
-        
-        if ( ! ctx.enemyPatternMap.containsKey(r.name)) {
-            ctx.enemyPatternMap.put(r.name,new ArrayList());
-        }
-        
-        if ( PATTERN ) {
-            List<MovingPoint> patternList = ctx.enemyPatternMap.get(r.name);
-            if ( patternList.isEmpty() ) {
-                MovingPoint first = new MovingPoint();
-                first.time = r.time;
-                patternList.add(first);
-            }else{
-                MovingPoint lastPattern = patternList.get(patternList.size()-1);
-                long deltaTime = r.time - lastPattern.time;
-                for (int i = 1 ; i <= deltaTime ; i++ ) {
-                    MovingPoint p = (MovingPoint)new MovingPoint(r).diff(nextEnemy).quot(deltaTime);
-                    p.time = lastPattern.time + i;
-                    patternList.add(p);
-                }
-            }
-        }
-        ctx.nextEnemyMap.put(r.name, new Enemy(r));
-    }
-    private void cbRobotDeath(RobotDeathEvent e) {
-        // enemyMap.remove(e.getName());
-        ctx.nextEnemyMap.remove(e.getName());
-        ctx.enemyPatternMap.remove(e.getName());
     }
 
-    
     @Override
     public void setAhead(double distance) {
         super.setAhead(distance);
@@ -624,82 +583,15 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
         ctx.curRadarTurnRemaining = degrees;
         ctx.curRadarTurnRemainingRadians = Math.toRadians(degrees);
     }
-
-    private Condition eachTickTimer = new Condition("eachTickTimer",10) {
-        @Override
-        public boolean test() {
-            return true;
-        }
-    };
-    private Condition firstTickTimer = new Condition("firstTickTimer",90) {
-        @Override
-        public boolean test() {
-            return true;
-        }
-    };
     
     @Override
-    public void run() {
-        Util.init(
-                getBattleFieldWidth(),
-                getBattleFieldHeight(),
-                getWidth(),
-                getHeight(),
-                getGunCoolingRate()
-                );
-        initEventPriority();
-        name = getName();
-        String [] array =this.getTeammates();
-        if ( array != null ) {
-            teammate.addAll(Arrays.asList(array));
-            if ( getEnergy() == 200 ) {
-                isLeader = true;
-            }
-        }
-        
-        addCustomEvent(this.firstTickTimer);
-        addCustomEvent(this.eachTickTimer);
-        execute();
+    public void onRoundEnded(RoundEndedEvent event) {
+        dumpLog();
     }
-    private void forSystemBug(){
-
-        List<String> stales = new ArrayList<>();
-        if ( ctx.nextEnemyMap.isEmpty() ) {
-            return;
-        }
-        boolean allStale = true;
-        for (Map.Entry<String, Enemy> e : ctx.nextEnemyMap.entrySet()) {
-            Enemy r = e.getValue();
-            if ( ctx.my.time - r.time < SYSTEM_BUG_TICKS) {
-                allStale = false;
-            }else{
-                stales.add(e.getKey());
-            }
-        }
-        if ( allStale ){
-            logger.log("ALL STALE !!!!!!!!!!! : "); 
-            execute();
-        }
-        for ( String name : stales ) {
-            logger.log("STALE: %s",stales);            
-            ctx.nextEnemyMap.remove(name);
-        }
-    }
-    private void sendMyInfo(){
-        Enemy my = new Enemy();
-        my.time = ctx.my.time +1;
-        my.name = name;
-        my.x = ctx.nextMy.x;
-        my.y = ctx.nextMy.y;
-        my.heading = ctx.nextMy.heading;
-        my.headingRadians = ctx.nextMy.headingRadians;
-        my.velocity = ctx.nextMy.velocity;
-        my.energy = ctx.energy;
-//        my.heading = ctx.nextMy.heading;
-//        my.headingRadians = ctx.nextMy.headingRadians;
-//        my.velocity = ctx.nextMy.velocity;
-//        my.energy = ctx.energy;
-        broadcastMessage(new TeammateInfoEvent(my));
+    
+    @Override
+    public void onBattleEnded(BattleEndedEvent event) {
+        dumpLog();
     }
     
     @Override
@@ -708,12 +600,11 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
         this.setInterruptible(true);
         current();
         if (event.getCondition().equals(this.firstTickTimer) ) {
-            removeCustomEvent(firstTickTimer);
+            this.removeCustomEvent(firstTickTimer);
             cbFirst();
             execute();
             return;
         }
-
         if (event.getCondition().equals(this.eachTickTimer) ) {
             sendMyInfo();
             
@@ -721,7 +612,16 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
                 this.scanedRobot(e);
             }
             for ( MessageEvent e : this.getMessageEvents() ) {
-                this.cbMessage(e);
+                this.dispatchMessage(e);
+            }
+            for ( BulletHitBulletEvent e: this.getBulletHitBulletEvents() ) {
+                this.bulletHitBullet(e);
+            }
+            for ( BulletHitEvent e: this.getBulletHitEvents() ) {
+                this.bulletHit(e);
+            }
+            for ( BulletMissedEvent e: this.getBulletMissedEvents() ) {
+                this.bulletMissed(e);
             }
             for ( RobotDeathEvent e: this.getRobotDeathEvents() ) {
                 this.cbRobotDeath(e);
@@ -735,20 +635,8 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
             for ( HitByBulletEvent e: this.getHitByBulletEvents() ) {
                 this.cbHitByBullet(e);
             }
-            for ( BulletHitBulletEvent e: this.getBulletHitBulletEvents() ) {
-                this.cbBulletHitBullet(e);
-            }
-            for ( BulletHitEvent e: this.getBulletHitEvents() ) {
-                this.cbBulletHit(e);
-            }
-            for ( BulletMissedEvent e: this.getBulletMissedEvents() ) {
-                this.cbBulletMissed(e);
-            }
             for ( StatusEvent e: this.getStatusEvents() ) {
                 this.cbStatus(e);
-            }
-            if ( this.ctx.curTurnRemaining == 0.0 && ctx.my.velocity == 0.0 ){
-                this.cbCompleteMove();
             }
             if ( this.ctx.curRadarTurnRemaining == 0.0){
                 this.cbRadarTurnComplete();
@@ -756,9 +644,8 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
             
             this.prospectNext();
             Point dst = this.cbMoving();
-            if ( dst != null ) {
-                setDestination(dst);
-            }
+            setDestination(dst);
+            this.cbUnprospectedMoving();
             this.goPoint();
             this.cbFiring();
             this.cbThinking();
@@ -773,7 +660,7 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
 
     protected static final float PAINT_OPACITY=0.5f;
     protected void paint(Graphics2D g) {
-        drawRound(g, ctx.my.x, ctx.my.y, 400 * 2);
+        this.drawRound(g, ctx.my.x, ctx.my.y, 400 * 2);
         drawRound(g, ctx.my.x, ctx.my.y, 600 * 2);
         float[] dash = new float[2];
         dash[0] = 0.1f;
@@ -839,7 +726,7 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
             drawRound(g, r.x, r.y, 35);            
             g.drawString(String.format("%s : %s", r.name , r), (int) r.x - 20, (int) r.y- 30);
             g.drawString(String.format("hit: %d / %d  : %2.2f / %2.2f", r.getAimType().hit,r.getAimType().aim,r.getAimType().hitrange,r.getAimType().aimrange), (int) r.x - 20, (int) r.y - 40);
-            Enemy next = ctx.nextEnemyMap.get(r.name);
+            Enemy next = getEnemy(r.name);
             if ( next != null ) {
 //                g.drawString(String.format("( %2.2f , %2.2f )", next.x , next.y), (int) r.x - 20, (int) r.y- 45);
                 g.drawString(String.format("dist(degr): %2.2f(%2.2f)", next.distance,next.bearing), (int) r.x - 20, (int) r.y - 50);
@@ -890,15 +777,6 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
             logger.log("aim : %2.2f(%d)",enemy.getAimType().aimrange,enemy.getAimType().aim);
             logger.log("hit : %2.2f(%d)",enemy.getAimType().hitrange,enemy.getAimType().hit);
         }        
-    }
-    @Override
-    public void onRoundEnded(RoundEndedEvent event) {
-        dumpLog();
-    }
-    
-    @Override
-    public void onBattleEnded(BattleEndedEvent event) {
-        dumpLog();
     }
     
 }
