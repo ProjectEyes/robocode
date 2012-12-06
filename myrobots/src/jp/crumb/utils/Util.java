@@ -54,7 +54,9 @@ public class Util {
 
     public static double bultPower(double speed) {
         double power = (20 - speed) / 3;
-        if (power > 3.0) {
+        if (power > 3.0 ){
+            return 0.0;
+        }else if ( power < 0.0 ) {
             return 0.0;
         }
         return power;

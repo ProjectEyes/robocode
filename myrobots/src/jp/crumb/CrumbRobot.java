@@ -10,6 +10,7 @@ import jp.crumb.base.BulletInfo;
 import jp.crumb.utils.AimType;
 import jp.crumb.utils.DeltaMovingPoint;
 import jp.crumb.utils.Enemy;
+import jp.crumb.utils.Logger;
 import jp.crumb.utils.MovingPoint;
 import jp.crumb.utils.Pair;
 import jp.crumb.utils.Point;
@@ -24,19 +25,22 @@ import robocode.ScannedRobotEvent;
 /**
  * Silver - a robot by (your name here)
  */
-abstract public class CrumbRobot extends BaseRobo<CrumbContext> {
+abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
     protected static final double PREPARE_LOCK_TIME=2;
-    protected static final int MAX_HIT_TIME = 20; 
+    protected static final int DEFAULT_MAX_HIT_TIME = 15; 
+    protected int MAX_HIT_TIME = DEFAULT_MAX_HIT_TIME;
 
-    protected static final int MODE_RADAR_SEARCH = 0x02;
-    protected static final int MODE_RADAR_LOCKON = 0x01;
-    protected static final int MODE_GUN_LOCKON   = 0x10;
+    protected static final int MODE_RADAR_SEARCH = 0x002;
+    protected static final int MODE_RADAR_LOCKON = 0x001;
+    protected static final int MODE_GUN_LOCKON   = 0x010;
+    protected static final int MODE_CLOSE_FIRE   = 0x100;
     protected static final int MODE_NORMAL = MODE_RADAR_SEARCH;
     protected static final int MODE_LOCKON = MODE_RADAR_LOCKON | MODE_GUN_LOCKON;
     
     protected static final double AIM_ENAGY_THRESHOLD = 10.0;
     protected static final int AIM_TIMES_THRESHOLD = 3;
 
+    protected static final long SELECT_POWER_RANGE = 17;
 
     @Override
     protected CrumbContext createContext(CrumbContext in) {
@@ -46,28 +50,42 @@ abstract public class CrumbRobot extends BaseRobo<CrumbContext> {
         return new CrumbContext(in);
     }
 
+    protected static final double DEFAULT_WALL_WEIGHT = 500;
+    protected static final double DEFAULT_WALL_DIM = 1.8;
+    protected static final double DEFAULT_ENEMY_WEIGHT = 400;
+    protected static final double DEFAULT_ENEMY_DIM = 1.8;
+    protected static final double DEFAULT_G_WEIGHT = 50;
+    protected static final double DEFAULT_G_DIM = 1.1;
+    protected static final double DEFAULT_GT_WEIGHT = 400;
+    protected static final double DEFAULT_GT_DIM = 2.5;
+    protected static final long   DEFAULT_G_EXPIRE = 5;
+    protected static final long   DEFAULT_G_DISTANCE_THRESHIOLD = 80;
+    protected static final double DEFAULT_LOCKON_APPROACH = 12;
+    protected static final long   DEFAULT_BULLET_PROSPECT_TIME = 12;
+    protected static final double DEFAULT_BULLET_WEIGHT = 1000;
+    protected static final double DEFAULT_BULLET_DIM = 4;
+
+    
     // For move
-    protected  double WALL_WEIGHT = 250;
-    protected  double WALL_DIM = 1.8;
-    protected  double ENEMY_WEIGHT = 200;
-    protected  double ENEMY_DIM = 1.8;
-    protected  double G_WEIGHT = 25;
-    protected  double G_DIM = 1;
-    protected  double GT_WEIGHT = 200;
-    protected  double GT_DIM = 2.5;
-    protected  long   G_EXPIRE = 5;
-    protected  long   G_DISTANCE_THRESHIOLD = 80;
-    protected  double LOCKON_APPROACH = 4;
-    protected  long   BULLET_PROSPECT_TIME = 12;
-    protected  double BULLET_WEIGHT = 500;
-    protected  double BULLET_DIM = 4;
+    protected  double WALL_WEIGHT            = DEFAULT_WALL_WEIGHT;
+    protected  double WALL_DIM               = DEFAULT_WALL_DIM;
+    protected  double ENEMY_WEIGHT           = DEFAULT_ENEMY_WEIGHT;
+    protected  double ENEMY_DIM              = DEFAULT_ENEMY_DIM;
+    protected  double G_WEIGHT               = DEFAULT_G_WEIGHT;
+    protected  double G_DIM                  = DEFAULT_G_DIM;
+    protected  double GT_WEIGHT              = DEFAULT_GT_WEIGHT;
+    protected  double GT_DIM                 = DEFAULT_GT_DIM;
+    protected  long   G_EXPIRE               = DEFAULT_G_EXPIRE;
+    protected  long   G_DISTANCE_THRESHIOLD  = DEFAULT_G_DISTANCE_THRESHIOLD;
+    protected  double LOCKON_APPROACH        = DEFAULT_LOCKON_APPROACH;
+    protected  long   BULLET_PROSPECT_TIME   = DEFAULT_BULLET_PROSPECT_TIME;
+    protected  double BULLET_WEIGHT          = DEFAULT_BULLET_WEIGHT;
+    protected  double BULLET_DIM             = DEFAULT_BULLET_DIM;
     
 
     // For gun
-    protected  double RANGE_SHOT = 70;
-    protected  double RANGE_LOCKON = 150;
-    protected  double RANGE_CHASE = 250;
-    protected  double RANGE_RADAR_LOCKON = 400;
+    protected  static final double DEFAULT_RANGE_RADAR_LOCKON = 1000;
+    protected  double RANGE_RADAR_LOCKON = DEFAULT_RANGE_RADAR_LOCKON;
 
     
     
@@ -88,16 +106,8 @@ abstract public class CrumbRobot extends BaseRobo<CrumbContext> {
         }
     }
     
-    protected Enemy getLockOnTarget(String name) {
-        return ctx.nextEnemyMap.get(ctx.lockonTarget);
-    }
     
-    @Override
-    protected Point cbMoving(){
-        if ( ctx.my.time < 10 ) {
-            return null;
-        }
-        Enemy lockOnTarget = getLockOnTarget(ctx.lockonTarget);
+    protected final Point movingBase(){
         // Wall
         Point dst = new Point(ctx.my);   
         dst.diff(Util.getGrabity(ctx.my, new Point(Util.battleFieldWidth,ctx.my.y), WALL_WEIGHT,WALL_DIM));
@@ -106,7 +116,9 @@ abstract public class CrumbRobot extends BaseRobo<CrumbContext> {
         dst.diff(Util.getGrabity(ctx.my, new Point(ctx.my.x,0), WALL_WEIGHT,WALL_DIM));
         // Enemy
         for (Map.Entry<String, Enemy> e : ctx.nextEnemyMap.entrySet()) {
-            dst.diff(Util.getGrabity(ctx.my,e.getValue(), ENEMY_WEIGHT,ENEMY_DIM));
+            if ( ! isStale(e.getValue() ) ) {
+                dst.diff(Util.getGrabity(ctx.my,e.getValue(), ENEMY_WEIGHT,ENEMY_DIM));
+            }
         }
         // Bullet
         for (Map.Entry<String, BulletInfo> e : ctx.nextBulletList.entrySet()) {
@@ -119,7 +131,20 @@ abstract public class CrumbRobot extends BaseRobo<CrumbContext> {
                 }
             }
         }
-        
+        if ( ctx.G != null ) {
+            dst.diff(Util.getGrabity(ctx.my, ctx.G, G_WEIGHT,G_DIM));
+        }
+        if ( ctx.GT != null ) {
+            dst.diff(Util.getGrabity(ctx.my, ctx.GT, GT_WEIGHT,GT_DIM));
+        }
+        return dst;
+    }
+    
+    @Override
+    protected Point cbMoving(){
+        if ( ctx.my.time < 10 ) {
+            return null;
+        }
         
         if ( ctx.G == null ) {
             ctx.G = new TimedPoint(Util.getRandomPoint(ctx.my,5),ctx.my.time);
@@ -132,7 +157,7 @@ abstract public class CrumbRobot extends BaseRobo<CrumbContext> {
                 Point g = Util.calcPoint(gr,50).prod(-1).add(ctx.my);
                 g = Util.getRandomPoint(g,55);
                 ctx.G = new TimedPoint(g,ctx.my.time);
-//            if ( (ctx.mode & MODE_RADAR_LOCKON) != 0 && lockOnTarget != null ){
+                Enemy lockOnTarget = getEnemy(ctx.lockonTarget);
             if ( lockOnTarget != null ){
                 double tr = ctx.my.calcRadians(lockOnTarget);
                 double td = ctx.my.calcDistance(lockOnTarget);
@@ -143,16 +168,12 @@ abstract public class CrumbRobot extends BaseRobo<CrumbContext> {
                 ctx.GT = null;
             }
         }
-
-        if ( ctx.G != null ) {
-            dst.diff(Util.getGrabity(ctx.my, ctx.G, G_WEIGHT,G_DIM));
-        }
-        if ( ctx.GT != null ) {
-            dst.diff(Util.getGrabity(ctx.my, ctx.GT, GT_WEIGHT,GT_DIM));
-        }
-        return dst;
+        return movingBase();
     }
     
+    protected final double calcBulletPowerFromDistance(double distance,long time){
+        return Util.bultPower( distance/time );
+    }
     private Pair<Double,Double> calcFire(Enemy target,long deltaThreshold,long recentThreshold){
         if ( target.delta == null || target.delta.time > deltaThreshold || (ctx.my.time - target.time) > recentThreshold ) {
             return new Pair<>(0.0,Util.fieldFullDistance);
@@ -164,8 +185,7 @@ abstract public class CrumbRobot extends BaseRobo<CrumbContext> {
             double d = Util.calcPointToLineRange(ctx.my,prospectTarget,ctx.curGunHeadingRadians);
             if ( d < (Util.tankWidth/2) ) { // hit ?
                 double bultDistance = Util.calcPointToLineDistance(ctx.my,prospectTarget,ctx.curGunHeadingRadians);
-                double bultSpeed = bultDistance/i;
-                double power = Util.bultPower( bultSpeed );
+                double power = calcBulletPowerFromDistance(bultDistance,i);
                 if ( maxPower < power ) {
                     logger.gun3("POWER(%s): (%2.2f) => (%2.2f)", target.name,maxPower,power);
                     maxPower = power;
@@ -177,7 +197,7 @@ abstract public class CrumbRobot extends BaseRobo<CrumbContext> {
         return new Pair<>(maxPower,aimDistance);
     }
     protected void firing(long deltaThreshold,long recentThreshold){
-        if ( ctx.gunHeat > 0.0 ) {
+        if ( ctx.gunHeat > 0.0 || isMode(MODE_CLOSE_FIRE)) {
             return;
         }
         double maxPower = 0.0;
@@ -185,14 +205,16 @@ abstract public class CrumbRobot extends BaseRobo<CrumbContext> {
         String targetName = "";
         for (Map.Entry<String, Enemy> e : ctx.nextEnemyMap.entrySet()) {
             Enemy target = e.getValue();
-            Pair<Double,Double> result = calcFire(target,1,0);
-            if ( aimDistance > result.second ) {
-                maxPower = result.first;
-                aimDistance = result.second;
-                targetName = target.name;
-                if ( target.energy == 0 ) {
-                    maxPower = 0.00001;
-                }                    
+            if ( ! isStale(target) ) {
+                Pair<Double,Double> result = calcFire(target,1,0);
+                if ( aimDistance > result.second ) {
+                    maxPower = result.first;
+                    aimDistance = result.second;
+                    targetName = target.name;
+                    if ( target.energy == 0 ) {
+                        maxPower = 0.00001;
+                    }                    
+                }
             }
         }
         
@@ -208,31 +230,32 @@ abstract public class CrumbRobot extends BaseRobo<CrumbContext> {
     protected void cbFiring(){
         firing(1,0);
     }
-    
-    double selectPowerFromDistance(double distance) {
-        if (distance < RANGE_SHOT) {
-            return 3;
-        } else if (distance < RANGE_LOCKON) {
-            return 2;
-        } else if (distance < RANGE_CHASE) {
-            return 1;
-        } else if (distance < RANGE_RADAR_LOCKON) {
-            return 0.3;
-        } else {
-            return 0.0;
-        }
+    private double selectPowerFromDistance(double distance) {
+        double power = calcBulletPowerFromDistance(distance,SELECT_POWER_RANGE);
+        return (power==0.0)?0.01:power;
+//        if (distance < RANGE_SHOT) {
+//            return 3;
+//        } else if (distance < RANGE_LOCKON) {
+//            return 2;
+//        } else if (distance < RANGE_CHASE) {
+//            return 1;
+//        } else if (distance < RANGE_RADAR_LOCKON) {
+//            return 0.3;
+//        } else {
+//            return 0.0;
+//        }
     }
     
-    void lockOn(String lockonTarget) {
-        Enemy lockOnTarget = getLockOnTarget(lockonTarget);
+    protected void lockOn(String lockonTarget) {
+        Enemy lockOnTarget = getEnemy(lockonTarget);
         if ( lockOnTarget == null ) {
             return;
         }
 
-        double dist = lockOnTarget.distance;
-        double power = selectPowerFromDistance(dist);
+        double distance = lockOnTarget.distance;
+        double power = selectPowerFromDistance(distance);
         double gunTurn = 0;
-        double allTime = dist / Util.bultSpeed(power)+1; // 1 = gunturn
+        double allTime = distance / Util.bultSpeed(power)+1; // 1 = gunturn
         
         
         DeltaMovingPoint prospectMy  = new DeltaMovingPoint(ctx.my);
@@ -241,10 +264,10 @@ abstract public class CrumbRobot extends BaseRobo<CrumbContext> {
         for (int i = 0 ; i < MAX_CALC ; i++ ) {
             Enemy prospectTarget = new Enemy(lockOnTarget);
             prospectNextEnemy(prospectTarget,(int)Math.ceil(allTime));
-            dist = ctx.nextMy.calcDistance(prospectTarget);
-            power = this.selectPowerFromDistance(dist);
-            double bultTime = dist / Util.bultSpeed(power);
-            gunTurn = calcAbsGunTurn(ctx.nextMy.calcDegree(prospectTarget));
+            distance = ctx.nextMy.calcDistance(prospectTarget);
+            power = this.selectPowerFromDistance(distance);
+            double bultTime = distance / Util.bultSpeed(power);
+            gunTurn = ctx.calcAbsGunTurn(ctx.nextMy.calcDegree(prospectTarget));
             double gunTurnTime = (long) Math.ceil(gunTurn / Util.gunTurnSpeed());
             // Todo:
             if (Math.abs(allTime - (bultTime + gunTurnTime)) < 1) { 
@@ -255,27 +278,28 @@ abstract public class CrumbRobot extends BaseRobo<CrumbContext> {
         }
         setTurnGunRight(gunTurn);
     }
-    void radarLockOn(String lockonTarget) {
-        Enemy lockOnTarget = getLockOnTarget(lockonTarget);
-        if (lockOnTarget == null || (ctx.my.time - lockOnTarget.time) > SCAN_STALE ) {
+    protected void radarLockOn(String lockonTarget) {
+        Enemy lockOnTarget = getEnemy(lockonTarget);
+        if (lockOnTarget == null ) {
             setMode(MODE_NORMAL);
             return;
         }
-        double radarTurn = calcAbsRadarTurn(lockOnTarget.bearing);
+        double radarTurn = ctx.calcAbsRadarTurn(lockOnTarget.bearing);
         if ( Math.abs(radarTurn) < Util.radarTurnSpeed() ) {
             double diffDegree = Util.calcTurn(ctx.curRadarHeading,lockOnTarget.bearing);
             double swingBearing = lockOnTarget.bearing + (Util.radarTurnSpeed()/2);
             if ( diffDegree != 0.0 ) {
                 swingBearing = lockOnTarget.bearing + (Util.radarTurnSpeed()/2)*(Math.abs(diffDegree)/diffDegree);
             }
-            radarTurn = calcAbsRadarTurn(swingBearing);
+            radarTurn = ctx.calcAbsRadarTurn(swingBearing);
         }
         this.setTurnRadarRight(radarTurn);
     }
 
-    private double limitRange(Enemy e ) {
-        return e.distance;
-    }
+//    private double limitRange(Enemy e ) {
+//        return e.distance;
+//    }
+    
     private double calcPriorityDistance (Enemy e) { 
         if ( e.energy == 0.0 ) {
             return 0; // High priority
@@ -297,35 +321,33 @@ abstract public class CrumbRobot extends BaseRobo<CrumbContext> {
         Serializable event = e.getMessage();
         if ( event instanceof LockonEvent ) {
             LockonEvent ev = (LockonEvent)event;
-            setLockonTarget(ev.lockonTarget);
+            ctx.setLockonTarget(ev.lockonTarget);
         }
-    }
-    protected void setLockonTarget(String lockonTarget) {
-        ctx.lockonTarget = lockonTarget;
     }
     
 
     @Override
     protected void cbThinking() {
-        Enemy lockOnTarget = getLockOnTarget(ctx.lockonTarget);
-        if (isLeader) {
+        Enemy lockOnTarget = getEnemy(ctx.lockonTarget);
+        if (isLeader || teammate.isEmpty() ) {
             for (Map.Entry<String, Enemy> e : ctx.nextEnemyMap.entrySet()) {
                 Enemy r = e.getValue();
                 if (teammate.contains(r.name)) {
+                    continue;
+                }
+                if ( isStale(e.getValue() ) ) {
                     continue;
                 }
                 if (lockOnTarget == null) {
                     lockOnTarget = r;
                     continue;
                 }
-                if ((ctx.my.time - r.time) < SCAN_STALE) {
-                    if (calcPriorityDistance(lockOnTarget) > calcPriorityDistance(r)) {
-                        lockOnTarget = r;
-                    }
+                if (calcPriorityDistance(lockOnTarget) > calcPriorityDistance(r)) {
+                    lockOnTarget = r;
                 }
             }
             if (lockOnTarget != null) {
-                setLockonTarget(lockOnTarget.name);
+                ctx.setLockonTarget(lockOnTarget.name);
                 if (isLeader) {
                     broadcastMessage(new LockonEvent(ctx.lockonTarget));
                 }
@@ -339,31 +361,44 @@ abstract public class CrumbRobot extends BaseRobo<CrumbContext> {
         } else {
             this.setMode(MODE_NORMAL);
         }
-        if ( (ctx.mode & MODE_RADAR_LOCKON) != 0) {
+        if ( isMode(MODE_RADAR_LOCKON)) {
             lockOn(ctx.lockonTarget);
         }
-        if ( (ctx.mode & MODE_GUN_LOCKON) != 0) {
+        if ( isMode(MODE_GUN_LOCKON) ) {
             radarLockOn(ctx.lockonTarget);
         }
     }
     
-    int TOGGLE_RADAR_TOWARDS = 1;
-    void setMode( int m ){
+    protected final void addMode( int m ){
+        if ( ! isMode(m) ) {
+            setMode(m | ctx.mode);
+        }
+    }
+    protected final void setMode( int m ){
         if ( ctx.mode == m ) {
             return;
         }
-        logger.ctrl1("CHANGE MODE: %d => %d", ctx.mode , m);
         ctx.mode = m;
-        if ( (m & MODE_RADAR_SEARCH) != 0 && ! (this instanceof Droid) ) {
+        logger.ctrl1("CHANGE MODE: %d => %d", ctx.mode , m);
+        changeMode();
+    }
+
+    int TOGGLE_RADAR_TOWARDS = 1;
+    protected void changeMode(){
+        if ( isMode(MODE_RADAR_SEARCH) && ! (this instanceof Droid) ) {
             setTurnRadarRight(3*Util.radarTurnSpeed()*TOGGLE_RADAR_TOWARDS);
             setTurnGunRight(3*Util.gunTurnSpeed()*TOGGLE_RADAR_TOWARDS); 
         }
     }
+    protected final boolean isMode(int m) {
+        return ((ctx.mode & m) != 0 );
+    }
 
+    
     @Override
     protected void cbRadarTurnComplete() {
         logger.radar4("myRadarTurnComplete");
-        if ( (ctx.mode & MODE_RADAR_SEARCH) != 0 && ! (this instanceof Droid) ) {
+        if ( isMode(MODE_RADAR_SEARCH) && ! (this instanceof Droid) ) {
             TOGGLE_RADAR_TOWARDS *= -1;
             setTurnRadarRight(6*Util.radarTurnSpeed()*TOGGLE_RADAR_TOWARDS);
             setTurnGunRight(6*Util.gunTurnSpeed()*TOGGLE_RADAR_TOWARDS); 
@@ -372,8 +407,7 @@ abstract public class CrumbRobot extends BaseRobo<CrumbContext> {
 
     @Override
     public void run() {
-        setColors(new Color(255, 255, 150), new Color(255, 255, 150), new Color(255, 255, 150)); // body,gun,radar
-        this.setBulletColor(new Color(200,255,100));
+        logger.LOGLV = 0;
         super.run();
     }
 
@@ -385,7 +419,7 @@ abstract public class CrumbRobot extends BaseRobo<CrumbContext> {
         drawRound(g, ctx.my.x, ctx.my.y, RANGE_RADAR_LOCKON * 2);
 
         Color stringColor = new Color(0,1.0f,0,PAINT_OPACITY);
-        if ( (ctx.mode & MODE_RADAR_LOCKON) != 0 ) {
+        if ( isMode(MODE_RADAR_LOCKON)) {
             stringColor = new Color(1.0f, 0.7f, 0,PAINT_OPACITY);
         } 
         if ( Math.abs(ctx.my.velocity) < 7.5 ) {
@@ -408,8 +442,11 @@ abstract public class CrumbRobot extends BaseRobo<CrumbContext> {
         }
         for (Map.Entry<String, Enemy> e : ctx.nextEnemyMap.entrySet()) {
             Enemy enemy = e.getValue();
-            Point priority = Util.calcPoint(ctx.my.calcRadians(enemy),calcPriorityDistance(enemy)).add(ctx.my);
             g.setColor(new Color(1.0f, 0.7f, 0,PAINT_OPACITY));
+            if ( isStale(enemy)  ) {
+                g.setColor(new Color(1.0f, 0.0f, 0,PAINT_OPACITY));
+            }
+            Point priority = Util.calcPoint(ctx.my.calcRadians(enemy),calcPriorityDistance(enemy)).add(ctx.my);
             g.drawLine((int)enemy.x,(int)enemy.y, (int)priority.x,(int)priority.y);
             g.drawString(String.format("%2.2f", calcPriorityDistance(enemy)), (int) enemy.x - 20, (int) enemy.y- 80);
             

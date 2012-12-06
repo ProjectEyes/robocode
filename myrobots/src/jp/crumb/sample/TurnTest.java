@@ -27,21 +27,11 @@ public class TurnTest extends BaseRobo<BaseContext> {
 
     @Override
     protected Point cbMoving() {
-        setTurnGunRight(this.calcAbsGunTurn(270));
-        setTurnRadarRight(this.calcAbsRadarTurn(270));
-        return new Point(Util.runnableMaxX-2,Util.runnableMaxY-2);
-    }
-    boolean isMove = true;
-    @Override
-    protected void cbMoveComplete() {
-        setTurnRight(this.calcAbsTurn(270));
-    }
-    boolean isFire = false;
-    @Override
-    protected void cbTurnComplete() {
-        if (isMove ) {
-            isFire = true;
+        if ( ctx.my.calcDistance(new Point(Util.runnableMaxX-1,Util.runnableMaxY-1)) < 1.0 ) {
+            setTurnGunRight(ctx.calcAbsGunTurn(270));
+            setTurnRadarRight(ctx.calcAbsRadarTurn(270));
         }
+        return new Point(Util.runnableMaxX-1,Util.runnableMaxY-1);
     }
 
     @Override
@@ -50,9 +40,7 @@ public class TurnTest extends BaseRobo<BaseContext> {
 
     @Override
     protected void cbFiring() {
-        if ( isFire) {
-            fire(3.0,Util.fieldFullDistance,"UNKNOWN");
-        }
+        fire(3.0,Util.fieldFullDistance,"UNKNOWN");
     }
     
 }

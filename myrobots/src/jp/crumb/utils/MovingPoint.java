@@ -29,9 +29,39 @@ public class MovingPoint extends TimedPoint {
 
     public MovingPoint(MovingPoint in) {
         this.set(in);
-
     }
 
+    public MovingPoint diff(MovingPoint p) {
+        super.diff(p);
+        this.heading        -= p.heading;
+        this.headingRadians -= p.headingRadians;
+        this.velocity       -= p.velocity;
+        return this;
+    }
+    public MovingPoint add(MovingPoint p) {
+        super.add(p);
+        this.heading        += p.heading;
+        this.headingRadians += p.headingRadians;
+        this.velocity       += p.velocity;
+        return this;
+    }
+    @Override
+    public MovingPoint prod(double q) {
+        super.prod(q);
+        this.heading        *= q;
+        this.headingRadians *= q;
+        this.velocity       *= q;
+        return this;
+    }    
+    @Override
+    public MovingPoint quot(double q) {
+        super.quot(q);
+        this.heading        /= q;
+        this.headingRadians /= q;
+        this.velocity       /= q;
+        return this;
+    }    
+    
     public void set(MovingPoint in) {
         super.set(in);
         this.heading = in.heading;

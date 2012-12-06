@@ -14,12 +14,12 @@ import jp.crumb.utils.TimedPoint;
  * @author crumb
  */
 public class CrumbContext extends BaseContext {
-    int mode = CrumbRobot.MODE_NORMAL;
-    TimedPoint G;
-    TimedPoint GT;
-    Point lockOnPoint; // for view
-    String lockonTarget;
-//    Enemy lockOnTarget;
+    public int mode = CrumbRobot.MODE_NORMAL;
+    public TimedPoint G;
+    public TimedPoint GT;
+    public Point lockOnPoint; // for view
+    public String lockonTarget;
+//  public Enemy lockOnTarget;
     public CrumbContext() {
     }
 
@@ -38,6 +38,9 @@ public class CrumbContext extends BaseContext {
 //        if ( in.lockOnTarget != null ) {
 //            this.lockOnTarget = new Enemy(in.lockOnTarget);
 //        }
+    }
+    public void setLockonTarget(String lockonTarget) {
+        this.lockonTarget = lockonTarget;
     }
     
 }

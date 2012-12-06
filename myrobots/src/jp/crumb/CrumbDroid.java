@@ -10,7 +10,7 @@ import robocode.Droid;
  *
  * @author crumb
  */
-public class CrumbDroid extends CrumbRobot implements Droid {
+public class CrumbDroid extends CrumbRobot<CrumbContext> implements Droid {
 
     @Override
     protected void cbFiring() {

@@ -13,8 +13,9 @@ import jp.crumb.utils.Enemy;
  */
 public class TeammateInfoEvent implements Serializable{
     public Enemy e;
-
-    public TeammateInfoEvent(Enemy e) {
+    public boolean isLeader;
+    public TeammateInfoEvent(Enemy e,boolean isLeader) {
         this.e = e;
+        this.isLeader = isLeader;
     }
 }
