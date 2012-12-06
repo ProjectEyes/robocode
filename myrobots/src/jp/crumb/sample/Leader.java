@@ -14,12 +14,4 @@ import jp.crumb.CrumbRobot;
  */
 public class Leader extends CrumbRobot {
 
-    @Override
-    public void run() {
-        setColors(new Color(255, 255, 150), new Color(255, 255, 150), new Color(255, 255, 150)); // body,gun,radar
-        this.setBulletColor(new Color(200,255,100));
-
-        super.run();
-    }
-
 }

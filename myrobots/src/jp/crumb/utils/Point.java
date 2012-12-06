@@ -53,10 +53,6 @@ public class Point implements Serializable{
     }
 
 
-    @Override
-    public String toString() {
-        return String.format("(%2.2f,%2.2f)", x, y);
-    }
     
     public double calcDistance(Point dst) {
         return Math.sqrt((this.x - dst.x) * (this.x - dst.x) + (this.y - dst.y) * (this.y - dst.y));
@@ -81,4 +77,8 @@ public class Point implements Serializable{
             return Math.toDegrees(Math.atan((this.x-dst.x)/(this.y-dst.y))) - 180;
         }
     }    
+    @Override
+    public String toString() {
+        return String.format("(%2.2f,%2.2f)", x, y);
+    }
 }

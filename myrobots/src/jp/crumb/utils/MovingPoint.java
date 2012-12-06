@@ -82,4 +82,8 @@ public class MovingPoint extends TimedPoint {
         }
         return false;
     }
+    @Override
+    public String toString() {
+        return String.format("d[%2.2f] p(%2.2f,%2.2f) v:%2.2f", heading,x, y,velocity);
+    }
 }

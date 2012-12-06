@@ -20,22 +20,24 @@ public class TurnTest extends BaseRobo<BaseContext> {
     public void run() {
         super.run();
     }
+
+    @Override
+    protected void cbFirst() {
+        super.cbFirst();
+    }
+    
     @Override
     protected BaseContext createContext(BaseContext in) {
         return defalutCreateContext(in);
     }
 
     @Override
-    protected Point cbMoving() {
+    protected void cbMoving() {
         if ( ctx.my.calcDistance(new Point(Util.runnableMaxX-1,Util.runnableMaxY-1)) < 1.0 ) {
             setTurnGunRight(ctx.calcAbsGunTurn(270));
             setTurnRadarRight(ctx.calcAbsRadarTurn(270));
         }
-        return new Point(Util.runnableMaxX-1,Util.runnableMaxY-1);
-    }
-
-    @Override
-    protected void cbThinking() {
+        setDestination(new Point(Util.runnableMaxX-1,Util.runnableMaxY-1));
     }
 
     @Override

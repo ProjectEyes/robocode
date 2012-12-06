@@ -22,20 +22,15 @@ abstract public class InvaderDroid extends Invader implements Droid{
 
     @Override
     protected void cbThinking() {
-        if ( isMode(MODE_NOT_READY) && ctx.my.calcDistance(firstPoint) < 1 ) {
-            setMode(MODE_CLOSE_FIRE | MODE_READY);
+        if ( ctx.isCustomMode(MODE_CUSTOM_NOT_READY) && ctx.my.calcDistance(firstPoint) < 1 ) {
+            setCustomMode(MODE_CUSTOM_READY);
             G_WEIGHT = DEFAULT_G_WEIGHT;
             G_DIM    = DEFAULT_G_DIM;
-            LOCKON_APPROACH = 6;
             sendMessage(leader,new InvaderEvent(2,null));
         }
-        if ( isMode(MODE_READY) || isMode(MODE_NOT_READY) ) {
+        if ( ctx.isCustomMode(MODE_CUSTOM_READY) || ctx.isCustomMode(MODE_CUSTOM_NOT_READY) ) {
             return;
         }
-        this.setMode(MODE_GUN_LOCKON);
-        if ( ctx.lockonTarget != null ) {
-            lockOn(ctx.lockonTarget);
-            radarLockOn(ctx.lockonTarget);
-        }
+        this.setGunMode(ctx.MODE_GUN_LOCKON);
     }    
 }

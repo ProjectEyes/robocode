@@ -20,19 +20,19 @@ import robocode.MessageEvent;
  */
 abstract public class Invader extends CrumbRobot<CrumbContext> {
 
-    public Invader() {
-        G_DIM = 0;
-        G_WEIGHT = -10;
-    }
-    static final int MODE_NOT_READY = 0x10000000;
-    static final int MODE_READY     = 0x20000000;
+    static final int MODE_CUSTOM_GO        = 0;
+    static final int MODE_CUSTOM_NOT_READY = 1;
+    static final int MODE_CUSTOM_READY     = 2;
     TimedPoint firstPoint;
     @Override
     protected void cbFirst() {
+        super.cbFirst();
+        G_DIM = 0;
+        G_WEIGHT = -10;
         RANGE_RADAR_LOCKON = Util.fieldFullDistance;
         MAX_HIT_TIME = (int)(Util.fieldFullDistance/Util.bultSpeed(0.1));
-//        ctx.mode = MODE_CLOSE_FIRE | MODE_NOT_READY | MODE_RADAR_SEARCH;
-        ctx.mode = MODE_NORMAL;
+        setFireMode(ctx.MODE_FIRE_MANUAL);
+        setCustomMode(MODE_CUSTOM_NOT_READY);
         firstPoint = new TimedPoint(new Point(Util.battleFieldWidth/2 ,Util.runnableMinY+Util.tankWidth+1),ctx.my.time);
         if ( isLeader ) {
             int i = 2;
@@ -48,7 +48,6 @@ abstract public class Invader extends CrumbRobot<CrumbContext> {
                 }
             }
         }
-        super.cbFirst();
     }
 
     int readyCount = 0;
@@ -62,43 +61,43 @@ abstract public class Invader extends CrumbRobot<CrumbContext> {
             }else if ( ev.kind == 2) {
                 readyCount++;
             }else if ( ev.kind == 3) {
-                ctx.mode = MODE_NORMAL;
+                openFire();
             }
         }
         super.cbExtMessage(e);
     }
-    
     @Override
-    protected Point cbMoving() {
-        if ( isMode(MODE_NOT_READY) || isMode(MODE_READY) ) {
+    protected void cbMoving() {
+        if ( ctx.isCustomMode(MODE_CUSTOM_NOT_READY) || ctx.isCustomMode(MODE_CUSTOM_READY) ) {
             if ( ctx.my.calcDistance(firstPoint) < 40 ) {
-                return firstPoint;
+                setDestination(firstPoint);
+                return;
             }
-            ctx.G = firstPoint;
-            return super.movingBase();
+            ctx.G = firstPoint; // Move to point.
+            Point dst = super.movingBase();
+            setDestination(dst);
+            return;
         }
 
-        Point dst = super.cbMoving();
-        if ( dst != null ) {
-            dst.y = firstPoint.y;
+        super.cbMoving();
+        if ( ctx.destination != null ) {
+            ctx.destination.y = firstPoint.y;
         }
-        return dst;
     }
 
     @Override
     protected void cbThinking() {
         if ( readyCount == teammate.size()+1 || ctx.my.time == 100 ) {
-            ctx.mode = MODE_NORMAL;
+            openFire();
             broadcastMessage(new InvaderEvent(3,null));
         }
-        if ( isMode(MODE_NOT_READY) && ctx.my.calcDistance(firstPoint) < 1 ) {
-            setMode(MODE_CLOSE_FIRE | MODE_READY | MODE_RADAR_SEARCH);
+        if ( ctx.isCustomMode(MODE_CUSTOM_NOT_READY) && ctx.my.calcDistance(firstPoint) < 1 ) {
+            setCustomMode(MODE_CUSTOM_READY);
             G_WEIGHT = DEFAULT_G_WEIGHT;
             G_DIM    = DEFAULT_G_DIM;
-            LOCKON_APPROACH = 6;
             readyCount++;
         }
-        if ( isMode(MODE_READY) || isMode(MODE_NOT_READY) ) {
+        if ( ctx.isCustomMode(MODE_CUSTOM_READY) || ctx.isCustomMode(MODE_CUSTOM_NOT_READY) ) {
             return;
         }
         super.cbThinking();
@@ -106,9 +105,13 @@ abstract public class Invader extends CrumbRobot<CrumbContext> {
 
     @Override
     public void run() {
+        super.run();
         setColors(new Color(1.0f,0,0,0.1f),new Color(1.0f,0.5f,0),new Color(1.0f,0,0.5f));
         this.setBulletColor(new Color(255,100,100));
-        super.run();
     }
     
+    private void openFire () {
+        setFireMode(ctx.MODE_FIRE_AUTO);
+        setCustomMode(MODE_CUSTOM_GO);
+    }
 }

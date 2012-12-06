@@ -234,7 +234,7 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
             ScanEnemyEvent ev = (ScanEnemyEvent)event;
             Enemy enemy = ev.e;
             enemy.calcPosition(ctx.my);
-            scanedRobot(enemy);
+            scannedRobot(enemy);
         }else if (event instanceof TeammateInfoEvent ) {
             ctx.enemies--;
             TeammateInfoEvent ev = (TeammateInfoEvent)event;
@@ -243,7 +243,7 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
             }
             Enemy enemy = ev.e;
             enemy.calcPosition(ctx.my);
-            scanedRobot(enemy);
+            scannedRobot(enemy);
         }else if (event instanceof FireEvent ) {
             FireEvent ev = (FireEvent)event;
             setBulletInfo(ev.bulletInfo);
@@ -263,7 +263,7 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
         setAhead(go.first);
         setTurnRight(go.second);
     }
-    private void scanedRobot(ScannedRobotEvent e) {
+    private void scannedRobot(ScannedRobotEvent e) {
         Enemy r = calcAbsRobot(e);
         if ( ! isTeammate(r.name)) {
             Enemy next = new Enemy(r);
@@ -271,16 +271,16 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
             next.time++;
             this.broadcastMessage(new ScanEnemyEvent(next));
         }
-        scanedRobot(r);
+        scannedRobot(r);
     }        
-    private void scanedRobot(Enemy r) {
+    private void scannedRobot(Enemy r) {
         logger.scan("%15s : %s : %d",r.name,r,r.time);
         Enemy prevR = enemyMap.get(r.name);
         if ( prevR != null && prevR.time == r.time ) {
             return;
         }
         Enemy nextEnemy =  getEnemy(r.name);
-@@
+
         if ( prevR != null ) {
 //            if ( r.time != prevR.time && (r.time-prevR.time) < SCAN_STALE || (nextEnemy != null && nextEnemy.calcDistance(r) < 20 ) ){
             if ( r.time != prevR.time && (r.time-prevR.time) < SCAN_STALE ) {
@@ -297,7 +297,7 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
         
 
         List<MovingPoint> patternList = enemyPatternMap.get(r.name);
-        if ( patternList.isEmpty() ) {
+        if ( patternList.isEmpty() || nextEnemy == null ) { // first or stale
             MovingPoint first = new MovingPoint();
             first.time = r.time;
             patternList.add(first);
@@ -387,8 +387,7 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
         ctx = curContext;
         ctx.nextMy = nextMy;
         this.prospectNext();
-        Point dst = this.cbMoving();
-        setDestination(dst);
+        this.cbMoving();
 
         Pair<Double,Double> go = this.calcGoPoint();
         ctx.my = new MyPoint(nextMy);
@@ -448,15 +447,13 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
     
     
     abstract protected T createContext(T in);
-    protected Point cbMoving() {
-        return ctx.destination;
-    }
-    protected void cbUnprospectedMoving() {
-    }
-    protected void cbFiring() {}
     protected void cbThinking() {}
+    protected void cbMoving() {}
+    protected void cbUnprospectiveMoving() {}
+    protected void cbGun() {}
+    protected void cbRadar() {}
+    protected void cbFiring() {}
     protected void cbFirst() {}
-    protected void cbRadarTurnComplete() {}
     protected void cbHitByBullet(HitByBulletEvent e) {}
 
     protected void prospectNextEnemy(Enemy enemy) {
@@ -609,7 +606,7 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
             sendMyInfo();
             
             for ( ScannedRobotEvent e: this.getScannedRobotEvents() ) {
-                this.scanedRobot(e);
+                this.scannedRobot(e);
             }
             for ( MessageEvent e : this.getMessageEvents() ) {
                 this.dispatchMessage(e);
@@ -638,17 +635,15 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
             for ( StatusEvent e: this.getStatusEvents() ) {
                 this.cbStatus(e);
             }
-            if ( this.ctx.curRadarTurnRemaining == 0.0){
-                this.cbRadarTurnComplete();
-            }
             
             this.prospectNext();
-            Point dst = this.cbMoving();
-            setDestination(dst);
-            this.cbUnprospectedMoving();
-            this.goPoint();
-            this.cbFiring();
             this.cbThinking();
+            this.cbMoving();
+            this.goPoint();
+            this.cbUnprospectiveMoving();
+            this.cbGun();
+            this.cbRadar();
+            this.cbFiring();
         }
         this.paint(getGraphics());
         execute();

@@ -30,12 +30,8 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
     protected static final int DEFAULT_MAX_HIT_TIME = 15; 
     protected int MAX_HIT_TIME = DEFAULT_MAX_HIT_TIME;
 
-    protected static final int MODE_RADAR_SEARCH = 0x002;
-    protected static final int MODE_RADAR_LOCKON = 0x001;
-    protected static final int MODE_GUN_LOCKON   = 0x010;
-    protected static final int MODE_CLOSE_FIRE   = 0x100;
-    protected static final int MODE_NORMAL = MODE_RADAR_SEARCH;
-    protected static final int MODE_LOCKON = MODE_RADAR_LOCKON | MODE_GUN_LOCKON;
+//    protected static final int MODE_NORMAL = MODE_RADAR_SEARCH;
+//    protected static final int MODE_LOCKON = MODE_RADAR_LOCKON | MODE_GUN_LOCKON;
     
     protected static final double AIM_ENAGY_THRESHOLD = 10.0;
     protected static final int AIM_TIMES_THRESHOLD = 3;
@@ -140,37 +136,6 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
         return dst;
     }
     
-    @Override
-    protected Point cbMoving(){
-        if ( ctx.my.time < 10 ) {
-            return null;
-        }
-        
-        if ( ctx.G == null ) {
-            ctx.G = new TimedPoint(Util.getRandomPoint(ctx.my,5),ctx.my.time);
-        }
-        
-        double gDistance     = ctx.my.calcDistance(ctx.G);
-        double nextGDistance = ctx.nextMy.calcDistance(ctx.G);
-        if ( ctx.destination != null && (G_DISTANCE_THRESHIOLD > 80 || ctx.my.time - ctx.G.time > G_EXPIRE) ) { 
-                double gr = ctx.my.calcRadians(ctx.destination);
-                Point g = Util.calcPoint(gr,50).prod(-1).add(ctx.my);
-                g = Util.getRandomPoint(g,55);
-                ctx.G = new TimedPoint(g,ctx.my.time);
-                Enemy lockOnTarget = getEnemy(ctx.lockonTarget);
-            if ( lockOnTarget != null ){
-                double tr = ctx.my.calcRadians(lockOnTarget);
-                double td = ctx.my.calcDistance(lockOnTarget);
-                double fullDistance = Util.fieldFullDistance;
-                Point random = Util.calcPoint(tr,(td-fullDistance)/LOCKON_APPROACH).add(ctx.my);
-                ctx.GT = new TimedPoint(random,ctx.my.time);
-            }else{
-                ctx.GT = null;
-            }
-        }
-        return movingBase();
-    }
-    
     protected final double calcBulletPowerFromDistance(double distance,long time){
         return Util.bultPower( distance/time );
     }
@@ -197,7 +162,7 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
         return new Pair<>(maxPower,aimDistance);
     }
     protected void firing(long deltaThreshold,long recentThreshold){
-        if ( ctx.gunHeat > 0.0 || isMode(MODE_CLOSE_FIRE)) {
+        if ( ctx.gunHeat > 0.0 ) {
             return;
         }
         double maxPower = 0.0;
@@ -220,30 +185,15 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
         
         if ( ! isTeammate(targetName) && maxPower > 0 ) {
             if ( ctx.enemies > 1 ) {
-                setMode(MODE_NORMAL);
+                normalMode();
             }
             fire(maxPower,aimDistance,targetName);
         }
     }
     
-    @Override
-    protected void cbFiring(){
-        firing(1,0);
-    }
     private double selectPowerFromDistance(double distance) {
         double power = calcBulletPowerFromDistance(distance,SELECT_POWER_RANGE);
         return (power==0.0)?0.01:power;
-//        if (distance < RANGE_SHOT) {
-//            return 3;
-//        } else if (distance < RANGE_LOCKON) {
-//            return 2;
-//        } else if (distance < RANGE_CHASE) {
-//            return 1;
-//        } else if (distance < RANGE_RADAR_LOCKON) {
-//            return 0.3;
-//        } else {
-//            return 0.0;
-//        }
     }
     
     protected void lockOn(String lockonTarget) {
@@ -281,7 +231,7 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
     protected void radarLockOn(String lockonTarget) {
         Enemy lockOnTarget = getEnemy(lockonTarget);
         if (lockOnTarget == null ) {
-            setMode(MODE_NORMAL);
+            normalMode();
             return;
         }
         double radarTurn = ctx.calcAbsRadarTurn(lockOnTarget.bearing);
@@ -296,10 +246,6 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
         this.setTurnRadarRight(radarTurn);
     }
 
-//    private double limitRange(Enemy e ) {
-//        return e.distance;
-//    }
-    
     private double calcPriorityDistance (Enemy e) { 
         if ( e.energy == 0.0 ) {
             return 0; // High priority
@@ -357,58 +303,157 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
                 && (lockOnTarget.distance < RANGE_RADAR_LOCKON
                 && ctx.gunHeat / Util.gunCoolingRate < PREPARE_LOCK_TIME
                 || ctx.enemies == 1 || lockOnTarget.energy == 0)) {
-            this.setMode(MODE_LOCKON);
+            if ( ! ctx.isGunMode(ctx.MODE_GUN_MANUAL )) {
+                this.setGunMode(ctx.MODE_GUN_LOCKON);
+            }
+            if ( ! ctx.isRadarMode(ctx.MODE_RADAR_MANUAL )) {
+                this.setRadarMode(ctx.MODE_RADAR_LOCKON);
+            }
         } else {
-            this.setMode(MODE_NORMAL);
-        }
-        if ( isMode(MODE_RADAR_LOCKON)) {
-            lockOn(ctx.lockonTarget);
-        }
-        if ( isMode(MODE_GUN_LOCKON) ) {
-            radarLockOn(ctx.lockonTarget);
+            normalMode();
         }
     }
     
-    protected final void addMode( int m ){
-        if ( ! isMode(m) ) {
-            setMode(m | ctx.mode);
-        }
-    }
-    protected final void setMode( int m ){
-        if ( ctx.mode == m ) {
+    
+   @Override
+    protected void cbMoving(){
+        if ( ctx.isMoveMode(ctx.MODE_MOVE_MANUAL )) {
             return;
         }
-        ctx.mode = m;
-        logger.ctrl1("CHANGE MODE: %d => %d", ctx.mode , m);
-        changeMode();
-    }
+        if ( ctx.my.time < 10 ) {
+            return;
+        }
+        
+        if ( ctx.G == null ) {
+            ctx.G = new TimedPoint(Util.getRandomPoint(ctx.my,5),ctx.my.time);
+        }
+        
+        double gDistance     = ctx.my.calcDistance(ctx.G);
+        double nextGDistance = ctx.nextMy.calcDistance(ctx.G);
+        if ( ctx.destination != null && (G_DISTANCE_THRESHIOLD > 80 || ctx.my.time - ctx.G.time > G_EXPIRE) ) { 
+                double gr = ctx.my.calcRadians(ctx.destination);
+                Point g = Util.calcPoint(gr,50).prod(-1).add(ctx.my);
+                g = Util.getRandomPoint(g,55);
+                ctx.G = new TimedPoint(g,ctx.my.time);
+                Enemy lockOnTarget = getEnemy(ctx.lockonTarget);
+            if ( lockOnTarget != null ){
+                double tr = ctx.my.calcRadians(lockOnTarget);
+                double td = ctx.my.calcDistance(lockOnTarget);
+                double fullDistance = Util.fieldFullDistance;
+                Point random = Util.calcPoint(tr,(td-fullDistance)/LOCKON_APPROACH).add(ctx.my);
+                ctx.GT = new TimedPoint(random,ctx.my.time);
+            }else{
+                ctx.GT = null;
+            }
+        }
+        Point dst = movingBase();
+        setDestination(dst);
+    }    
 
-    int TOGGLE_RADAR_TOWARDS = 1;
-    protected void changeMode(){
-        if ( isMode(MODE_RADAR_SEARCH) && ! (this instanceof Droid) ) {
-            setTurnRadarRight(3*Util.radarTurnSpeed()*TOGGLE_RADAR_TOWARDS);
-            setTurnGunRight(3*Util.gunTurnSpeed()*TOGGLE_RADAR_TOWARDS); 
+
+    @Override
+    protected void cbGun() {
+        if ( ctx.isGunMode(ctx.MODE_GUN_LOCKON) ) {
+            lockOn(ctx.lockonTarget);
         }
     }
-    protected final boolean isMode(int m) {
-        return ((ctx.mode & m) != 0 );
+    @Override
+    protected void cbRadar() {
+        if ( ctx.isRadarMode(ctx.MODE_RADAR_LOCKON)) {
+            radarLockOn(ctx.lockonTarget);
+        }
+        if ( ctx.isRadarMode(ctx.MODE_RADAR_SEARCH) && ! (this instanceof Droid) ) {
+            if ( ctx.curRadarTurnRemaining == 0.0){
+                ctx.toggleRadarTowards *= -1;
+                setTurnRadarRight(6*Util.radarTurnSpeed()*ctx.toggleRadarTowards);
+                setTurnGunRight(6*Util.gunTurnSpeed()*ctx.toggleRadarTowards); 
+            }
+        }
     }
 
+    @Override
+    protected void cbFiring(){
+        if ( ctx.isFireMode(ctx.MODE_FIRE_AUTO) ) {
+            firing(1,0);
+        }
+    }
+    
+    
+    
+
+    /*
+     * MODE control
+     */
+    private void normalMode(){
+        if ( ! ctx.isGunMode(ctx.MODE_GUN_MANUAL )) {
+            this.setGunMode(ctx.MODE_GUN_AUTO);
+        }
+        if ( ! ctx.isRadarMode(ctx.MODE_RADAR_MANUAL )) {
+            this.setRadarMode(ctx.MODE_RADAR_SEARCH);
+        }
+    }
+
+    protected final void setMoveMode( int m ){
+        if ( ctx.modeMove == m ) {
+            return;
+        }
+        ctx.modeMove = m;
+        logger.ctrl1("CHANGE MOVE MODE: %d => %d", ctx.modeMove , m);
+        changeMoveMode();
+    }
+    protected void changeMoveMode(){
+    }
+    protected final void setGunMode( int m ){
+        if ( ctx.modeGun == m ) {
+            return;
+        }
+        ctx.modeGun = m;
+        logger.ctrl1("CHANGE GUN  MODE: %d => %d", ctx.modeGun , m);
+        changeGunMode();
+    }
+    protected void changeGunMode(){
+    }
+    protected final void setRadarMode( int m ){
+        if ( ctx.modeRadar == m ) {
+            return;
+        }
+        ctx.modeRadar = m;
+        logger.ctrl1("CHANGE RADAR MODE: %d => %d", ctx.modeRadar , m);
+        changeRadarMode();
+    }
+    protected void changeRadarMode(){
+        if ( ctx.isRadarMode(ctx.MODE_RADAR_SEARCH) && ! (this instanceof Droid) ) {
+            setTurnRadarRight(3*Util.radarTurnSpeed()*ctx.toggleRadarTowards);
+            setTurnGunRight(3*Util.gunTurnSpeed()*ctx.toggleRadarTowards); 
+        }
+    }
+    protected final void setFireMode( int m ){
+        if ( ctx.modeFire == m ) {
+            return;
+        }
+        ctx.modeFire = m;
+        logger.ctrl1("CHANGE FIRE MODE: %d => %d", ctx.modeFire , m);
+        changeFireMode();
+    }
+    protected void changeFireMode(){
+    }
+    protected final void setCustomMode( int m ){
+        if ( ctx.modeCustom == m ) {
+            return;
+        }
+        ctx.modeCustom = m;
+        logger.ctrl1("CHANGE FIRE MODE: %d => %d", ctx.modeCustom , m);
+        changeCustomMode();
+    }
+    protected void changeCustomMode(){
+    }
+    
     
     @Override
-    protected void cbRadarTurnComplete() {
-        logger.radar4("myRadarTurnComplete");
-        if ( isMode(MODE_RADAR_SEARCH) && ! (this instanceof Droid) ) {
-            TOGGLE_RADAR_TOWARDS *= -1;
-            setTurnRadarRight(6*Util.radarTurnSpeed()*TOGGLE_RADAR_TOWARDS);
-            setTurnGunRight(6*Util.gunTurnSpeed()*TOGGLE_RADAR_TOWARDS); 
-        }
-    }
-
-    @Override
     public void run() {
-        logger.LOGLV = 0;
         super.run();
+        setColors(new Color(255, 255, 150), new Color(255, 255, 150), new Color(255, 255, 150)); // body,gun,radar
+        this.setBulletColor(new Color(200,255,100));
     }
 
     @Override
@@ -419,7 +464,7 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
         drawRound(g, ctx.my.x, ctx.my.y, RANGE_RADAR_LOCKON * 2);
 
         Color stringColor = new Color(0,1.0f,0,PAINT_OPACITY);
-        if ( isMode(MODE_RADAR_LOCKON)) {
+        if ( ctx.isRadarMode(ctx.MODE_RADAR_LOCKON)) {
             stringColor = new Color(1.0f, 0.7f, 0,PAINT_OPACITY);
         } 
         if ( Math.abs(ctx.my.velocity) < 7.5 ) {

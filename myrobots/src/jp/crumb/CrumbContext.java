@@ -5,7 +5,6 @@
 package jp.crumb;
 
 import jp.crumb.base.BaseContext;
-import jp.crumb.utils.Enemy;
 import jp.crumb.utils.Point;
 import jp.crumb.utils.TimedPoint;
 
@@ -14,7 +13,24 @@ import jp.crumb.utils.TimedPoint;
  * @author crumb
  */
 public class CrumbContext extends BaseContext {
-    public int mode = CrumbRobot.MODE_NORMAL;
+    public static final int MODE_MOVE_MANUAL  = 0;
+    public static final int MODE_MOVE_AUTO    = 80;
+    public static final int MODE_RADAR_MANUAL = 0;
+    public static final int MODE_RADAR_SEARCH = 1;
+    public static final int MODE_RADAR_LOCKON = 2;
+    public static final int MODE_GUN_MANUAL   = 0;
+    public static final int MODE_GUN_LOCKON   = 2;
+    public static final int MODE_GUN_AUTO     = 80;
+    public static final int MODE_FIRE_MANUAL  = 0;
+    public static final int MODE_FIRE_AUTO    = 80;
+
+    public int modeMove  = MODE_MOVE_AUTO;
+    public int modeRadar = MODE_RADAR_SEARCH;
+    public int modeGun   = MODE_GUN_AUTO;
+    public int modeFire  = MODE_FIRE_AUTO;
+    public int modeCustom= 0;
+    
+    public int toggleRadarTowards= 1;
     public TimedPoint G;
     public TimedPoint GT;
     public Point lockOnPoint; // for view
@@ -41,6 +57,21 @@ public class CrumbContext extends BaseContext {
     }
     public void setLockonTarget(String lockonTarget) {
         this.lockonTarget = lockonTarget;
+    }
+    public final boolean isMoveMode(int m) {
+        return (modeMove  == m);
+    }
+    public final boolean isGunMode(int m) {
+        return (modeGun  == m);
+    }
+    public final boolean isRadarMode(int m) {
+        return (modeRadar  == m);
+    }
+    public final boolean isFireMode(int m) {
+        return (modeFire  == m);
+    }
+    public final boolean isCustomMode(int m) {
+        return (modeCustom  == m);
     }
     
 }
