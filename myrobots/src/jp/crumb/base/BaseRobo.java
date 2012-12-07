@@ -279,7 +279,6 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
         if ( prevR != null && prevR.time == r.time ) {
             return;
         }
-        Enemy nextEnemy =  getEnemy(r.name);
 
         if ( prevR != null ) {
 //            if ( r.time != prevR.time && (r.time-prevR.time) < SCAN_STALE || (nextEnemy != null && nextEnemy.calcDistance(r) < 20 ) ){
@@ -294,23 +293,63 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
         if ( ! enemyPatternMap.containsKey(r.name)) {
             enemyPatternMap.put(r.name,new ArrayList());
         }
-        
 
         List<MovingPoint> patternList = enemyPatternMap.get(r.name);
-        if ( patternList.isEmpty() || nextEnemy == null ) { // first or stale
+        if ( patternList.isEmpty() || prevR == null ) { // first or stale
             MovingPoint first = new MovingPoint();
             first.time = r.time;
             patternList.add(first);
         }else{
-            MovingPoint lastPattern = patternList.get(patternList.size()-1);
-            long deltaTime = r.time - lastPattern.time;
-            for (int i = 1 ; i <= deltaTime ; i++ ) {
-                MovingPoint p = new MovingPoint(r).diff(nextEnemy).quot(deltaTime);
-                p.time = lastPattern.time + i;
-                patternList.add(p);
+            MovingPoint lastPattern = patternList.get(0);
+            long deltaTime = r.time - prevR.time;
+            Enemy diffR = new Enemy(prevR);
+            for (int i = 0; i < deltaTime ; i++ ) {
+                diffR.prospectNext();
+            }
+            MovingPoint p = new MovingPoint(r).diff(diffR).quot(deltaTime);
+            p.time = ctx.my.time;
+            patternList.add(0,p);
+        }
+        if ( prevR != null ) {
+            // @@@
+            logger.LOGLV = Logger.LOGLV_SCAN;
+            {
+                Enemy rr = new Enemy(r);
+                Enemy p = new Enemy(prevR);
+                p.inertia(1);
+                rr.diff(p);
+                logger.log("Inertia : (%2.2f,%2.2f) d: %2.2f h: %2.2f",rr.x,rr.y,rr.calcDistance(new Point()),rr.heading);
+            }
+            {
+                Enemy rr = new Enemy(r);
+                Enemy p = new Enemy(prevR);
+                p.prospectNext();
+                rr.diff(p);
+                logger.log("Accurate: (%2.2f,%2.2f) d: %2.2f h: %2.2f",rr.x,rr.y,rr.calcDistance(new Point()),rr.heading);
+            }
+            {
+                if ( patternList.size() > 41 ) {
+                    for ( int N = 1; N <=40;N++) {
+                        Enemy rr = new Enemy(r);
+                        Enemy p = new Enemy(prevR);
+                        MovingPoint diff = new MovingPoint();
+                        for ( int i = 0; i < N;i++) {
+                            MovingPoint last = patternList.get(i+1);
+                            diff.add(last);
+                        }
+                        diff.quot(N);
+                        p.prospectNext();
+                        p.add(diff);
+                        rr.diff(p);
+                        logger.log("Diff(%d): (%2.2f,%2.2f) d: %2.2f h: %2.2f",N,rr.x,rr.y,rr.calcDistance(new Point()),rr.heading);
+                    }
+                    for ( int i = 0; i < 10;i++) {
+                        MovingPoint last = patternList.get(i+1);
+                        logger.log("Log(%d): %s",last.time,last);
+                    }
+                }
             }
         }
-
         ctx.nextEnemyMap.put(r.name, new Enemy(r));
     }
     private void cbRobotDeath(RobotDeathEvent e) {
@@ -430,13 +469,13 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
         super.fire(power);
     }
     
-    
     public boolean isStale(Enemy e) {
-         if ( (ctx.my.time - e.time) > SCAN_STALE ) {
-             return false;
+         if ( e == null || (ctx.my.time - e.time) > SCAN_STALE ) {
+             return true;
          }
-         return true;
+         return false;
     }
+
     public Enemy getEnemy(String name) {
         Enemy ret = ctx.nextEnemyMap.get(name);
         if ( isStale(ret) ) {
@@ -444,7 +483,6 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
         }
         return ret;
     }
-    
     
     abstract protected T createContext(T in);
     protected void cbThinking() {}
