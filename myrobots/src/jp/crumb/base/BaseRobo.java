@@ -51,26 +51,32 @@ import robocode.TeamRobot;
  * @author crumb
  */
 abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
+    protected static final boolean isPaint = true; // TODO: apply to crumbRobo
+    protected Logger logger = new Logger();
+
     protected static final double MOVE_COMPLETE_THRESHOLD = 1.0;
+    protected static final double ENEMY_BULLET_UNKNOWN_THRESHOLD = Math.PI/4; // more than 45 degrees
 
     protected static final int MAX_CALC = 5;
     protected static final int SCAN_STALE = 9;
     protected static final int SYSTEM_BUG_TICKS = 30;
       
-    protected Logger logger = new Logger();
     protected T ctx = createContext(null);
     
    
     protected static Set<String> teammate = new HashSet<>();
     protected static boolean isLeader = false;
     protected static String leader = null;
+    protected static String name;
+
     // Current informations
     protected static Map<String, Enemy> enemyMap = new HashMap<>();
     private Map<String,BulletInfo> bulletList = new HashMap<>();
     private Map<String,BulletInfo> enemyBulletList = new HashMap<>();
-    protected static Map<String, List<MovingPoint> > enemyPatternMap = new HashMap<>();
     protected List<MyPoint> myLog = new ArrayList<>();
-    protected static String name;
+    
+    
+    protected static Map<String, List<Enemy> > enemyLog = new HashMap<>();
 
     protected static Map<String,List<MoveType>> shotTypeMap = new HashMap<>();
 
@@ -268,21 +274,26 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
             BulletInfo info = entry.getValue();
             removeEnemyBulletInfo(entry.getKey());
         // TODO: hit by bullet
-            MyPoint prevMy = prevMy(ctx.my.time-info.src.time);
+            long deltaTime = ctx.my.time-info.src.time;
+            MyPoint prevMy = prevMy(deltaTime);
+            double distance = info.src.calcDistance(prevMy);
             DeltaMovingPoint my = new DeltaMovingPoint(prevMy);
             for ( MoveType moveType : shotTypeMap.get(enemyName) ) {
+                double tankWidthRadians = Math.asin(Util.tankWidth/distance);
+                
                 if ( moveType.type == MoveType.TYPE_UNKNOWN ) {
-                    moveType.updateScore(Math.PI/3); // @@@ Declare DEFAULT
                 }else{
-                    double diff = Util.calcTurnRadians(bulletRadians,calcEnemyBulletRadians(prevMy,bulletVelocity,info.src,moveType.type));
-                    moveType.updateScore(Math.PI-Math.abs(diff));
+                    double diffRadians = Util.calcTurnRadians(bulletRadians,calcEnemyBulletRadians(prevMy,bulletVelocity,info.src,moveType.type,deltaTime));
+                    double correctedRadians = Math.abs(diffRadians) - Math.abs(tankWidthRadians);
+                    correctedRadians = (correctedRadians<0)?0:correctedRadians;
+                    moveType.updateScore(Math.PI/2-correctedRadians);
+// TODO: scoring by distance
+System.out.println(moveType.type + " : " + Math.toDegrees(diffRadians) + " => " + Math.toDegrees(correctedRadians) + " = " + Math.toDegrees(moveType.score));
                 }
-System.out.println(moveType.type + " : " + moveType.score);
             }
 
         }
     }
-
 
     private void sendMyInfo(){
         Enemy my = new Enemy();
@@ -346,9 +357,13 @@ System.out.println(moveType.type + " : " + moveType.score);
     }
 
 
-    static Map<String,Map<String,Pair<Long,Double>>> pattarnAvgMap = new HashMap<>();
-    static Map<String,Map<String,Pair<Long,Double>>> pattarnPastMap = new HashMap<>();
-
+    private void enemyPattern(){
+        
+    }
+    
+    
+    
+    
     protected void scannedRobot(Enemy r) {
         logger.scan("%15s : %s : %d",r.name,r,r.time);
         Enemy prevR = enemyMap.get(r.name);
@@ -369,18 +384,19 @@ System.out.println(moveType.type + " : " + moveType.score);
             // TODO: scanned
             List<MoveType> shotTypeList = new ArrayList<>();
             MoveType moveType = new MoveType(MoveType.TYPE_UNKNOWN);
-            moveType.score = -1; // TODO: declare defalut
+            moveType.score = -1; // 
             shotTypeList.add(new MoveType(moveType));
             moveType = new MoveType(MoveType.TYPE_PINPOINT);
             shotTypeList.add(new MoveType(moveType));
             moveType = new MoveType(MoveType.TYPE_INERTIA);
             shotTypeList.add(new MoveType(moveType));
             moveType = new MoveType(MoveType.TYPE_ACCURATE);
-            moveType.score = 0.001; // TODO: default
-            moveType.score = 1000000000000.0;
-            moveType.scoreCount = 100000; // TODO:@@@
+            moveType.score = 0.001; // Initial type (will be overrided by first hit!!)
             shotTypeList.add(new MoveType(moveType));
             shotTypeMap.put(r.name,shotTypeList);
+        }
+        if ( ! enemyLog.containsKey(r.name)) {
+            enemyLog.put(r.name,new ArrayList());
         }
 
         if ( prevR != null ) {
@@ -395,13 +411,15 @@ System.out.println(moveType.type + " : " + moveType.score);
             }
             r.setAimType(prevR.getAimType());
         }
-        
+
+        // TODO: seperate teammateMap
         enemyMap.put(r.name, r);
         ctx.nextEnemyMap.put(r.name, new Enemy(r));
+        if ( ! isTeammate(r.name)) {
+            enemyLog.get(r.name).add(new Enemy(r));
+        }
 
 //        int PAST = 40;
-//        if ( ! enemyPatternMap.containsKey(r.name)) {
-//            enemyPatternMap.put(r.name,new ArrayList());
 //            pattarnAvgMap.put("I", new HashMap<String,Pair<Long,Double>>());
 //            pattarnAvgMap.put("A", new HashMap<String,Pair<Long,Double>>());
 //            for ( int i = 1;i<=PAST;i++) {
@@ -561,14 +579,6 @@ System.out.println(moveType.type + " : " + moveType.score);
         double turnDegree = turn.first;
         distance *= turn.second;
         
-        
-//        double nextBearing = ctx.nextMy.calcDegree(ctx.destination);
-//        double nextDistance = ctx.nextMy.calcDistance(ctx.destination);
-//        Pair<Double,Integer> nextTurn = this.calcAbsTurn(nextBearing);
-//        if ( Math.abs(nextTurn.first) > Math.abs(turnDegree) || Math.abs(nextDistance) > Math.abs(distance) ) {
-//            distance = 0;
-//        }
-        
         double turnTime = Math.abs(turnDegree/Util.turnSpeed(ctx.my.velocity));
         if ( runTime <= turnTime ) {
             distance = 0;
@@ -591,7 +601,6 @@ System.out.println(moveType.type + " : " + moveType.score);
         if ( ctx.my.time == 1 ) {
             return null;
         }
-//        nextMy.prospectNext();
         T backupContext = ctx;
         if ( curContext == null ) {
             curContext =  createContext(ctx);
@@ -616,6 +625,7 @@ System.out.println(moveType.type + " : " + moveType.score);
         }
         nextMy.time++;
         ctx = backupContext;
+//        nextMy.prospectNext();
 //        if ( true ) {
 //            return null;
 //        }
@@ -623,38 +633,33 @@ System.out.println(moveType.type + " : " + moveType.score);
     }
 
     protected void enemyBullet(Enemy prev,Enemy enemy){
-//        MovingPoint src = new MovingPoint(enemy);
-        MovingPoint src = null;
-//        if ( prev == null ) {
-//            src = new MovingPoint(enemy);
-//        }else{
-            Enemy cpPrev = new Enemy(prev);
-            prospectNextEnemy(cpPrev);
-            cpPrev.time ++;
-            // Detect collsion
-            for ( Map.Entry<String,BulletInfo> entry : enemyBulletList.entrySet() ) {
-                BulletInfo info =  entry.getValue();
-                if ( info.src.time == cpPrev.time && info.src.calcDistance(cpPrev) <= Util.tankSize * 1.5 ) {
-                    logger.fire4("ENEMY(collision): %s = %s dist(%2.2f)", info.src,cpPrev , info.src.calcDistance(cpPrev));
-                    removeEnemyBulletInfo(entry.getKey());
-                    return;// Maybe collision
-                    // TODO: teammate & myself
-                }
+
+        Enemy cpPrev = new Enemy(prev);
+        prospectNextEnemy(cpPrev);
+        cpPrev.time ++;
+        // Detect collsion
+        for ( Map.Entry<String,BulletInfo> entry : enemyBulletList.entrySet() ) {
+            BulletInfo info =  entry.getValue();
+            if ( info.src.time == cpPrev.time && info.src.calcDistance(cpPrev) <= Util.tankSize * 1.5 ) {
+                logger.fire4("ENEMY(collision): %s = %s dist(%2.2f)", info.src,cpPrev , info.src.calcDistance(cpPrev));
+                removeEnemyBulletInfo(entry.getKey());
+                return;// Maybe collision
+                // TODO: teammate & myself
             }
-            // Detect wall
-            for ( long i = prev.time; i < enemy.time; i++  ) {
-                boolean isMove = prospectNextEnemy(cpPrev);
-                if ( ! isMove ) {
-                    logger.fire4("ENEMY(wall): %s ", cpPrev);
-                    return; // Maybe hit wall
-                }
+        }
+        // Detect wall
+        for ( long i = prev.time; i < enemy.time; i++  ) {
+            boolean isMove = prospectNextEnemy(cpPrev);
+            if ( ! isMove ) {
+                logger.fire4("ENEMY(wall): %s ", cpPrev);
+                return; // Maybe hit wall
             }
-           // Bullet src
-            cpPrev = new Enemy(prev);
-            prospectNextEnemy(cpPrev);
-            cpPrev.time++;
-            src = cpPrev;
-//        }
+        }
+        // Bullet src
+        cpPrev = new Enemy(prev);
+        prospectNextEnemy(cpPrev);
+        cpPrev.time++;
+        MovingPoint src = cpPrev;
 
         if ( ! isTeammate(enemy.name) ) {
             MyPoint prevMy = prevMy(ctx.my.time-src.time+1);
@@ -665,7 +670,7 @@ System.out.println(moveType.type + " : " + moveType.score);
 logger.LOGLV = Logger.LOGLV_FIRE3;
 logger.fire3("ENEMY(fire): %d : %s(%2.2f)", shotType.type,Util.bultPower(bulletVelocity), Util.bultSpeed(prev.energy-enemy.energy));
 //TODO: shot
-        double radians = calcEnemyBulletRadians(my,bulletVelocity,src,shotType.type);
+            double radians = calcEnemyBulletRadians(my,bulletVelocity,src,shotType.type,0); //
 
             src.headingRadians = radians;
             src.heading  = Math.toDegrees(radians);
@@ -685,41 +690,77 @@ logger.fire3("ENEMY(fire): %d : %s(%2.2f)", shotType.type,Util.bultPower(bulletV
         }
         return ret;
     }
-    protected double calcEnemyBulletRadians(DeltaMovingPoint myAsEnemy,double velocity,Point src,int shotType){
+    protected double calcEnemyBulletRadians(DeltaMovingPoint myAsEnemy,double velocity,Point src,int shotType,long deltaTime){
 System.out.println(myAsEnemy.time);
+        double distance = src.calcDistance(myAsEnemy);
         double ret = 0;
         if ( shotType == MoveType.TYPE_UNKNOWN ) {
         }else if ( shotType == MoveType.TYPE_PINPOINT ) {
             ret = src.calcRadians(myAsEnemy);
-        }else if ( shotType == MoveType.TYPE_INERTIA ) {
-            double distance = src.calcDistance(myAsEnemy);
-            for (int i = 0 ; i < MAX_CALC ; i++ ) {
+        }else if ( shotType == MoveType.TYPE_INERTIA1 ) {
+            // ((deltaTime>0)?deltaTime:(long)Math.ceil(Math.abs(velocity/distance)))
+            //  - Calc only fixed time ( hitted )
+            //  - for prospecting time ( shoting ) =>  with updating distance each ticks.
+            for ( int i = 1 ; i <= ((deltaTime>0)?deltaTime:(long)Math.ceil(Math.abs(velocity/distance))) ; i++ ) {
                 DeltaMovingPoint cpMyAsEnemy = new DeltaMovingPoint(myAsEnemy);
-                cpMyAsEnemy.inertia(Math.abs(distance/velocity));
+                cpMyAsEnemy.inertia(1);
                 distance = src.calcDistance(cpMyAsEnemy);
                 ret = src.calcRadians(cpMyAsEnemy);
-                double d = Util.calcPointToLineRange(src,cpMyAsEnemy,ret);
-                if ( d < (Util.tankWidth/2) ) { // hit ?
+                if ( distance - Math.abs(velocity*i) < (Util.tankWidth/2) ) { // hit ?
+logger.log("INERTIA1 : %2.2f  (%2.2f - %2.2f = %2.2f)" ,Math.toDegrees(ret),distance,Math.abs(velocity*i),distance - Math.abs(velocity*i)); 
                     break;
                 }
             }
-        }else if ( shotType == MoveType.TYPE_ACCURATE ) {
-            double distance = src.calcDistance(myAsEnemy);
-            for (int i = 0 ; i < MAX_CALC ; i++ ) {
+        }else if ( shotType == MoveType.TYPE_INERTIA2 ) {
+            for ( int i = 1 ; i <= ((deltaTime>0)?deltaTime:(long)Math.ceil(Math.abs(velocity/distance))) ; i++ ) {
                 DeltaMovingPoint cpMyAsEnemy = new DeltaMovingPoint(myAsEnemy);
-                for ( int j = 0 ; j < Math.abs(distance/velocity); j++ ) {
+                cpMyAsEnemy.inertia(1);
+                distance = src.calcDistance(cpMyAsEnemy);
+                ret = src.calcRadians(cpMyAsEnemy);
+                if ( distance - Math.abs(velocity*i) < 0 ) { // hit ?
+logger.log("INERTIA2 : %2.2f  (%2.2f - %2.2f = %2.2f)" ,Math.toDegrees(ret),distance,Math.abs(velocity*i),distance - Math.abs(velocity*i)); 
+                    break;
+                }
+            }
+        }else if ( shotType == MoveType.TYPE_ACCURATE1 ) {
+            for ( int i = 1 ; i <= ((deltaTime>0)?deltaTime:(long)Math.ceil(Math.abs(velocity/distance))) ; i++ ) {
+                DeltaMovingPoint cpMyAsEnemy = new DeltaMovingPoint(myAsEnemy);
+                distance = src.calcDistance(cpMyAsEnemy);
+                ret = src.calcRadians(cpMyAsEnemy);
+                if ( distance - Math.abs(velocity*i) < 0 ) { // hit ?
+logger.log("ACCURATE1 : %2.2f  (%2.2f - %2.2f = %2.2f)" ,Math.toDegrees(ret),distance,Math.abs(velocity*i),distance - Math.abs(velocity*i)); 
+                    break;
+                }
+            }
+        }else if ( shotType == MoveType.TYPE_ACCURATE2 ) {
+            for ( int i = 1 ; i <= ((deltaTime>0)?deltaTime:(long)Math.ceil(Math.abs(velocity/distance))) ; i++ ) {
+                DeltaMovingPoint cpMyAsEnemy = new DeltaMovingPoint(myAsEnemy);
 // TODO : @@@ PAINT
-                    cpMyAsEnemy.prospectNext();
+                cpMyAsEnemy.prospectNext();
 getGraphics().setColor(new Color(255,255,255));
 drawRound(getGraphics(),cpMyAsEnemy.x,cpMyAsEnemy.y,2);
-                }
+
                 distance = src.calcDistance(cpMyAsEnemy);
                 ret = src.calcRadians(cpMyAsEnemy);
-                double d = Util.calcPointToLineRange(src,cpMyAsEnemy,ret);
-                if ( d < (Util.tankWidth/2) ) { // hit ?
+                if ( distance - Math.abs(velocity*i) < 0 ) { // hit ?
+logger.log("ACCURATE2 : %2.2f  (%2.2f - %2.2f = %2.2f)" ,Math.toDegrees(ret),distance,Math.abs(velocity*i),distance - Math.abs(velocity*i)); 
                     break;
                 }
             }
+//        }else if ( shotType == MoveType.TYPE_ACCURATE1 ) {
+//            // Recursive calculating
+//            double distance = src.calcDistance(myAsEnemy);
+//            for (int i = 0 ; i < MAX_CALC ; i++ ) {
+//                DeltaMovingPoint cpMyAsEnemy = new DeltaMovingPoint(myAsEnemy);
+//                for ( int j = 0 ; j < Math.abs(distance/velocity); j++ ) {
+//                }
+//                distance = src.calcDistance(cpMyAsEnemy);
+//                ret = src.calcRadians(cpMyAsEnemy);
+//                double d = Util.calcPointToLineRange(src,cpMyAsEnemy,ret);
+//                if ( d < (Util.tankWidth/2) ) { // hit ?
+//                    break;
+//                }
+//            }
         }
 
 
@@ -966,112 +1007,115 @@ drawRound(getGraphics(),cpMyAsEnemy.x,cpMyAsEnemy.y,2);
     }
     
     protected static void drawRound(Graphics2D g, double x, double y, double r) {
-        g.drawRoundRect((int) (x - r / 2), (int) (y - r / 2), (int) r, (int) r, (int) r + 2, (int) r + 2);
+        if (isPaint) {
+            g.drawRoundRect((int) (x - r / 2), (int) (y - r / 2), (int) r, (int) r, (int) r + 2, (int) r + 2);
+        }
     }
 
     protected static final float PAINT_OPACITY=0.5f;
     protected void paint(Graphics2D g) {
-        this.drawRound(g, ctx.my.x, ctx.my.y, 400 * 2);
-        drawRound(g, ctx.my.x, ctx.my.y, 600 * 2);
-        float[] dash = new float[2];
-        dash[0] = 0.1f;
-        dash[1] = 0.1f;
-        g.setStroke(new BasicStroke(1.0f,BasicStroke.CAP_BUTT,BasicStroke.JOIN_BEVEL,1.0f,dash,0.0f));
-        drawRound(g, ctx.my.x, ctx.my.y, 100 * 2);
-        drawRound(g, ctx.my.x, ctx.my.y, 300 * 2);
-        drawRound(g, ctx.my.x, ctx.my.y, 500 * 2);
+        if (isPaint) {
+            this.drawRound(g, ctx.my.x, ctx.my.y, 400 * 2);
+            drawRound(g, ctx.my.x, ctx.my.y, 600 * 2);
+            float[] dash = new float[2];
+            dash[0] = 0.1f;
+            dash[1] = 0.1f;
+            g.setStroke(new BasicStroke(1.0f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_BEVEL, 1.0f, dash, 0.0f));
+            drawRound(g, ctx.my.x, ctx.my.y, 100 * 2);
+            drawRound(g, ctx.my.x, ctx.my.y, 300 * 2);
+            drawRound(g, ctx.my.x, ctx.my.y, 500 * 2);
 
-        g.setStroke(new BasicStroke(1.0f));
-        g.setColor(new Color(0, 0.7f, 0, PAINT_OPACITY));
-        
-        double fieldMax = new Point(Util.battleFieldWidth,Util.battleFieldHeight).calcDistance(new Point());
-        g.drawLine((int)ctx.my.x,(int)ctx.my.y,(int)(Math.sin(ctx.curGunHeadingRadians)*fieldMax+ctx.my.x),(int)(Math.cos(ctx.curGunHeadingRadians)*fieldMax+ctx.my.y));
+            g.setStroke(new BasicStroke(1.0f));
+            g.setColor(new Color(0, 0.7f, 0, PAINT_OPACITY));
 
-        double deltaRadians = Util.calcTurnRadians(ctx.curRadarHeadingRadians,ctx.prevRadarHeadingRadians)/10;
-        if ( deltaRadians != 0.0 ) {
-            int[] xs = new int[3];
-            int[] ys = new int[3];
-            xs[0] = (int)ctx.my.x;
-            ys[0] = (int)ctx.my.y;
-            double radians  = ctx.curRadarHeadingRadians;
-            for(int i = 1 ; i < 10; i++) {
-                xs[1] = (int)(Math.sin(radians)*fieldMax+ctx.my.x);
-                ys[1] = (int)(Math.cos(radians)*fieldMax+ctx.my.y);
-                radians += deltaRadians;
-                xs[2] = (int)(Math.sin(radians)*fieldMax+ctx.my.x);
-                ys[2] = (int)(Math.cos(radians)*fieldMax+ctx.my.y);
-                g.setColor(new Color( i*0.03f,i*0.03f,1.0f, 0.1f));
-                Polygon triangle = new Polygon(xs,ys,3);
-                g.fill(triangle);
+            double fieldMax = new Point(Util.battleFieldWidth, Util.battleFieldHeight).calcDistance(new Point());
+            g.drawLine((int) ctx.my.x, (int) ctx.my.y, (int) (Math.sin(ctx.curGunHeadingRadians) * fieldMax + ctx.my.x), (int) (Math.cos(ctx.curGunHeadingRadians) * fieldMax + ctx.my.y));
+
+            double deltaRadians = Util.calcTurnRadians(ctx.curRadarHeadingRadians, ctx.prevRadarHeadingRadians) / 10;
+            if (deltaRadians != 0.0) {
+                int[] xs = new int[3];
+                int[] ys = new int[3];
+                xs[0] = (int) ctx.my.x;
+                ys[0] = (int) ctx.my.y;
+                double radians = ctx.curRadarHeadingRadians;
+                for (int i = 1; i < 10; i++) {
+                    xs[1] = (int) (Math.sin(radians) * fieldMax + ctx.my.x);
+                    ys[1] = (int) (Math.cos(radians) * fieldMax + ctx.my.y);
+                    radians += deltaRadians;
+                    xs[2] = (int) (Math.sin(radians) * fieldMax + ctx.my.x);
+                    ys[2] = (int) (Math.cos(radians) * fieldMax + ctx.my.y);
+                    g.setColor(new Color(i * 0.03f, i * 0.03f, 1.0f, 0.1f));
+                    Polygon triangle = new Polygon(xs, ys, 3);
+                    g.fill(triangle);
+                }
+            } else {
+                g.setColor(new Color(0.03f, 0.03f, 1.0f, 0.1f));
+                g.drawLine((int) ctx.my.x, (int) ctx.my.y, (int) (Math.sin(ctx.curRadarHeadingRadians) * fieldMax + ctx.my.x), (int) (Math.cos(ctx.curRadarHeadingRadians) * fieldMax + ctx.my.y));
             }
-        }else{
-            g.setColor(new Color( 0.03f,0.03f,1.0f, 0.1f));
-            g.drawLine((int)ctx.my.x,(int)ctx.my.y,(int)(Math.sin(ctx.curRadarHeadingRadians)*fieldMax+ctx.my.x),(int)(Math.cos(ctx.curRadarHeadingRadians)*fieldMax+ctx.my.y));
-        }
-        
-        g.setStroke(new BasicStroke(1.0f));
-        g.setColor(new Color(0,1.0f,0,PAINT_OPACITY));
-        g.drawString(String.format("( %2.2f , %2.2f )", ctx.my.x , ctx.my.y), (int) ctx.my.x - 20, (int) ctx.my.y- 55);
-        g.drawString(String.format("heat: %2.2f", getGunHeat()), (int) ctx.my.x - 20, (int) ctx.my.y- 65);
-        g.drawString(String.format("velo: %2.1f", getVelocity()), (int) ctx.my.x - 20, (int) ctx.my.y- 75);
-        MyPoint mypoint = new MyPoint(ctx.nextMy);
-        T curCtx = null;
-        for ( int i = 0 ; i < 20; i++) {
-            drawRound(g,mypoint.x,mypoint.y,2);
-            curCtx = prospectNextMy(mypoint,curCtx);
-        }
-        g.setStroke(new BasicStroke(4.0f));
-        g.setColor(new Color(0, 1.0f, 0,PAINT_OPACITY));
-        if ( ctx.destination != null ) {
-            drawRound(g,ctx.destination.x,ctx.destination.y,10);
-        }
 
-        g.setStroke(new BasicStroke(1.0f));
-        for (Map.Entry<String, Enemy> e : enemyMap.entrySet()) {
-            Enemy r = e.getValue();
-            if ( teammate.contains(r.name ) ) {
-                g.setColor(new Color(0, 1.0f, 0,PAINT_OPACITY));
-            }else {
-                g.setColor(new Color(0, 1.0f, 1.0f,PAINT_OPACITY));
+            g.setStroke(new BasicStroke(1.0f));
+            g.setColor(new Color(0, 1.0f, 0, PAINT_OPACITY));
+            g.drawString(String.format("( %2.2f , %2.2f )", ctx.my.x, ctx.my.y), (int) ctx.my.x - 20, (int) ctx.my.y - 55);
+            g.drawString(String.format("heat: %2.2f", getGunHeat()), (int) ctx.my.x - 20, (int) ctx.my.y - 65);
+            g.drawString(String.format("velo: %2.1f", getVelocity()), (int) ctx.my.x - 20, (int) ctx.my.y - 75);
+            MyPoint mypoint = new MyPoint(ctx.nextMy);
+            T curCtx = null;
+            for (int i = 0; i < 20; i++) {
+                drawRound(g, mypoint.x, mypoint.y, 2);
+                curCtx = prospectNextMy(mypoint, curCtx);
             }
-            drawRound(g, r.x, r.y, 35);            
-            g.drawString(String.format("%s : %s", r.name , r), (int) r.x - 20, (int) r.y- 30);
-            g.drawString(String.format("hit: %d / %d  : %2.2f / %2.2f", r.getAimType().hitCount,r.getAimType().aimCount,r.getAimType().hitTime,r.getAimType().aimTime), (int) r.x - 20, (int) r.y - 40);
-            Enemy next = getEnemy(r.name);
-            if ( next != null ) {
+            g.setStroke(new BasicStroke(4.0f));
+            g.setColor(new Color(0, 1.0f, 0, PAINT_OPACITY));
+            if (ctx.destination != null) {
+                drawRound(g, ctx.destination.x, ctx.destination.y, 10);
+            }
+
+            g.setStroke(new BasicStroke(1.0f));
+            for (Map.Entry<String, Enemy> e : enemyMap.entrySet()) {
+                Enemy r = e.getValue();
+                if (teammate.contains(r.name)) {
+                    g.setColor(new Color(0, 1.0f, 0, PAINT_OPACITY));
+                } else {
+                    g.setColor(new Color(0, 1.0f, 1.0f, PAINT_OPACITY));
+                }
+                drawRound(g, r.x, r.y, 35);
+                g.drawString(String.format("%s : %s", r.name, r), (int) r.x - 20, (int) r.y - 30);
+                g.drawString(String.format("hit: %d / %d  : %2.2f / %2.2f", r.getAimType().hitCount, r.getAimType().aimCount, r.getAimType().hitTime, r.getAimType().aimTime), (int) r.x - 20, (int) r.y - 40);
+                Enemy next = getEnemy(r.name);
+                if (next != null) {
 //                g.drawString(String.format("( %2.2f , %2.2f )", next.x , next.y), (int) r.x - 20, (int) r.y- 45);
-                g.drawString(String.format("dist(degr): %2.2f(%2.2f)", next.distance,next.bearing), (int) r.x - 20, (int) r.y - 50);
-                g.drawString(String.format("head(velo): %2.2f(%2.2f)", next.heading,next.velocity), (int) r.x - 20, (int) r.y - 60);
-                g.setColor(new Color(0.2f, 1.0f, 0.7f,PAINT_OPACITY));
+                    g.drawString(String.format("dist(degr): %2.2f(%2.2f)", next.distance, next.bearing), (int) r.x - 20, (int) r.y - 50);
+                    g.drawString(String.format("head(velo): %2.2f(%2.2f)", next.heading, next.velocity), (int) r.x - 20, (int) r.y - 60);
+                    g.setColor(new Color(0.2f, 1.0f, 0.7f, PAINT_OPACITY));
 
-                //g.setColor(new Color(0.4f, 0.7f, 1.0f,PAINT_OPACITY));
-                drawRound(g, next.x, next.y, 35);            
-                Enemy enemy = new Enemy(next);
-                for ( int i = 1 ; i < 20; i++) {
-                    prospectNextEnemy(enemy);
-                    drawRound(g,enemy.x,enemy.y,2);
+                    //g.setColor(new Color(0.4f, 0.7f, 1.0f,PAINT_OPACITY));
+                    drawRound(g, next.x, next.y, 35);
+                    Enemy enemy = new Enemy(next);
+                    for (int i = 1; i < 20; i++) {
+                        prospectNextEnemy(enemy);
+                        drawRound(g, enemy.x, enemy.y, 2);
+                    }
                 }
             }
-        }
-        for ( Map.Entry<String,BulletInfo> e : bulletList.entrySet() ) {
-            BulletInfo info = e.getValue();
-            g.setStroke(new BasicStroke(1.0f));
-            g.setColor(new Color(0, 1.0f, 0,PAINT_OPACITY));
-            g.drawLine((int)info.src.x,(int)info.src.y,(int)(Math.sin(info.src.headingRadians)*fieldMax+info.src.x),(int)(Math.cos(info.src.headingRadians)*fieldMax+info.src.y));
-            g.setStroke(new BasicStroke(4.0f));
-            Point dst = Util.calcPoint(info.src.headingRadians, info.distance).add(info.src);
-            drawRound(g, dst.x, dst.y, 5);
-        }
-        for ( Map.Entry<String,BulletInfo> e : enemyBulletList.entrySet() ) {
-            BulletInfo info = e.getValue();
-            g.setStroke(new BasicStroke(1.0f));
-            g.setColor(new Color(1.0f, 0.5f, 0.5f,PAINT_OPACITY));
-            g.drawLine((int)info.src.x,(int)info.src.y,(int)(Math.sin(info.src.headingRadians)*fieldMax+info.src.x),(int)(Math.cos(info.src.headingRadians)*fieldMax+info.src.y));
-            g.setStroke(new BasicStroke(4.0f));
-            Point dst = Util.calcPoint(info.src.headingRadians, info.distance).add(info.src);
-            drawRound(g, dst.x, dst.y, 5);
-        }
-        
+            for (Map.Entry<String, BulletInfo> e : bulletList.entrySet()) {
+                BulletInfo info = e.getValue();
+                g.setStroke(new BasicStroke(1.0f));
+                g.setColor(new Color(0, 1.0f, 0, PAINT_OPACITY));
+                g.drawLine((int) info.src.x, (int) info.src.y, (int) (Math.sin(info.src.headingRadians) * fieldMax + info.src.x), (int) (Math.cos(info.src.headingRadians) * fieldMax + info.src.y));
+                g.setStroke(new BasicStroke(4.0f));
+                Point dst = Util.calcPoint(info.src.headingRadians, info.distance).add(info.src);
+                drawRound(g, dst.x, dst.y, 5);
+            }
+            for (Map.Entry<String, BulletInfo> e : enemyBulletList.entrySet()) {
+                BulletInfo info = e.getValue();
+                g.setStroke(new BasicStroke(1.0f));
+                g.setColor(new Color(1.0f, 0.5f, 0.5f, PAINT_OPACITY));
+                g.drawLine((int) info.src.x, (int) info.src.y, (int) (Math.sin(info.src.headingRadians) * fieldMax + info.src.x), (int) (Math.cos(info.src.headingRadians) * fieldMax + info.src.y));
+                g.setStroke(new BasicStroke(4.0f));
+                Point dst = Util.calcPoint(info.src.headingRadians, info.distance).add(info.src);
+                drawRound(g, dst.x, dst.y, 5);
+            }
+
 //            g.setColor(new Color(0, 0, 255));
 //            Point i = r.inertia(ctx.my.time - r.time);
 //            drawRound(g, i.x, i.y, 40);
@@ -1082,6 +1126,7 @@ drawRound(getGraphics(),cpMyAsEnemy.x,cpMyAsEnemy.y,2);
 //                System.out.println(p);
 //            }
 //        }
+        }
     }
 
     private void dumpLog(){
