@@ -435,13 +435,10 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
         }
         if ( ctx.isRadarMode(ctx.MODE_RADAR_SEARCH) && ! (this instanceof Droid) ) {
             boolean isAllScan = false;
-System.out.println(enemyMap.entrySet().size() + " == " + ctx.others);
             if ( enemyMap.entrySet().size() >= ctx.others ) {
                 isAllScan = true;
                 for ( Map.Entry<String,Enemy> e : enemyMap.entrySet() ) {
                     if ( ! e.getValue().scanned && e.getValue().time != 0 ) { // not scanned &&not dead
-System.out.println("NOT SCAN: " + e.getKey() + " E:" + e.getValue().time);
-
                         isAllScan = false;
                         break;
                     }

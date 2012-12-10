@@ -52,6 +52,10 @@ import robocode.TeamRobot;
  */
 abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
     protected static final boolean isPaint = true;
+// TODO : loglv
+//logger.LOGLV= 0;//Logger.LOGLV_RADAR1;
+
+
     protected Logger logger = new Logger();
 
     protected static final double MOVE_COMPLETE_THRESHOLD = 1.0;
@@ -147,9 +151,6 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
         prospectNextMy(ctx.nextMy,null);
 
         myLog.add(ctx.my);
-
-// TODO : loglv
-logger.LOGLV= 0;//Logger.LOGLV_RADAR1;
 
     }
     protected MyPoint prevMy(long prev) {
@@ -398,7 +399,7 @@ logger.LOGLV= 0;//Logger.LOGLV_RADAR1;
 
 
         if ( ! shotTypeMap.containsKey(r.name) ) {
-            // TODO: scanned
+            // TODO: init shotTypeMap
             List<MoveType> shotTypeList = new ArrayList<>();
             MoveType moveType = new MoveType(MoveType.TYPE_UNKNOWN);
             moveType.score = -1; // 
@@ -676,7 +677,7 @@ logger.LOGLV= 0;//Logger.LOGLV_RADAR1;
             BulletInfo info =  entry.getValue();
             if ( info.src.time == cpPrev.time && info.src.calcDistance(cpPrev) <= Util.tankSize * 1.5 ) {
                 logger.fire4("ENEMY(collision): %s = %s dist(%2.2f)", info.src,cpPrev , info.src.calcDistance(cpPrev));
-                removeEnemyBulletInfo(entry.getKey()); // TODO: share to member ??
+                removeEnemyBulletInfo(entry.getKey());
                 return;// Maybe collision
                 // TODO: teammate & myself
             }
