@@ -10,10 +10,10 @@ import java.io.Serializable;
  *
  * @author crumb
  */
-public class ImpactEvent implements Serializable{
+public class BulletImpactEvent implements Serializable{
     public String key;
 
-    public ImpactEvent(String key) {
+    public BulletImpactEvent(String key) {
         this.key = key;
     }
 }

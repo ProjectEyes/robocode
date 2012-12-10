@@ -21,6 +21,7 @@ public class Util {
     public static double runnableMaxY;
     public static double tankWidth;
     public static double tankHeight;
+    public static double tankSize;
     public static double gunCoolingRate;
     public static double fieldFullDistance;
 
@@ -29,12 +30,14 @@ public class Util {
         Util.battleFieldHeight = battleFieldHeight;
         Util.tankWidth = tankWidth;
         Util.tankHeight = tankWidth;
+        Util.tankSize = new Point(Util.tankWidth,0).calcDistance(new Point(0,Util.tankHeight));
         Util.gunCoolingRate = gunCoolingRate;
         Util.runnableMinX = 17.9;
         Util.runnableMaxX = battleFieldWidth - 17.9;
         Util.runnableMinY = 17.9;
         Util.runnableMaxY = battleFieldHeight - 17.9;
         Util.fieldFullDistance = new Point(Util.battleFieldWidth,Util.battleFieldHeight).calcDistance(new Point());
+
     }
     public static long NOW;
     private static double calcX(double radians, double distance) {
@@ -127,6 +130,7 @@ public class Util {
     
     public static Point getGrabity(Point base,Point target,double weight,double dim){
         double distance = base.calcDistance(target);
+        distance = (distance<tankSize)?tankWidth:distance;
         double radians  = base.calcRadians(target);
         double force = weight/Math.pow(distance/10,dim)*10;
         return calcPoint(radians, force);

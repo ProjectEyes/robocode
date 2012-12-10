@@ -14,6 +14,8 @@ import jp.crumb.utils.TimedPoint;
  */
 public class CrumbContext extends BaseContext {
     public static final int MODE_MOVE_MANUAL  = 0;
+    public static final int MODE_MOVE_LOCKON1 = 2;
+    public static final int MODE_MOVE_LOCKON2 = 3;
     public static final int MODE_MOVE_AUTO    = 80;
     public static final int MODE_RADAR_MANUAL = 0;
     public static final int MODE_RADAR_SEARCH = 1;
@@ -24,13 +26,13 @@ public class CrumbContext extends BaseContext {
     public static final int MODE_FIRE_MANUAL  = 0;
     public static final int MODE_FIRE_AUTO    = 80;
 
-    public int modeMove  = MODE_MOVE_AUTO;
-    public int modeRadar = MODE_RADAR_SEARCH;
-    public int modeGun   = MODE_GUN_AUTO;
-    public int modeFire  = MODE_FIRE_AUTO;
+    public int modeMove  = MODE_MOVE_MANUAL;
+    public int modeRadar = MODE_RADAR_MANUAL;
+    public int modeGun   = MODE_GUN_MANUAL;
+    public int modeFire  = MODE_FIRE_MANUAL;
     public int modeCustom= 0;
     
-    public int toggleRadarTowards= 1;
+    public int radarTowards= 1;
     public TimedPoint G;
     public TimedPoint GT;
     public Point lockOnPoint; // for view
@@ -73,5 +75,7 @@ public class CrumbContext extends BaseContext {
     public final boolean isCustomMode(int m) {
         return (modeCustom  == m);
     }
-    
+    public final void toggleRadarTowards(){
+        radarTowards *= -1;
+    }
 }

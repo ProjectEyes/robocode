@@ -69,7 +69,7 @@ abstract public class Invader extends CrumbRobot<CrumbContext> {
     @Override
     protected void cbMoving() {
         if ( ctx.isCustomMode(MODE_CUSTOM_NOT_READY) || ctx.isCustomMode(MODE_CUSTOM_READY) ) {
-            if ( ctx.my.calcDistance(firstPoint) < 40 ) {
+            if ( ctx.my.calcDistance(firstPoint) < 60 ) {
                 setDestination(firstPoint);
                 return;
             }
@@ -105,9 +105,9 @@ abstract public class Invader extends CrumbRobot<CrumbContext> {
 
     @Override
     public void run() {
-        super.run();
         setColors(new Color(1.0f,0,0,0.1f),new Color(1.0f,0.5f,0),new Color(1.0f,0,0.5f));
         this.setBulletColor(new Color(255,100,100));
+        super.run();
     }
     
     private void openFire () {

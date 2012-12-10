@@ -37,7 +37,7 @@ public class DeltaMovingPoint extends MovingPoint {
     public void setDelta(MovingPoint delta) {
         this.delta = delta;
     }    
-    public void prospectNext() {
+    public boolean prospectNext() {
         DeltaMovingPoint backup = new DeltaMovingPoint(this);
         if ( delta == null ) {
             inertia(1);
@@ -50,22 +50,33 @@ public class DeltaMovingPoint extends MovingPoint {
                 headingRadians += deltaRadians;
             }
             
-            Point deltaByTurn = Util.calcPoint(headingRadians, velocity);
+            // Point deltaByTurn = Util.calcPoint(headingRadians, velocity); Move to after of velocity
             double deltaVelocity = delta.velocity / delta.time;
-            if ( deltaVelocity > 1 ) {
-                deltaVelocity = 1;
-            }else if (deltaVelocity < -2 ) {
-                deltaVelocity = -2;
+            if ( velocity > 0 ) {
+                if ( deltaVelocity > 1 ) {
+                    deltaVelocity = 1;
+                }else if (deltaVelocity < -2 ) {
+                    deltaVelocity = -2;
+                }
+            }else {
+                if ( deltaVelocity < -1 ) {
+                    deltaVelocity = -1;
+                }else if (deltaVelocity > 2 ) {
+                    deltaVelocity = 2;
+                }
             }
             velocity += deltaVelocity;
             velocity = (velocity > 8) ? 8 : velocity;
             velocity = (velocity < -8) ? -8 : velocity;
+            Point deltaByTurn = Util.calcPoint(headingRadians, velocity);
             x += deltaByTurn.x;
             y += deltaByTurn.y;
         }
-        if ( islimit()) {
+        if ( isLimit()) {
             this.set(backup);
+            return false;
         }
+        return true;
     }
 
 }

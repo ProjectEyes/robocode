@@ -31,18 +31,27 @@ public class TurnTest extends BaseRobo<BaseContext> {
         return defalutCreateContext(in);
     }
 
+    int t = 1;
+    int i = 5;
     @Override
     protected void cbMoving() {
-        if ( ctx.my.calcDistance(new Point(Util.runnableMaxX-1,Util.runnableMaxY-1)) < 1.0 ) {
-            setTurnGunRight(ctx.calcAbsGunTurn(270));
-            setTurnRadarRight(ctx.calcAbsRadarTurn(270));
+        setBack(100);
+        setTurnRight(100);
+        if( i <= 1 || i >= 8 ) {
+            t*=-1;
         }
-        setDestination(new Point(Util.runnableMaxX-1,Util.runnableMaxY-1));
+        if ( t > 0 ) {
+            i++;
+        }else {
+            i--;
+        }
+        setMaxVelocity(i);
+        setDestination(null);
     }
 
     @Override
     protected void cbFiring() {
-        fire(3.0,Util.fieldFullDistance,"UNKNOWN");
+
     }
     
 }

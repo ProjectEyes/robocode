@@ -13,7 +13,9 @@ import robocode.Droid;
 abstract public class InvaderDroid extends Invader implements Droid{
     @Override
     protected void cbFiring() {
-        firing(3,0);
+        if ( ctx.isFireMode(ctx.MODE_FIRE_AUTO) ) {
+            firing(3,0);
+        }
     }
 
     public InvaderDroid() {

@@ -73,7 +73,7 @@ public class MovingPoint extends TimedPoint {
         double dist = velocity * interval;
         this.add(Util.calcPoint(headingRadians, dist));
     }
-    public boolean islimit() {
+    public boolean isLimit() {
         if (    x < Util.runnableMinX ||
                 x > Util.runnableMaxX ||
                 y < Util.runnableMinY ||
@@ -84,6 +84,6 @@ public class MovingPoint extends TimedPoint {
     }
     @Override
     public String toString() {
-        return String.format("d[%2.2f] p(%2.2f,%2.2f) v:%2.2f", heading,x, y,velocity);
+        return String.format("t(%d): d[%2.2f] dr[%2.2f] p(%2.2f,%2.2f) v:%2.2f", time,heading,headingRadians,x, y,velocity);
     }
 }
