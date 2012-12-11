@@ -19,10 +19,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import jp.crumb.utils.DeltaMovingPoint;
 import jp.crumb.utils.Enemy;
 import jp.crumb.utils.Logger;
-import jp.crumb.utils.MoveType;
 import jp.crumb.utils.MovingPoint;
 import jp.crumb.utils.MyPoint;
 import jp.crumb.utils.Pair;
@@ -59,9 +57,7 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
     protected Logger logger = new Logger();
 
     protected static final double MOVE_COMPLETE_THRESHOLD = 1.0;
-    protected static final double ENEMY_BULLET_UNKNOWN_THRESHOLD = Math.PI/4; // more than 45 degrees
 
-    protected static final int MAX_CALC = 5;
     protected static final int SCAN_STALE = 9;
     protected static final int SYSTEM_BUG_TICKS = 30;
       
@@ -76,16 +72,7 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
     // Current informations
     protected Map<String, Enemy> enemyMap = new HashMap<>();
     private Map<String,BulletInfo> bulletList = new HashMap<>();
-    private Map<String,BulletInfo> enemyBulletList = new HashMap<>();
-    protected List<MyPoint> myLog = new ArrayList<>();
     
-    
-    protected static Map<String, List<Enemy> > enemyLog = new HashMap<>();
-
-    protected static Map<String,List<MoveType>> shotTypeMap = new HashMap<>();
-// Todo:
-//    protected static Map<String,List<MoveType>> aimTypeMap = new HashMap();
-
 
     private Condition eachTickTimer = new Condition("eachTickTimer",10) {
         @Override
@@ -114,7 +101,7 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
 //	this.setEventPriority("DeathEvent",10);
      }
 
-    private void current() {
+    protected void updateCurrent() {
         Util.NOW = getTime();
         if ( Util.NOW == ctx.my.time ) {
             return;
@@ -149,55 +136,37 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
         ctx.my.setPrev(prevMy);
         ctx.nextMy = new MyPoint(ctx.my);
         prospectNextMy(ctx.nextMy,null);
-
-        myLog.add(ctx.my);
-
-    }
-    protected MyPoint prevMy(long prev) {
-        long size = myLog.size();
-        if ( size > prev )  {
-            return myLog.get((int)size-1-(int)prev);
-        }
-        return null;
     }
 
-    private Map.Entry<String,BulletInfo> calcBulletSrc(Bullet bullet,Map<String,BulletInfo> list ) {
-        Point dst = new Point(bullet.getX(),bullet.getY());
-        double bulletRadians = bullet.getHeadingRadians();
-        
-        Map.Entry<String,BulletInfo> cur = null;
-        double curDiffDistance = 0;
-        double curDiffRadians = 0;
-        for(Map.Entry<String,BulletInfo> e : list.entrySet() ) {
-            String key = e.getKey();
-            BulletInfo bulletInfo = e.getValue();
-            double radians = bulletInfo.src.calcRadians(dst);
-            double diffRadians = Math.abs(Util.calcTurnRadians(radians, bulletRadians));
-            double diffDistance = Math.abs((ctx.my.time - bulletInfo.src.time)*bullet.getVelocity() - bulletInfo.src.calcDistance(dst));
-            if ( cur == null || diffRadians < curDiffRadians &&  diffDistance < curDiffDistance ) {
-                cur = e;
-                curDiffRadians = diffRadians;
-                curDiffDistance = diffDistance;
-            }
-        }
-        if ( cur != null ) {
-            return cur;
-        }
-        logger.fire1("Unknown bullet: ");
-        return null;
+ 
+    
+
+    private void impactBullet(String key){
+        broadcastMessage(new BulletImpactEvent(key));
+        removeBulletInfo(key);
     }
-    private void bulletMissed(BulletMissedEvent e) {
+    protected void addBulletInfo(BulletInfo bulletInfo) {
+        logger.fire2("SHOT: %s",bulletInfo.bulletName);
+        bulletList.put(bulletInfo.bulletName,bulletInfo);
+    }
+    protected void removeBulletInfo(String key){
+        logger.fire2("IMPACT: %s",key);
+        bulletList.remove(key);
+    }
+    
+    protected void cbBulletMissed(BulletMissedEvent e) {
         Bullet bullet = e.getBullet();
         Point dst = new Point(bullet.getX(),bullet.getY());
-        Map.Entry<String,BulletInfo> entry = calcBulletSrc(bullet,bulletList);
-        if ( entry != null ) {
+        Map.Entry<String,BulletInfo> entry = Util.calcBulletSrc(ctx.my.time,bullet,bulletList);
+        if ( entry == null ) {
+            logger.fire1("Unknown bullet missed: ");
+        }else{
             impactBullet(entry.getKey());
         }
-
         logger.fire1("MISS: %s",dst);
     }
     
-    private void bulletHit(BulletHitEvent e){
+    protected void cbBulletHit(BulletHitEvent e){
         Bullet bullet = e.getBullet();
         Point dst = new Point(bullet.getX(),bullet.getY());
         String victim = bullet.getVictim();
@@ -205,24 +174,17 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
         double range = 0.0;
         double aimDistance = 0.0;
         BulletInfo info = null;
-        Map.Entry<String,BulletInfo> entry = calcBulletSrc(bullet,bulletList);
-        if ( entry != null ) {
+        Map.Entry<String,BulletInfo> entry = Util.calcBulletSrc(ctx.my.time,bullet,bulletList);
+        if ( entry == null ) {
+            logger.fire1("Unknown bullet hit: ");
+        }else{
             impactBullet(entry.getKey());
             info = entry.getValue();
             aimDistance = entry.getValue().distance;
             range = info.src.calcDistance(dst);
         }
-        for ( Map.Entry<String,BulletInfo> ebi : enemyBulletList.entrySet() ) {
-            BulletInfo bulletInfo = ebi.getValue();
-            if ( e.getTime() == bulletInfo.src.time && bulletInfo.src.calcDegree(dst) < Util.tankSize ) {
-                logger.fire2("CANCEL BULLET() %s : %s ", dst,bulletInfo.src);
-                impactEnemyBulletInfo(bulletInfo.bulletName);
-                break;
-            }
-        }
-
         // Judge by chance
-        if ( info != null && info.target.equals(victim) && Math.abs(aimDistance - range) < Util.tankSize) {
+        if ( info != null && info.targetName.equals(victim) && Math.abs(aimDistance - range) < Util.tankSize) {
             Enemy target = enemyMap.get(victim);
             if ( target != null ) {
                 target.getAimType().updateHit(range);
@@ -230,7 +192,7 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
             logger.fire1("HIT: %s : %2.2f(%2.2f)  %s => %s",victim,aimDistance,range,info.src,dst);
         }else{
             if ( info != null ) {
-                logger.fire1("HIT (by chance): %s(%s): %2.2f(%2.2f)  %s => %s",victim,info.target,aimDistance,range,info.src,dst);
+                logger.fire1("HIT (by chance): %s(%s): %2.2f(%2.2f)  %s => %s",victim,aimDistance,range,info.src,dst);
             }else{
                 logger.fire1("HIT (by chance): %s: %2.2f(%2.2f)  %s => %s",victim,aimDistance,range,"NULL",dst);
             }
@@ -238,79 +200,25 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
     }
 
 
-    private void bulletHitBullet(BulletHitBulletEvent e){
+    protected void cbBulletHitBullet(BulletHitBulletEvent e){
         Bullet bullet = e.getBullet();
         Point dst = new Point(bullet.getX(),bullet.getY());
-        logger.fire1("INTERCEPT: %s",dst);
-        Map.Entry<String,BulletInfo> entry = calcBulletSrc(bullet,bulletList);
-        if ( entry != null ) {
+        Map.Entry<String,BulletInfo> entry = Util.calcBulletSrc(ctx.my.time,bullet,bulletList);
+        if ( entry == null ) {
+            logger.fire1("Unknown bullet hit: ");
+        }else{
             impactBullet(entry.getKey());
             BulletInfo info = entry.getValue();
-            Enemy target = enemyMap.get(info.target);
+            Enemy target = enemyMap.get(info.targetName);
             if ( target != null ) {
                 target.getAimType().revartAim(info.distance/info.src.velocity);
             }
         }
+        logger.fire1("INTERCEPT: %s",dst);
     }
     
-    private void setEnemyBulletInfo(BulletInfo bulletInfo) {
-        logger.fire2("SHOT(enemy): %s",bulletInfo.bulletName);
-        enemyBulletList.put(bulletInfo.bulletName,bulletInfo);
-        ctx.nextEnemyBulletList.put(bulletInfo.bulletName,new BulletInfo(bulletInfo));
-    }
-    private void removeEnemyBulletInfo(String key){
-        logger.fire2("IMPACT(enemy): %s",key);
-        ctx.nextEnemyBulletList.remove(key);
-        enemyBulletList.remove(key);
-    }
-    private void impactEnemyBulletInfo(String key){
-        broadcastMessage(new CancelEnemyBalletEvent(key));
-        removeEnemyBulletInfo(key);
-    }
-    private void setBulletInfo(BulletInfo bulletInfo) {
-        logger.fire2("SHOT: %s",bulletInfo.bulletName);
-        bulletList.put(bulletInfo.bulletName,bulletInfo);
-        ctx.nextBulletList.put(bulletInfo.bulletName,new BulletInfo(bulletInfo));
-    }
-    private void removeBulletInfo(String key){
-        logger.fire2("IMPACT: %s",key);
-        ctx.nextBulletList.remove(key);
-        bulletList.remove(key);
-    }
-    private void impactBullet(String key){
-        broadcastMessage(new BulletImpactEvent(key));
-        removeBulletInfo(key);
-    }
-    protected void cbHitByBullet(HitByBulletEvent e) {
-        long time = e.getTime();
-        Bullet bullet = e.getBullet();
-        double bulletVelocity = e.getVelocity();
-        double bulletRadians = e.getHeadingRadians();
-        String enemyName = e.getName();
-        Map.Entry<String,BulletInfo> entry = calcBulletSrc(bullet,enemyBulletList);
-        if ( entry != null ) {
-            BulletInfo info = entry.getValue();
-            impactEnemyBulletInfo(entry.getKey());
-        // TODO: hit by bullet
-            long deltaTime = ctx.my.time-info.src.time;
-            MyPoint prevMy = prevMy(deltaTime);
-            double distance = info.src.calcDistance(prevMy);
-            DeltaMovingPoint my = new DeltaMovingPoint(prevMy);
-            for ( MoveType moveType : shotTypeMap.get(enemyName) ) {
-                double tankWidthRadians = Math.asin((Util.tankWidth/2)/distance);
-                
-                if ( moveType.type == MoveType.TYPE_UNKNOWN ) {
-                }else{
-                    double diffRadians = Util.calcTurnRadians(bulletRadians,calcEnemyBulletRadians(prevMy,bulletVelocity,info.src,moveType.type,deltaTime));
-                    double correctedRadians = Math.abs(diffRadians) - Math.abs(tankWidthRadians);
-                    correctedRadians = (correctedRadians<0)?0:correctedRadians;
-                    moveType.updateScore(Math.PI/2-correctedRadians);
-                    logger.prospect4(moveType.type + " : " + Math.toDegrees(diffRadians) + " => " + Math.toDegrees(correctedRadians) + " = " + Math.toDegrees(moveType.score));
-                }
-            }
 
-        }
-    }
+    protected void cbHitByBullet(HitByBulletEvent e) {}
 
     private void sendMyInfo(){
         Enemy my = new Enemy();
@@ -330,7 +238,7 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
             ScanEnemyEvent ev = (ScanEnemyEvent)event;
             Enemy enemy = ev.e;
             enemy.calcPosition(ctx.my);
-            scannedRobot(enemy);
+            cbScannedRobot(enemy);
         }else if (event instanceof TeammateInfoEvent ) {
             ctx.enemies--;
             TeammateInfoEvent ev = (TeammateInfoEvent)event;
@@ -339,16 +247,13 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
             }
             Enemy enemy = ev.e;
             enemy.calcPosition(ctx.my);
-            scannedRobot(enemy);
+            cbScannedRobot(enemy);
         }else if (event instanceof BulletEvent ) {
             BulletEvent ev = (BulletEvent)event;
-            setBulletInfo(ev.bulletInfo);
+            addBulletInfo(ev.bulletInfo);
         }else if (event instanceof BulletImpactEvent ) {
             BulletImpactEvent ev = (BulletImpactEvent)event;
             removeBulletInfo(ev.key);
-        }else if (event instanceof CancelEnemyBalletEvent ) {
-            CancelEnemyBalletEvent ev = (CancelEnemyBalletEvent)event;
-            removeEnemyBulletInfo(ev.key);
         }else{
             cbExtMessage(e);
         }
@@ -359,205 +264,54 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
         if ( go == null ) {
             return;
         }
-        setAhead(go.first);
-        setTurnRight(go.second);
+        doAhead(go.first);
+        doTurnRight(go.second);
     }
     private void scannedRobot(ScannedRobotEvent e) {
-        Enemy r = calcAbsRobot(e);
+        Enemy r = createEnemy(e);
         if ( ! isTeammate(r.name)) {
+            // Message will reach to teammate at next turn !!
             Enemy next = new Enemy(r);
             prospectNextEnemy(next);
             next.time++;
             this.broadcastMessage(new ScanEnemyEvent(next));
         }
-        scannedRobot(r);
+        cbScannedRobot(r);
     }
 
-
-    private void enemyPattern(){
-        
-    }
-    
-    
-    
-    
-    protected void scannedRobot(Enemy r) {
-        logger.scan("%15s : %s : %d",r.name,r,r.time);
-        Enemy prevR = enemyMap.get(r.name);
+    protected Enemy cbScannedRobot(Enemy enemy) {
+        logger.scan("%15s : %s : %d",enemy.name,enemy,enemy.time);
+        Enemy prevR = enemyMap.get(enemy.name);
         if ( prevR == null )  { // The first time
-            if ( r.energy > 120 ) {
-                r.role = Enemy.ROLE_LEADER;
-            }else if ( r.energy > 100 ) {
-                r.role = Enemy.ROLE_DROID;
+            if ( enemy.energy > 120 ) {
+                enemy.role = Enemy.ROLE_LEADER;
+            }else if ( enemy.energy > 100 ) {
+                enemy.role = Enemy.ROLE_DROID;
             }else {
-                r.role = Enemy.ROLE_ROBOT;
+                enemy.role = Enemy.ROLE_ROBOT;
             }
         }
-        if ( prevR != null && prevR.time == r.time ) {
-            return;
-        }
-
-
-        if ( ! shotTypeMap.containsKey(r.name) ) {
-            // TODO: init shotTypeMap
-            List<MoveType> shotTypeList = new ArrayList<>();
-            MoveType moveType = new MoveType(MoveType.TYPE_UNKNOWN);
-            moveType.score = -1; // 
-            shotTypeList.add(new MoveType(moveType));
-            moveType = new MoveType(MoveType.TYPE_PINPOINT);
-            shotTypeList.add(new MoveType(moveType));
-            moveType = new MoveType(MoveType.TYPE_INERTIA1);
-            shotTypeList.add(new MoveType(moveType));
-            moveType = new MoveType(MoveType.TYPE_INERTIA2);
-            shotTypeList.add(new MoveType(moveType));
-            moveType = new MoveType(MoveType.TYPE_ACCURATE1);
-            shotTypeList.add(new MoveType(moveType));
-            moveType = new MoveType(MoveType.TYPE_ACCURATE2);
-            moveType.score = 0.001; // Initial type (will be overrided by first hit!!)
-            shotTypeList.add(new MoveType(moveType));
-            shotTypeMap.put(r.name,shotTypeList);
-        }
-        if ( ! enemyLog.containsKey(r.name)) {
-            enemyLog.put(r.name,new ArrayList());
+        if ( prevR != null && prevR.time == enemy.time ) {
+            return null;
         }
 
         if ( prevR != null ) {
-            // Aimed
-            if ( (prevR.energy - r.energy) >= 0.1 && (prevR.energy - r.energy) <= 3 ) {
-                enemyBullet(prevR,r);
-            }
             // Prev info
-//            if ( r.time != prevR.time && (r.time-prevR.time) < SCAN_STALE || (nextEnemy != null && nextEnemy.calcDistance(r) < 20 ) ){
-            if ( r.time != prevR.time && (r.time-prevR.time) < SCAN_STALE ) {
-                r.setPrev(prevR);
+            if ( enemy.time != prevR.time && (enemy.time-prevR.time) < SCAN_STALE ) {
+                enemy.setPrev(prevR);
             }
-            r.setAimType(prevR.getAimType());
+            enemy.setAimType(prevR.getAimType());
         }
 
         // TODO: seperate teammateMap
-        enemyMap.put(r.name, r);
-        ctx.nextEnemyMap.put(r.name, new Enemy(r));
-        if ( ! isTeammate(r.name)) {
-            enemyLog.get(r.name).add(new Enemy(r));
-        }
+        enemyMap.put(enemy.name, enemy);
+        return enemy;
 
-//        int PAST = 40;
-//            pattarnAvgMap.put("I", new HashMap<String,Pair<Long,Double>>());
-//            pattarnAvgMap.put("A", new HashMap<String,Pair<Long,Double>>());
-//            for ( int i = 1;i<=PAST;i++) {
-//                pattarnAvgMap.put(String.valueOf(i), new HashMap<String,Pair<Long,Double>>());
-//                pattarnPastMap.put(String.valueOf(i), new HashMap<String,Pair<Long,Double>>());
-//            }
-//        }
-//        if ( ! pattarnAvgMap.get("I").containsKey(r.name) )  {
-//            pattarnAvgMap.get("I").put(r.name, new Pair<>(0L,0.0));
-//        }
-//        if ( ! pattarnAvgMap.get("A").containsKey(r.name) )  {
-//            pattarnAvgMap.get("A").put(r.name, new Pair<>(0L,0.0));
-//        }
-//
-//        for ( int i = 1;i<=PAST;i++) {
-//            if ( ! pattarnAvgMap.get(String.valueOf(i)).containsKey(r.name)) {
-//                pattarnAvgMap.get(String.valueOf(i)).put(r.name, new Pair<>(0L,0.0));
-//            }
-//            if ( ! pattarnPastMap.get(String.valueOf(i)).containsKey(r.name)) {
-//                pattarnPastMap.get(String.valueOf(i)).put(r.name, new Pair<>(0L,0.0));
-//            }
-//        }
-//
-//
-//        if ( prevR != null ) {
-//            List<MovingPoint> patternList = enemyPatternMap.get(r.name);
-//            MovingPoint pt = new MovingPoint(r).diff(prevR);
-//            patternList.add(0,pt);
-//            // @@@
-//            logger.LOGLV = Logger.LOGLV_SCAN;
-//            {
-//                Enemy rr = new Enemy(r);
-//                Enemy p = new Enemy(prevR);
-//                p.inertia(1);
-//                rr.diff(p);
-//                Pair<Long,Double> pp = pattarnAvgMap.get("I").get(r.name);
-//                double distance = rr.calcDistance(new Point());
-//                pp.second = (pp.first * pp.second+distance) / ++pp.first;
-//                logger.log("I : %2.2f / %d = %2.2f (%2.2f)",pp.second,pp.first,pp.second/pp.first,distance);
-//            }
-//            {
-//                Enemy rr = new Enemy(r);
-//                Enemy p = new Enemy(prevR);
-//                p.prospectNext();
-//                rr.diff(p);
-//                Pair<Long,Double> pp = pattarnAvgMap.get("A").get(r.name);
-//                double distance = rr.calcDistance(new Point());
-//                pp.second = (pp.first * pp.second+distance) / ++pp.first;
-//                logger.log("A : %2.2f / %d = %2.2f (%2.2f)",pp.second,pp.first,pp.second/pp.first,distance);
-//            }
-//            {
-//                for ( int N = 2; N <=PAST;N++) {
-//                    if ( N < patternList.size() ) {
-//                        MovingPoint diff = new MovingPoint();
-//                        for ( int i = 2; i <=N; i++ ) {
-//                            diff.add(patternList.get(i));
-//                            diff.time = patternList.get(i).time;
-//                        }
-//                        diff.quot(N-1);
-//
-//                        Enemy rr = new Enemy(r);
-//                        Enemy p = new Enemy(prevR);
-//                        long diffTime = rr.time-diff.time;
-//                        if ( diffTime > PAST) {
-//                            break;
-//                        }
-//                        diff.time = 1;
-//                        // logger.log("Diff(%d): (%2.2f,%2.2f) d: %2.2f h: %2.2f (%d)",N,diff.x,diff.y,diff.calcDistance(new Point()),diff.heading,diff.time - past.time);
-//                        p.setDelta(diff);
-//                        p.prospectNext();
-//                        rr.diff(p);
-//                        Pair<Long,Double> pp = pattarnAvgMap.get(String.valueOf(diffTime)).get(r.name);
-//                        double distance = rr.calcDistance(new Point());
-//                        pp.second = (pp.first * pp.second+distance) / ++pp.first;
-//                        logger.log("A%2d : %2.2f / %d = %2.2f (%2.2f)",diffTime,pp.second,pp.first,pp.second/pp.first,distance);
-//                        // logger.log("Avrage(%d): (%2.2f,%2.2f) d: %2.2f h: %2.2f",N,rr.x,rr.y,rr.calcDistance(new Point()),rr.heading);
-//
-//                    }
-//                }
-//            }
-//            {
-//                for ( int N = 2; N <=PAST;N++) {
-//                    if ( N < patternList.size() ) {
-//
-//                        MovingPoint diff = new MovingPoint(patternList.get(N));
-//                        Enemy rr = new Enemy(r);
-//                        Enemy p = new Enemy(prevR);
-//                        long diffTime = rr.time-diff.time;
-//                        if ( diffTime > PAST) {
-//                            break;
-//                        }
-//                        diff.time = 1;
-//                        // diff.diff(past).quot(diffTime);
-//                        // logger.log("Diff(%d): (%2.2f,%2.2f) d: %2.2f h: %2.2f (%d)",N,diff.x,diff.y,diff.calcDistance(new Point()),diff.heading,diff.time - past.time);
-//                        p.setDelta(diff);
-//                        p.prospectNext();
-//                        rr.diff(p);
-//                        Pair<Long,Double> pp = pattarnPastMap.get(String.valueOf(diffTime)).get(r.name);
-//                        double distance = rr.calcDistance(new Point());
-//                        pp.second = (pp.first * pp.second+distance) / ++pp.first;
-//                        logger.log("P%2d : %2.2f / %d = %2.2f (%2.2f)",diffTime,pp.second,pp.first,pp.second/pp.first,distance);
-//                        // logger.log("Avrage(%d): (%2.2f,%2.2f) d: %2.2f h: %2.2f",N,rr.x,rr.y,rr.calcDistance(new Point()),rr.heading);
-//
-//                    }
-//                }
-//            }
-//        }
     }
-    private void cbRobotDeath(RobotDeathEvent e) {
+    protected void cbRobotDeath(RobotDeathEvent e) {
         Enemy enemy = enemyMap.get(e.getName());
         if ( enemy != null ) {
             enemy.time = 0;
-        }
-        Enemy nextEnemy = getEnemy(e.getName());
-        if ( nextEnemy != null ) {
-            nextEnemy.time = 0;
         }
     }    
         
@@ -565,42 +319,7 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
         logger.move_log("DST: %s", dst);
         this.ctx.destination = dst;
     }
-    private void prospectNext(){
-        for (Map.Entry<String, Enemy> e : ctx.nextEnemyMap.entrySet()) {
-            Enemy r = e.getValue();
-            prospectNextEnemy(r);
-        }
-        for (Map.Entry<String, BulletInfo> e : ctx.nextBulletList.entrySet()) {
-            BulletInfo info = e.getValue();
-            info.src.inertia(1);
-        }
-        for (Map.Entry<String, BulletInfo> e : ctx.nextEnemyBulletList.entrySet()) {
-            BulletInfo info = e.getValue();
-            info.src.inertia(1);
-        }
-
-    }    
-    private void clearBullet(){
-        List<String> rmBullet = new ArrayList<>();
-        for (Map.Entry<String, BulletInfo> e : ctx.nextBulletList.entrySet()) {
-            if ( e.getValue().src.isLimit() ) {
-                rmBullet.add(e.getKey());
-            }
-        }
-        for( String n : rmBullet ) {
-            removeBulletInfo(n);
-        }
-
-        List<String> rmEnemyBullet = new ArrayList<>();
-        for (Map.Entry<String, BulletInfo> e : ctx.nextEnemyBulletList.entrySet()) {
-            if ( e.getValue().src.isLimit() ) {
-                rmEnemyBullet.add(e.getKey());
-            }
-        }
-        for( String n : rmEnemyBullet ) {
-            removeEnemyBulletInfo(n);
-        }
-    }
+    protected void cbProspectNextTurn(){ }
     protected final Pair<Double,Double> calcGoPoint(){
         if ( ctx.destination == null ) {
             return null;
@@ -642,7 +361,7 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
         }
         ctx = curContext;
         ctx.nextMy = nextMy;
-        this.prospectNext();
+        this.cbProspectNextTurn();
         this.cbMoving();
 
         Pair<Double,Double> go = this.calcGoPoint();
@@ -667,124 +386,10 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
         return curContext;
     }
 
-    protected void enemyBullet(Enemy prev,Enemy enemy){
-
-        Enemy cpPrev = new Enemy(prev);
-        prospectNextEnemy(cpPrev);
-        cpPrev.time ++;
-        // Detect collsion
-        for ( Map.Entry<String,BulletInfo> entry : enemyBulletList.entrySet() ) {
-            BulletInfo info =  entry.getValue();
-            if ( info.src.time == cpPrev.time && info.src.calcDistance(cpPrev) <= Util.tankSize * 1.5 ) {
-                logger.fire4("ENEMY(collision): %s = %s dist(%2.2f)", info.src,cpPrev , info.src.calcDistance(cpPrev));
-                removeEnemyBulletInfo(entry.getKey());
-                return;// Maybe collision
-                // TODO: teammate & myself
-            }
-        }
-        // Detect wall
-        for ( long i = prev.time; i < enemy.time; i++  ) {
-            boolean isMove = prospectNextEnemy(cpPrev);
-            if ( ! isMove ) {
-                logger.fire4("ENEMY(wall): %s ", cpPrev);
-                return; // Maybe hit wall
-            }
-        }
-        // Bullet src
-        cpPrev = new Enemy(prev);
-        prospectNextEnemy(cpPrev);
-        cpPrev.time++;
-        MovingPoint src = cpPrev;
-
-        if ( ! isTeammate(enemy.name) ) {
-            MyPoint prevMy = prevMy(ctx.my.time-src.time+1);
-            DeltaMovingPoint my = new DeltaMovingPoint(prevMy);
-            double distance = src.calcDistance(my);
-            MoveType shotType =getMoveType(shotTypeMap.get(enemy.name));
-            double bulletVelocity = Util.bultSpeed(prev.energy-enemy.energy);
-            logger.prospect2("ENEMY(fire): %d : %s(%2.2f)", shotType.type,Util.bultPower(bulletVelocity), Util.bultSpeed(prev.energy-enemy.energy));
-            double radians = calcEnemyBulletRadians(my,bulletVelocity,src,shotType.type,0); //
-
-            src.headingRadians = radians;
-            src.heading  = Math.toDegrees(radians);
-            src.velocity = bulletVelocity;
-            BulletInfo bulletInfo = new BulletInfo(enemy.name,my,distance,src);
-            setEnemyBulletInfo(bulletInfo);
-        }
-    }
-    private MoveType getMoveType(List<MoveType> list) {
-        MoveType ret = null;
-        double score = Double.NEGATIVE_INFINITY;
-        for( MoveType  moveType : list ) {
-            if ( moveType.score > score ) {
-                score =moveType.score;
-                ret = moveType;
-            }
-        }
-        return ret;
-    }
-    protected double calcEnemyBulletRadians(DeltaMovingPoint myAsEnemy,double velocity,Point src,int shotType,long deltaTime){
-        double distance = src.calcDistance(myAsEnemy);
-        double ret = 0;
-        if ( shotType == MoveType.TYPE_UNKNOWN ) {
-            //TODO: default
-        }else if ( shotType == MoveType.TYPE_PINPOINT ) {
-            ret = src.calcRadians(myAsEnemy);
-        }else if ( shotType == MoveType.TYPE_INERTIA1 ) {
-            // ((deltaTime>0)?deltaTime:(long)Math.ceil(Math.abs(distance/velocity)))
-            //  - Calc only fixed time ( hitted )
-            //  - for prospecting time ( shoting ) =>  with updating distance each ticks.
-            DeltaMovingPoint cpMyAsEnemy = new DeltaMovingPoint(myAsEnemy);
-            for ( int i = 1 ; i <= ((deltaTime>0)?deltaTime:(long)Math.ceil(Math.abs(distance/velocity))) ; i++ ) {
-                cpMyAsEnemy.inertia(1);
-                distance = src.calcDistance(cpMyAsEnemy);
-                ret = src.calcRadians(cpMyAsEnemy);
-                if ( distance - Math.abs(velocity*i) < (Util.tankWidth/2) ) { // hit ?
-                    logger.prospect4("INERTIA1 : %2.2f  (%2.2f - %2.2f = %2.2f)" ,Math.toDegrees(ret),distance,Math.abs(velocity*i),distance - Math.abs(velocity*i));
-                    break;
-                }
-            }
-        }else if ( shotType == MoveType.TYPE_INERTIA2 ) {
-            DeltaMovingPoint cpMyAsEnemy = new DeltaMovingPoint(myAsEnemy);
-            for ( int i = 1 ; i <= ((deltaTime>0)?deltaTime:(long)Math.ceil(Math.abs(distance/velocity))) ; i++ ) {
-                cpMyAsEnemy.inertia(1);
-                distance = src.calcDistance(cpMyAsEnemy);
-                ret = src.calcRadians(cpMyAsEnemy);
-                if ( distance - Math.abs(velocity*i) < 0 ) { // hit ?
-                    logger.prospect4("INERTIA2 : %2.2f  (%2.2f - %2.2f = %2.2f)" ,Math.toDegrees(ret),distance,Math.abs(velocity*i),distance - Math.abs(velocity*i));
-                    break;
-                }
-            }
-        }else if ( shotType == MoveType.TYPE_ACCURATE1 ) {
-            DeltaMovingPoint cpMyAsEnemy = new DeltaMovingPoint(myAsEnemy);
-            for ( int i = 1 ; i <= ((deltaTime>0)?deltaTime:(long)Math.ceil(Math.abs(distance/velocity))) ; i++ ) {
-                cpMyAsEnemy.prospectNext();
-                distance = src.calcDistance(cpMyAsEnemy);
-                ret = src.calcRadians(cpMyAsEnemy);
-                if ( distance - Math.abs(velocity*i) < (Util.tankWidth/2) ) { // hit ?
-                    logger.prospect4("ACCURATE1 : %2.2f  (%2.2f - %2.2f = %2.2f)" ,Math.toDegrees(ret),distance,Math.abs(velocity*i),distance - Math.abs(velocity*i));
-                    break;
-                }
-            }
-        }else if ( shotType == MoveType.TYPE_ACCURATE2 ) {
-            DeltaMovingPoint cpMyAsEnemy = new DeltaMovingPoint(myAsEnemy);
-            for ( int i = 1 ; i <= ((deltaTime>0)?deltaTime:(long)Math.ceil(Math.abs(distance/velocity))) ; i++ ) {
-                cpMyAsEnemy.prospectNext();
-                distance = src.calcDistance(cpMyAsEnemy);
-                ret = src.calcRadians(cpMyAsEnemy);
-                if ( distance - Math.abs(velocity*i) < 0 ) { // hit ?
-                    logger.prospect4("ACCURATE2 : %2.2f  (%2.2f - %2.2f = %2.2f)" ,Math.toDegrees(ret),distance,Math.abs(velocity*i),distance - Math.abs(velocity*i));
-                    break;
-                }
-            }
-        }
 
 
-        return ret;
-    }
 
-
-    protected final void fire(double power, double distance,String targetName ) {
+    protected final void doFire(double power, double distance,String targetName ) {
         if ( ctx.gunHeat != 0 ) {
             return;
         }
@@ -800,11 +405,13 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
         if ( enemy != null ) {
             enemy.getAimType().updateAim(distance/bulletVelocity);
         }
-        BulletInfo bulletInfo = new BulletInfo(this.name,new DeltaMovingPoint(enemy),distance,src);
-        setBulletInfo(bulletInfo);
+        BulletInfo bulletInfo = new BulletInfo(name,targetName,distance,src);
+        addBulletInfo(bulletInfo);
         broadcastMessage(new BulletEvent(bulletInfo));
-        super.fire(power);
+        super.fire(power); // No return
     }
+
+
     
     public boolean isStale(Enemy e) {
          if ( e == null || (ctx.my.time - e.time) > SCAN_STALE ) {
@@ -813,13 +420,6 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
          return false;
     }
 
-    public Enemy getEnemy(String name) {
-        Enemy ret = ctx.nextEnemyMap.get(name);
-        if ( isStale(ret) ) {
-            return null;
-        }
-        return ret;
-    }
     
     abstract protected T createContext(T in);
     protected void cbThinking() {}
@@ -831,12 +431,7 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
     protected void cbFirst() {}
 
     protected boolean prospectNextEnemy(Enemy enemy) {
-        return enemy.prospectNext(ctx.my);
-    }
-    protected void prospectNextEnemy(Enemy enemy,int interval) {
-        for (int i = 1; i <= interval; i++) {
-            prospectNextEnemy(enemy);
-        }
+        return true;
     }
 
     protected void cbStatus(StatusEvent e){}
@@ -847,11 +442,9 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
     protected void cbHitRobot(HitRobotEvent e) {
         logger.crash("CLASH (%s): %s : %f",e.getName(),ctx.my,e.getBearing());
     }
-    protected void cbExtMessage(MessageEvent e) {
-        
-    }
+    protected void cbExtMessage(MessageEvent e) {}
 
-    protected Enemy calcAbsRobot(ScannedRobotEvent e) {
+    protected Enemy createEnemy(ScannedRobotEvent e) {
         return new Enemy(ctx.my, e);
     }    
 
@@ -913,7 +506,7 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
         try {
             super.broadcastMessage(e);
         } catch (IOException ex) {
-            logger.log("Send message error %s", ex.getMessage() );
+            Logger.log("Send message error %s", ex.getMessage() );
         }
     }
     @Override
@@ -921,33 +514,30 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
         try {
             super.sendMessage(name,e);
         } catch (IOException ex) {
-            logger.log("Send message error %s", ex.getMessage() );
+            Logger.log("Send message error %s", ex.getMessage() );
         }
     }
+    
 
-    @Override
-    public void setAhead(double distance) {
+    
+    
+    protected void doAhead(double distance) {
         super.setAhead(distance);
         ctx.curDistanceRemaining = distance;
     }
-    
-    @Override
-    public void setTurnRight(double degrees) {
+    protected void doTurnRight(double degrees) {
         super.setTurnRight(degrees);
         ctx.curTurnRemaining = degrees;
         ctx.curTurnRemainingRadians = Math.toRadians(degrees);
     }
-
-    @Override
-    public void setTurnGunRight(double degrees) {
+    protected void doTurnGunRight(double degrees) {
         logger.gun3("TURN: %2.2f : %2.2f => %2.2f",ctx.curGunHeading,ctx.curGunTurnRemaining,degrees);
         super.setTurnGunRight(degrees);
         ctx.curGunTurnRemaining = degrees;
         ctx.curGunTurnRemainingRadians = Math.toRadians(degrees);
     }
 
-    @Override
-    public void setTurnRadarRight(double degrees) {
+    protected void doTurnRadarRight(double degrees) {
         logger.radar3("TURN: %2.2f : %2.2f => %2.2f",ctx.curRadarHeading,ctx.curRadarTurnRemaining,degrees);
         super.setTurnRadarRight(degrees);
         ctx.curRadarTurnRemaining = degrees;
@@ -968,7 +558,7 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
     public void onCustomEvent(CustomEvent event) {
         forSystemBug();
         this.setInterruptible(true);
-        current();
+        updateCurrent();
         if (event.getCondition().equals(this.firstTickTimer) ) {
             this.removeCustomEvent(firstTickTimer);
             cbFirst();
@@ -985,13 +575,13 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
                 this.dispatchMessage(e);
             }
             for ( BulletHitBulletEvent e: this.getBulletHitBulletEvents() ) {
-                this.bulletHitBullet(e);
+                this.cbBulletHitBullet(e);
             }
             for ( BulletHitEvent e: this.getBulletHitEvents() ) {
-                this.bulletHit(e);
+                this.cbBulletHit(e);
             }
             for ( BulletMissedEvent e: this.getBulletMissedEvents() ) {
-                this.bulletMissed(e);
+                this.cbBulletMissed(e);
             }
             for ( RobotDeathEvent e: this.getRobotDeathEvents() ) {
                 this.cbRobotDeath(e);
@@ -1008,8 +598,7 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
             for ( StatusEvent e: this.getStatusEvents() ) {
                 this.cbStatus(e);
             }
-            this.prospectNext();
-            this.clearBullet();
+            this.cbProspectNextTurn();
             this.cbThinking();
             this.cbMoving();
             this.goPoint();
@@ -1031,7 +620,7 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
     protected static final float PAINT_OPACITY=0.5f;
     protected void paint(Graphics2D g) {
         if (isPaint) {
-            this.drawRound(g, ctx.my.x, ctx.my.y, 400 * 2);
+            drawRound(g, ctx.my.x, ctx.my.y, 400 * 2);
             drawRound(g, ctx.my.x, ctx.my.y, 600 * 2);
             float[] dash = new float[2];
             dash[0] = 0.1f;
@@ -1044,8 +633,7 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
             g.setStroke(new BasicStroke(1.0f));
             g.setColor(new Color(0, 0.7f, 0, PAINT_OPACITY));
 
-            double fieldMax = new Point(Util.battleFieldWidth, Util.battleFieldHeight).calcDistance(new Point());
-            g.drawLine((int) ctx.my.x, (int) ctx.my.y, (int) (Math.sin(ctx.curGunHeadingRadians) * fieldMax + ctx.my.x), (int) (Math.cos(ctx.curGunHeadingRadians) * fieldMax + ctx.my.y));
+            g.drawLine((int) ctx.my.x, (int) ctx.my.y, (int) (Math.sin(ctx.curGunHeadingRadians) * Util.fieldFullDistance + ctx.my.x), (int) (Math.cos(ctx.curGunHeadingRadians) * Util.fieldFullDistance + ctx.my.y));
 
             double deltaRadians = Util.calcTurnRadians(ctx.curRadarHeadingRadians, ctx.prevRadarHeadingRadians) / 10;
             if (deltaRadians != 0.0) {
@@ -1055,18 +643,18 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
                 ys[0] = (int) ctx.my.y;
                 double radians = ctx.curRadarHeadingRadians;
                 for (int i = 1; i < 10; i++) {
-                    xs[1] = (int) (Math.sin(radians) * fieldMax + ctx.my.x);
-                    ys[1] = (int) (Math.cos(radians) * fieldMax + ctx.my.y);
+                    xs[1] = (int) (Math.sin(radians) * Util.fieldFullDistance + ctx.my.x);
+                    ys[1] = (int) (Math.cos(radians) * Util.fieldFullDistance + ctx.my.y);
                     radians += deltaRadians;
-                    xs[2] = (int) (Math.sin(radians) * fieldMax + ctx.my.x);
-                    ys[2] = (int) (Math.cos(radians) * fieldMax + ctx.my.y);
+                    xs[2] = (int) (Math.sin(radians) * Util.fieldFullDistance + ctx.my.x);
+                    ys[2] = (int) (Math.cos(radians) * Util.fieldFullDistance + ctx.my.y);
                     g.setColor(new Color(i * 0.03f, i * 0.03f, 1.0f, 0.1f));
                     Polygon triangle = new Polygon(xs, ys, 3);
                     g.fill(triangle);
                 }
             } else {
                 g.setColor(new Color(0.03f, 0.03f, 1.0f, 0.1f));
-                g.drawLine((int) ctx.my.x, (int) ctx.my.y, (int) (Math.sin(ctx.curRadarHeadingRadians) * fieldMax + ctx.my.x), (int) (Math.cos(ctx.curRadarHeadingRadians) * fieldMax + ctx.my.y));
+                g.drawLine((int) ctx.my.x, (int) ctx.my.y, (int) (Math.sin(ctx.curRadarHeadingRadians) * Util.fieldFullDistance + ctx.my.x), (int) (Math.cos(ctx.curRadarHeadingRadians) * Util.fieldFullDistance + ctx.my.y));
             }
 
             g.setStroke(new BasicStroke(1.0f));
@@ -1097,40 +685,17 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
                 drawRound(g, r.x, r.y, 35);
                 g.drawString(String.format("%s : %s", r.name, r), (int) r.x - 20, (int) r.y - 30);
                 g.drawString(String.format("hit: %d / %d  : %2.2f / %2.2f", r.getAimType().hitCount, r.getAimType().aimCount, r.getAimType().hitTime, r.getAimType().aimTime), (int) r.x - 20, (int) r.y - 40);
-                Enemy next = getEnemy(r.name);
-                if (next != null) {
-//                g.drawString(String.format("( %2.2f , %2.2f )", next.x , next.y), (int) r.x - 20, (int) r.y- 45);
-                    g.drawString(String.format("dist(degr): %2.2f(%2.2f)", next.distance, next.bearing), (int) r.x - 20, (int) r.y - 50);
-                    g.drawString(String.format("head(velo): %2.2f(%2.2f)", next.heading, next.velocity), (int) r.x - 20, (int) r.y - 60);
-                    g.setColor(new Color(0.2f, 1.0f, 0.7f, PAINT_OPACITY));
-
-                    drawRound(g, next.x, next.y, 35);
-                    g.setColor(new Color(0.3f, 0.5f, 1.0f,PAINT_OPACITY));
-                    Enemy enemy = new Enemy(next);
-                    for (int i = 1; i < 20; i++) {
-                        prospectNextEnemy(enemy);
-                        drawRound(g, enemy.x, enemy.y, 2);
-                    }
-                }
             }
             for (Map.Entry<String, BulletInfo> e : bulletList.entrySet()) {
                 BulletInfo info = e.getValue();
                 g.setStroke(new BasicStroke(1.0f));
                 g.setColor(new Color(0.3f, 0.5f, 1.0f, PAINT_OPACITY));
-                g.drawLine((int) info.src.x, (int) info.src.y, (int) (Math.sin(info.src.headingRadians) * fieldMax + info.src.x), (int) (Math.cos(info.src.headingRadians) * fieldMax + info.src.y));
+                g.drawLine((int) info.src.x, (int) info.src.y, (int) (Math.sin(info.src.headingRadians) * Util.fieldFullDistance + info.src.x), (int) (Math.cos(info.src.headingRadians) * Util.fieldFullDistance + info.src.y));
                 g.setStroke(new BasicStroke(4.0f));
                 Point dst = Util.calcPoint(info.src.headingRadians, info.distance).add(info.src);
                 drawRound(g, dst.x, dst.y, 5);
             }
-            for (Map.Entry<String, BulletInfo> e : enemyBulletList.entrySet()) {
-                BulletInfo info = e.getValue();
-                g.setStroke(new BasicStroke(1.0f));
-                g.setColor(new Color(1.0f, 0.5f, 0.5f, PAINT_OPACITY));
-                g.drawLine((int) info.src.x, (int) info.src.y, (int) (Math.sin(info.src.headingRadians) * fieldMax + info.src.x), (int) (Math.cos(info.src.headingRadians) * fieldMax + info.src.y));
-                g.setStroke(new BasicStroke(4.0f));
-                Point dst = Util.calcPoint(info.src.headingRadians, info.distance).add(info.src);
-                drawRound(g, dst.x, dst.y, 5);
-            }
+
 
 //            g.setColor(new Color(0, 0, 255));
 //            Point i = r.inertia(ctx.my.time - r.time);
@@ -1153,11 +718,60 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
                 return o1.getAimType().compareTo(o2.getAimType());
             }});
         for (Enemy enemy :  enemyArray ) {
-            logger.log("=== %s (%2.2f%%)===",enemy.name,enemy.getAimType().getHitRate()*100);
-            logger.log("aim : %2.2f(%d)",enemy.getAimType().aimTime,enemy.getAimType().aimCount);
-            logger.log("hit : %2.2f(%d)",enemy.getAimType().hitTime,enemy.getAimType().hitCount);
+            Logger.log("=== %s (%2.2f%%)===",enemy.name,enemy.getAimType().getHitRate()*100);
+            Logger.log("aim : %2.2f(%d)",enemy.getAimType().aimTime,enemy.getAimType().aimCount);
+            Logger.log("hit : %2.2f(%d)",enemy.getAimType().hitTime,enemy.getAimType().hitCount);
         }        
     }
     
+    @Deprecated
+    @Override
+    public void setAhead(double distance) {
+        throw new UnsupportedOperationException("Not permitted");
+    }    
+    @Override
+    public void setBack(double distance) {
+        throw new UnsupportedOperationException("Not permitted");
+    }
+    @Deprecated
+    @Override
+    public void setTurnRight(double degrees) {
+        throw new UnsupportedOperationException("Not permitted");
+    }
+    @Deprecated
+    @Override
+    public void setTurnLeft(double degrees) {
+        throw new UnsupportedOperationException("Not permitted");
+    }
+    @Deprecated
+    @Override
+    public void setTurnGunRight(double degrees) {
+        throw new UnsupportedOperationException("Not permitted");
+    }
+    @Deprecated
+    @Override
+    public void setTurnGunLeft(double degrees) {
+        throw new UnsupportedOperationException("Not permitted");
+    }
+    @Deprecated
+    @Override
+    public void setTurnRadarRight(double degrees) {
+        throw new UnsupportedOperationException("Not permitted");
+    }
+    @Deprecated
+    @Override
+    public void setTurnRadarLeft(double degrees) {
+        throw new UnsupportedOperationException("Not permitted");
+    }
+    @Deprecated
+    @Override
+    public void fire(double power) {
+        throw new UnsupportedOperationException("Not permitted");
+    }
+    @Deprecated
+    @Override
+    public Bullet fireBullet(double power) {
+        throw new UnsupportedOperationException("Not permitted");
+    }    
 }
 

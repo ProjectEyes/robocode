@@ -4,9 +4,15 @@
  */
 package jp.crumb;
 
+import java.util.HashMap;
+import java.util.Map;
 import jp.crumb.base.BaseContext;
+import jp.crumb.base.BulletInfo;
+import jp.crumb.utils.Copy;
+import jp.crumb.utils.Enemy;
 import jp.crumb.utils.Point;
 import jp.crumb.utils.TimedPoint;
+import jp.crumb.utils.Util;
 
 /**
  *
@@ -38,6 +44,12 @@ public class CrumbContext extends BaseContext {
     public Point lockOnPoint; // for view
     public String lockonTarget;
 //  public Enemy lockOnTarget;
+    
+    public Map<String, Enemy> nextEnemyMap = new HashMap<>();
+    public Map<String,BulletInfo> nextBulletList = new HashMap<>();
+    public Map<String,BulletInfo> nextEnemyBulletList = new HashMap<>();
+    
+    
     public CrumbContext() {
     }
 
@@ -56,6 +68,26 @@ public class CrumbContext extends BaseContext {
 //        if ( in.lockOnTarget != null ) {
 //            this.lockOnTarget = new Enemy(in.lockOnTarget);
 //        }
+
+        nextEnemyMap = Util.deepCopyHashMap(in.nextEnemyMap , new Copy<Enemy>(){
+            @Override
+            public Enemy copy(Enemy e) {
+                return new Enemy(e);
+            }
+        });
+        nextBulletList = Util.deepCopyHashMap(in.nextBulletList,new Copy<BulletInfo>(){
+            @Override
+            public BulletInfo copy(BulletInfo e) {
+                return new BulletInfo(e);
+            }
+        });
+        this.nextEnemyBulletList = Util.deepCopyHashMap(in.nextEnemyBulletList,new Copy<BulletInfo>(){
+            @Override
+            public BulletInfo copy(BulletInfo e) {
+                return new BulletInfo(e);
+            }
+        });
+    
     }
     public void setLockonTarget(String lockonTarget) {
         this.lockonTarget = lockonTarget;
@@ -78,4 +110,7 @@ public class CrumbContext extends BaseContext {
     public final void toggleRadarTowards(){
         radarTowards *= -1;
     }
+    
+    
+    
 }

@@ -4,20 +4,28 @@ import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Graphics2D;
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import jp.crumb.base.BaseRobo;
 import jp.crumb.base.BulletInfo;
-import jp.crumb.utils.MoveType;
+import jp.crumb.base.CancelEnemyBalletEvent;
 import jp.crumb.utils.DeltaMovingPoint;
 import jp.crumb.utils.Enemy;
-import jp.crumb.utils.Logger;
+import jp.crumb.utils.MoveType;
 import jp.crumb.utils.MovingPoint;
+import jp.crumb.utils.MyPoint;
 import jp.crumb.utils.Pair;
 import jp.crumb.utils.Point;
 import jp.crumb.utils.TimedPoint;
 import jp.crumb.utils.Util;
+import robocode.Bullet;
+import robocode.BulletHitEvent;
 import robocode.Droid;
+import robocode.HitByBulletEvent;
 import robocode.MessageEvent;
+import robocode.RobotDeathEvent;
 import robocode.ScannedRobotEvent;
 
 
@@ -29,6 +37,7 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
     protected static final double PREPARE_LOCK_TIME=2;
     protected static final int DEFAULT_MAX_HIT_TIME = 40;
     protected int MAX_HIT_TIME = DEFAULT_MAX_HIT_TIME;
+    protected static final double ENEMY_BULLET_DIFF_THRESHOLD = Math.PI/4; // more than 45 degrees
 
 //    protected static final int MODE_NORMAL = MODE_RADAR_SEARCH;
 //    protected static final int MODE_LOCKON = MODE_RADAR_LOCKON | MODE_GUN_LOCKON;
@@ -37,6 +46,7 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
     protected static final int AIM_TIMES_THRESHOLD = 3;
 
     protected static final long SELECT_POWER_RANGE = 17;
+    private Map<String,BulletInfo> enemyBulletList = new HashMap<>();
 
     @Override
     protected CrumbContext createContext(CrumbContext in) {
@@ -91,19 +101,39 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
     protected  static final double DEFAULT_RANGE_RADAR_LOCKON = 1000;
     protected  double RANGE_RADAR_LOCKON = DEFAULT_RANGE_RADAR_LOCKON;
 
+    protected static Map<String,List<MoveType>> shotTypeMap = new HashMap<>();
+// Todo:
+//    protected static Map<String,List<MoveType>> aimTypeMap = new HashMap();
+    protected List<MyPoint> myLog = new ArrayList<>();
+    protected static Map<String, List<Enemy> > enemyLog = new HashMap<>();
+
+    @Override
+    protected void updateCurrent() {
+        super.updateCurrent();
+        myLog.add(ctx.my);
+    }
+    protected MyPoint prevMy(long prev) {
+        long size = myLog.size();
+        if ( size > prev )  {
+            return myLog.get((int)size-1-(int)prev);
+        }
+        return null;
+    }
+    
     
     
     @Override
-    protected Enemy calcAbsRobot(ScannedRobotEvent e) {
-        return new Enemy(ctx.my, e , Enemy.AIM_TYPE_ACCERARATE);
+    protected Enemy createEnemy(ScannedRobotEvent e) {
+        return new Enemy(ctx.my, e , MoveType.TYPE_ACCURATE1);
     }    
     
     @Override
     protected boolean prospectNextEnemy(Enemy enemy) {
         boolean ret = true;
-        if ( enemy.aimType == Enemy.AIM_TYPE_ACCERARATE ) {
+        if ( enemy.aimType == MoveType.TYPE_PINPOINT ) {
+        }else if ( enemy.aimType == MoveType.TYPE_ACCURATE1 ) {
             enemy.prospectNext(ctx.my);
-        }else if ( enemy.aimType == Enemy.AIM_TYPE_INERTIA ) {
+        }else if ( enemy.aimType == MoveType.TYPE_INERTIA1 ) {
             if ( enemy.isLimit() ) {
                 ret = false;
             }else {
@@ -111,8 +141,21 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
                 enemy.calcPosition(ctx.my);
                 ret = true;
             }
-        }else if ( enemy.aimType == Enemy.AIM_TYPE_DIFF_ERROR ) {
+        }else if ( enemy.aimType == MoveType.TYPE_UNKNOWN ) {
             // TODO: DIFF fier
+        }
+        return ret;
+    }
+    protected void prospectNextEnemy(Enemy enemy,int interval) {
+        for (int i = 1; i <= interval; i++) {
+            prospectNextEnemy(enemy);
+        }
+    }
+    
+    public Enemy getNextEnemy(String name) {
+        Enemy ret = ctx.nextEnemyMap.get(name);
+        if ( isStale(ret) ) {
+            return null;
         }
         return ret;
     }
@@ -215,7 +258,7 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
             if ( ctx.enemies > 1 ) {
                 normalMode();
             }
-            fire(maxPower,aimDistance,targetName);
+            doFire(maxPower,aimDistance,targetName);
         }
     }
 
@@ -229,9 +272,68 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
         return (power==0.0)?0.01:power;
     }
 
-
+    
+    protected double calcShotRadians(DeltaMovingPoint target,double velocity,Point src,int shotType,long deltaTime){
+        double distance = src.calcDistance(target);
+        double ret = 0;
+        if ( shotType == MoveType.TYPE_UNKNOWN ) {
+            //TODO: default
+        }else if ( shotType == MoveType.TYPE_PINPOINT ) {
+            ret = src.calcRadians(target);
+        }else if ( shotType == MoveType.TYPE_INERTIA1 ) {
+            // ((deltaTime>0)?deltaTime:(long)Math.ceil(Math.abs(distance/velocity)))
+            //  - Calc only fixed time ( hitted )
+            //  - for prospecting time ( shoting ) =>  with updating distance each ticks.
+            DeltaMovingPoint cpMyAsEnemy = new DeltaMovingPoint(target);
+            for ( int i = 1 ; i <= ((deltaTime>0)?deltaTime:(long)Math.ceil(Math.abs(distance/velocity))) ; i++ ) {
+                cpMyAsEnemy.inertia(1);
+                distance = src.calcDistance(cpMyAsEnemy);
+                ret = src.calcRadians(cpMyAsEnemy);
+                if ( distance - Math.abs(velocity*i) < (Util.tankWidth/2) ) { // hit ?
+                    logger.prospect4("INERTIA1 : %2.2f  (%2.2f - %2.2f = %2.2f)" ,Math.toDegrees(ret),distance,Math.abs(velocity*i),distance - Math.abs(velocity*i));
+                    break;
+                }
+            }
+        }else if ( shotType == MoveType.TYPE_INERTIA2 ) {
+            DeltaMovingPoint cpMyAsEnemy = new DeltaMovingPoint(target);
+            for ( int i = 1 ; i <= ((deltaTime>0)?deltaTime:(long)Math.ceil(Math.abs(distance/velocity))) ; i++ ) {
+                cpMyAsEnemy.inertia(1);
+                distance = src.calcDistance(cpMyAsEnemy);
+                ret = src.calcRadians(cpMyAsEnemy);
+                if ( distance - Math.abs(velocity*i) < 0 ) { // hit ?
+                    logger.prospect4("INERTIA2 : %2.2f  (%2.2f - %2.2f = %2.2f)" ,Math.toDegrees(ret),distance,Math.abs(velocity*i),distance - Math.abs(velocity*i));
+                    break;
+                }
+            }
+        }else if ( shotType == MoveType.TYPE_ACCURATE1 ) {
+            DeltaMovingPoint cpMyAsEnemy = new DeltaMovingPoint(target);
+            for ( int i = 1 ; i <= ((deltaTime>0)?deltaTime:(long)Math.ceil(Math.abs(distance/velocity))) ; i++ ) {
+                cpMyAsEnemy.prospectNext();
+                distance = src.calcDistance(cpMyAsEnemy);
+                ret = src.calcRadians(cpMyAsEnemy);
+                if ( distance - Math.abs(velocity*i) < (Util.tankWidth/2) ) { // hit ?
+                    logger.prospect4("ACCURATE1 : %2.2f  (%2.2f - %2.2f = %2.2f)" ,Math.toDegrees(ret),distance,Math.abs(velocity*i),distance - Math.abs(velocity*i));
+                    break;
+                }
+            }
+        }else if ( shotType == MoveType.TYPE_ACCURATE2 ) {
+            DeltaMovingPoint cpMyAsEnemy = new DeltaMovingPoint(target);
+            for ( int i = 1 ; i <= ((deltaTime>0)?deltaTime:(long)Math.ceil(Math.abs(distance/velocity))) ; i++ ) {
+                cpMyAsEnemy.prospectNext();
+                distance = src.calcDistance(cpMyAsEnemy);
+                ret = src.calcRadians(cpMyAsEnemy);
+                if ( distance - Math.abs(velocity*i) < 0 ) { // hit ?
+                    logger.prospect4("ACCURATE2 : %2.2f  (%2.2f - %2.2f = %2.2f)" ,Math.toDegrees(ret),distance,Math.abs(velocity*i),distance - Math.abs(velocity*i));
+                    break;
+                }
+            }
+        }
+        return ret;
+    }    
+    // TODO: lockOn() Use calcShotRadians
+    protected static final int MAX_CALC = 5;
     protected void lockOn(String lockonTarget) {
-        Enemy lockOnTarget = getEnemy(lockonTarget);
+        Enemy lockOnTarget = getNextEnemy(lockonTarget);
         if ( lockOnTarget == null ) {
             return;
         }
@@ -260,10 +362,10 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
             }
             allTime = bultTime + gunTurnTime;
         }
-        setTurnGunRight(gunTurn);
+        doTurnGunRight(gunTurn);
     }
     protected void radarLockOn(String lockonTarget) {
-        Enemy lockOnTarget = getEnemy(lockonTarget);
+        Enemy lockOnTarget = getNextEnemy(lockonTarget);
         if (lockOnTarget == null ) {
             normalMode();
             return;
@@ -306,6 +408,9 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
                 this.setMoveMode(ctx.MODE_MOVE_LOCKON1);
             }
             ctx.setLockonTarget(ev.lockonTarget);
+        }else if (event instanceof CancelEnemyBalletEvent ) {
+            CancelEnemyBalletEvent ev = (CancelEnemyBalletEvent)event;
+            removeEnemyBulletInfo(ev.key);
         }
     }
 
@@ -318,10 +423,43 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
         super.cbFirst();
     }
     
+    
+    @Override
+    protected void cbProspectNextTurn(){
+        for (Map.Entry<String, Enemy> e : ctx.nextEnemyMap.entrySet()) {
+            Enemy r = e.getValue();
+            prospectNextEnemy(r);
+        }
+
+        List<String> rmBullet = new ArrayList<>();
+        for (Map.Entry<String, BulletInfo> e : ctx.nextBulletList.entrySet()) {
+            BulletInfo info = e.getValue();
+            info.src.inertia(1);
+            if ( info.src.isLimit() ) {
+                rmBullet.add(e.getKey());
+            }
+        }
+        for( String n : rmBullet ) {
+            removeBulletInfo(n);
+        }
+
+        List<String> rmEnemyBullet = new ArrayList<>();
+        for (Map.Entry<String, BulletInfo> e : ctx.nextEnemyBulletList.entrySet()) {
+            BulletInfo info = e.getValue();
+            info.src.inertia(1);
+            if ( info.src.isLimit() ) {
+                rmEnemyBullet.add(e.getKey());
+            }
+        }
+        for( String n : rmEnemyBullet ) {
+            removeEnemyBulletInfo(n);
+        }
+    }    
+    
 
     @Override
     protected void cbThinking() {
-        Enemy lockOnTarget = getEnemy(ctx.lockonTarget);
+        Enemy lockOnTarget = getNextEnemy(ctx.lockonTarget);
         if (isLeader || teammate.isEmpty() ) {
             for (Map.Entry<String, Enemy> e : ctx.nextEnemyMap.entrySet()) {
                 Enemy r = e.getValue();
@@ -384,7 +522,7 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
             g = Util.getRandomPoint(g,55);
             ctx.G = new TimedPoint(g,ctx.my.time);
         }
-            Enemy lockOnTarget = getEnemy(ctx.lockonTarget);
+            Enemy lockOnTarget = getNextEnemy(ctx.lockonTarget);
             if ( lockOnTarget != null && ctx.isMoveMode(ctx.MODE_MOVE_LOCKON1 )) {
                 double fullDistance = Util.fieldFullDistance;
                 double tr = ctx.my.calcRadians(lockOnTarget);
@@ -446,8 +584,8 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
             }
             if ( ctx.curRadarTurnRemaining == 0.0 || isAllScan ) {
                 ctx.toggleRadarTowards();
-                setTurnRadarRight(6*Util.radarTurnSpeed()*ctx.radarTowards);
-                setTurnGunRight(6*Util.gunTurnSpeed()*ctx.radarTowards);
+                doTurnRadarRight(6*Util.radarTurnSpeed()*ctx.radarTowards);
+                doTurnGunRight(6*Util.gunTurnSpeed()*ctx.radarTowards);
                 for ( Map.Entry<String,Enemy> e : enemyMap.entrySet() ) {
                     e.getValue().scanned = false;
                 }
@@ -463,13 +601,181 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
     }
 
     @Override
-    protected void scannedRobot(Enemy r) {
-        r.scanned = true;
-        super.scannedRobot(r);
+    protected Enemy cbScannedRobot(Enemy enemy) {
+        enemy.scanned = true;
+        Enemy constEnemy = super.cbScannedRobot(enemy);
+        if ( constEnemy == null ) {
+            return null;
+        }
+        ctx.nextEnemyMap.put(constEnemy.name, new Enemy(constEnemy));
+        if ( ! isTeammate(enemy.name)) {
+            if ( ! enemyLog.containsKey(enemy.name)) {
+                enemyLog.put(enemy.name,new ArrayList());
+            }
+            enemyLog.get(enemy.name).add(new Enemy(constEnemy));
+        }
+        
+        if ( ! shotTypeMap.containsKey(enemy.name) ) {
+            // TODO: init shotTypeMap
+            List<MoveType> shotTypeList = new ArrayList<>();
+            MoveType moveType = new MoveType(MoveType.TYPE_UNKNOWN);
+            moveType.score = -1; // 
+            shotTypeList.add(new MoveType(moveType));
+            moveType = new MoveType(MoveType.TYPE_PINPOINT);
+            shotTypeList.add(new MoveType(moveType));
+            moveType = new MoveType(MoveType.TYPE_INERTIA1);
+            shotTypeList.add(new MoveType(moveType));
+            moveType = new MoveType(MoveType.TYPE_INERTIA2);
+            shotTypeList.add(new MoveType(moveType));
+            moveType = new MoveType(MoveType.TYPE_ACCURATE1);
+            shotTypeList.add(new MoveType(moveType));
+            moveType = new MoveType(MoveType.TYPE_ACCURATE2);
+            moveType.score = 0.001; // Initial type (will be overrided by first hit!!)
+            shotTypeList.add(new MoveType(moveType));
+            shotTypeMap.put(enemy.name,shotTypeList);
+        }
+        Enemy prevR = enemyMap.get(enemy.name);
+        if ( prevR != null ) {
+            // Aimed
+            if ( (prevR.energy - enemy.energy) >= 0.1 && (prevR.energy - enemy.energy) <= 3 ) {
+                enemyBullet(prevR,enemy);
+            }
+        }
+        
+        return constEnemy;
     }
     
     
+    @Override
+    protected void cbRobotDeath(RobotDeathEvent e) {
+        Enemy nextEnemy = getNextEnemy(e.getName());
+        if ( nextEnemy != null ) {
+            nextEnemy.time = 0;
+        }
+    }
+    /*
+     * Bullets 
+     */
+    @Override
+    protected void addBulletInfo(BulletInfo bulletInfo) {
+        super.addBulletInfo(bulletInfo);
+        ctx.nextBulletList.put(bulletInfo.bulletName,new BulletInfo(bulletInfo));
+    }
+    @Override
+    protected void removeBulletInfo(String key){
+        super.removeBulletInfo(key);
+        ctx.nextBulletList.remove(key);
+    }
 
+    private void impactEnemyBulletInfo(String key){
+        broadcastMessage(new CancelEnemyBalletEvent(key));
+        removeEnemyBulletInfo(key);
+    }
+    protected void addEnemyBulletInfo(BulletInfo bulletInfo) {
+        logger.fire2("SHOT(enemy): %s",bulletInfo.bulletName);
+        enemyBulletList.put(bulletInfo.bulletName,bulletInfo);
+        ctx.nextEnemyBulletList.put(bulletInfo.bulletName,new BulletInfo(bulletInfo));
+    }
+    protected void removeEnemyBulletInfo(String key){
+        logger.fire2("IMPACT(enemy): %s",key);
+        enemyBulletList.remove(key);
+        ctx.nextEnemyBulletList.remove(key);
+    }
+
+    @Override
+    protected void cbBulletHit(BulletHitEvent e) {
+        super.cbBulletHit(e);
+        Bullet bullet = e.getBullet();
+        Point dst = new Point(bullet.getX(),bullet.getY());
+         for ( Map.Entry<String,BulletInfo> ebi : enemyBulletList.entrySet() ) {
+            BulletInfo bulletInfo = ebi.getValue();
+            if ( e.getTime() == bulletInfo.src.time && bulletInfo.src.calcDegree(dst) < Util.tankSize ) {
+                logger.fire2("CANCEL BULLET() %s : %s ", dst,bulletInfo.src);
+                impactEnemyBulletInfo(bulletInfo.bulletName);
+                break;
+            }
+        }
+    }
+
+    @Override
+    protected void cbHitByBullet(HitByBulletEvent e) {
+        long time = e.getTime();
+        Bullet bullet = e.getBullet();
+        double bulletVelocity = e.getVelocity();
+        double bulletRadians = e.getHeadingRadians();
+        String enemyName = e.getName();
+        Map.Entry<String,BulletInfo> entry = Util.calcBulletSrc(ctx.my.time,bullet,enemyBulletList);
+        if ( entry != null ) {
+            BulletInfo info = entry.getValue();
+            impactEnemyBulletInfo(entry.getKey());
+        // TODO: hit by bullet
+            long deltaTime = ctx.my.time-info.src.time;
+            MyPoint prevMy = prevMy(deltaTime);
+            double distance = info.src.calcDistance(prevMy);
+            DeltaMovingPoint my = new DeltaMovingPoint(prevMy);
+            for ( MoveType moveType : shotTypeMap.get(enemyName) ) {
+                double tankWidthRadians = Math.asin((Util.tankWidth/2)/distance);
+                
+                if ( moveType.type == MoveType.TYPE_UNKNOWN ) {
+                }else{
+                    double diffRadians = Util.calcTurnRadians(bulletRadians,calcShotRadians(prevMy,bulletVelocity,info.src,moveType.type,deltaTime));
+                    diffRadians = (Math.abs(diffRadians)<ENEMY_BULLET_DIFF_THRESHOLD)?diffRadians:ENEMY_BULLET_DIFF_THRESHOLD;
+                    double correctedRadians = Math.abs(diffRadians) - Math.abs(tankWidthRadians);
+                    correctedRadians = (correctedRadians<0)?0:correctedRadians;
+                    moveType.updateScore(Math.PI/2-correctedRadians);
+                    logger.prospect4(moveType.type + " : " + Math.toDegrees(diffRadians) + " => " + Math.toDegrees(correctedRadians) + " = " + Math.toDegrees(moveType.score));
+                }
+            }
+
+        }
+    }
+    
+    protected void enemyBullet(Enemy prev,Enemy enemy){
+
+        Enemy cpPrev = new Enemy(prev);
+        prospectNextEnemy(cpPrev);
+        cpPrev.time ++;
+        // Detect collsion
+        for ( Map.Entry<String,BulletInfo> entry : enemyBulletList.entrySet() ) {
+            BulletInfo info =  entry.getValue();
+            if ( info.src.time == cpPrev.time && info.src.calcDistance(cpPrev) <= Util.tankSize * 1.5 ) {
+                logger.fire4("ENEMY(collision): %s = %s dist(%2.2f)", info.src,cpPrev , info.src.calcDistance(cpPrev));
+                removeEnemyBulletInfo(entry.getKey());
+                return;// Maybe collision
+                // TODO: teammate & myself
+            }
+        }
+        // Detect wall
+        for ( long i = prev.time; i < enemy.time; i++  ) {
+            boolean isMove = prospectNextEnemy(cpPrev);
+            if ( ! isMove ) {
+                logger.fire4("ENEMY(wall): %s ", cpPrev);
+                return; // Maybe hit wall
+            }
+        }
+        // Bullet src
+        cpPrev = new Enemy(prev);
+        prospectNextEnemy(cpPrev);
+        cpPrev.time++;
+        MovingPoint src = cpPrev;
+
+        if ( ! isTeammate(enemy.name) ) {
+            MyPoint prevMy = prevMy(ctx.my.time-src.time+1);
+            DeltaMovingPoint my = new DeltaMovingPoint(prevMy);
+            double distance = src.calcDistance(my);
+            MoveType shotType =MoveType.getMoveTypeByScore(shotTypeMap.get(enemy.name));
+            double bulletVelocity = Util.bultSpeed(prev.energy-enemy.energy);
+            logger.prospect2("ENEMY(fire): %d : %s(%2.2f)", shotType.type,Util.bultPower(bulletVelocity), Util.bultSpeed(prev.energy-enemy.energy));
+            double radians = calcShotRadians(my,bulletVelocity,src,shotType.type,0); //
+
+            src.headingRadians = radians;
+            src.heading  = Math.toDegrees(radians);
+            src.velocity = bulletVelocity;
+            BulletInfo bulletInfo = new BulletInfo(enemy.name,name,distance,src);
+            addEnemyBulletInfo(bulletInfo);
+        }
+    }    
+    
     /*
      * MODE control
      */
@@ -515,8 +821,8 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
     }
     protected void changeRadarMode(){
         if ( ctx.isRadarMode(ctx.MODE_RADAR_SEARCH) && ! (this instanceof Droid) ) {
-            setTurnRadarRight(3*Util.radarTurnSpeed()*ctx.radarTowards);
-            setTurnGunRight(3*Util.gunTurnSpeed()*ctx.radarTowards);
+            doTurnRadarRight(3*Util.radarTurnSpeed()*ctx.radarTowards);
+            doTurnGunRight(3*Util.gunTurnSpeed()*ctx.radarTowards);
         }
     }
 
@@ -588,9 +894,29 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
                 Point priority = Util.calcPoint(ctx.my.calcRadians(enemy), calcPriorityDistance(enemy)).add(ctx.my);
                 g.drawLine((int) enemy.x, (int) enemy.y, (int) priority.x, (int) priority.y);
                 g.drawString(String.format("%2.2f", calcPriorityDistance(enemy)), (int) enemy.x - 20, (int) enemy.y - 80);
+//              g.drawString(String.format("( %2.2f , %2.2f )", enemy.x , enemy.y), (int) r.x - 20, (int) r.y- 45);
+                g.drawString(String.format("dist(degr): %2.2f(%2.2f)", enemy.distance, enemy.bearing), (int) enemy.x - 20, (int) enemy.y - 50);
+                g.drawString(String.format("head(velo): %2.2f(%2.2f)", enemy.heading, enemy.velocity), (int) enemy.x - 20, (int) enemy.y - 60);
+                g.setColor(new Color(0.2f, 1.0f, 0.7f, PAINT_OPACITY));
 
+                drawRound(g, enemy.x, enemy.y, 35);
+                g.setColor(new Color(0.3f, 0.5f, 1.0f,PAINT_OPACITY));
+                Enemy next = new Enemy(enemy);
+                for (int i = 1; i < 20; i++) {
+                    prospectNextEnemy(next);
+                    drawRound(g, next.x, next.y, 2);
+                }
             }
             // Bullet
+            g.setStroke(new BasicStroke(1.0f));
+            g.setColor(new Color(1.0f, 0.5f, 0.5f, PAINT_OPACITY));
+            for (Map.Entry<String, BulletInfo> e : enemyBulletList.entrySet()) {
+                BulletInfo info = e.getValue();
+                g.drawLine((int) info.src.x, (int) info.src.y, (int) (Math.sin(info.src.headingRadians) * Util.fieldFullDistance + info.src.x), (int) (Math.cos(info.src.headingRadians) * Util.fieldFullDistance + info.src.y));
+                g.setStroke(new BasicStroke(4.0f));
+                Point dst = Util.calcPoint(info.src.headingRadians, info.distance).add(info.src);
+                drawRound(g, dst.x, dst.y, 5);
+            }            
             g.setColor(new Color(0, 0, 0, PAINT_OPACITY));
             for (Map.Entry<String, BulletInfo> e : ctx.nextBulletList.entrySet()) {
                 BulletInfo info = e.getValue();
@@ -633,3 +959,113 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
         }
     }
 }
+
+
+//        int PAST = 40;
+//            pattarnAvgMap.put("I", new HashMap<String,Pair<Long,Double>>());
+//            pattarnAvgMap.put("A", new HashMap<String,Pair<Long,Double>>());
+//            for ( int i = 1;i<=PAST;i++) {
+//                pattarnAvgMap.put(String.valueOf(i), new HashMap<String,Pair<Long,Double>>());
+//                pattarnPastMap.put(String.valueOf(i), new HashMap<String,Pair<Long,Double>>());
+//            }
+//        }
+//        if ( ! pattarnAvgMap.get("I").containsKey(r.name) )  {
+//            pattarnAvgMap.get("I").put(r.name, new Pair<>(0L,0.0));
+//        }
+//        if ( ! pattarnAvgMap.get("A").containsKey(r.name) )  {
+//            pattarnAvgMap.get("A").put(r.name, new Pair<>(0L,0.0));
+//        }
+//
+//        for ( int i = 1;i<=PAST;i++) {
+//            if ( ! pattarnAvgMap.get(String.valueOf(i)).containsKey(r.name)) {
+//                pattarnAvgMap.get(String.valueOf(i)).put(r.name, new Pair<>(0L,0.0));
+//            }
+//            if ( ! pattarnPastMap.get(String.valueOf(i)).containsKey(r.name)) {
+//                pattarnPastMap.get(String.valueOf(i)).put(r.name, new Pair<>(0L,0.0));
+//            }
+//        }
+//
+//
+//        if ( prevR != null ) {
+//            List<MovingPoint> patternList = enemyPatternMap.get(r.name);
+//            MovingPoint pt = new MovingPoint(r).diff(prevR);
+//            patternList.add(0,pt);
+//            // @@@
+//            logger.LOGLV = Logger.LOGLV_SCAN;
+//            {
+//                Enemy rr = new Enemy(r);
+//                Enemy p = new Enemy(prevR);
+//                p.inertia(1);
+//                rr.diff(p);
+//                Pair<Long,Double> pp = pattarnAvgMap.get("I").get(r.name);
+//                double distance = rr.calcDistance(new Point());
+//                pp.second = (pp.first * pp.second+distance) / ++pp.first;
+//                logger.log("I : %2.2f / %d = %2.2f (%2.2f)",pp.second,pp.first,pp.second/pp.first,distance);
+//            }
+//            {
+//                Enemy rr = new Enemy(r);
+//                Enemy p = new Enemy(prevR);
+//                p.prospectNext();
+//                rr.diff(p);
+//                Pair<Long,Double> pp = pattarnAvgMap.get("A").get(r.name);
+//                double distance = rr.calcDistance(new Point());
+//                pp.second = (pp.first * pp.second+distance) / ++pp.first;
+//                logger.log("A : %2.2f / %d = %2.2f (%2.2f)",pp.second,pp.first,pp.second/pp.first,distance);
+//            }
+//            {
+//                for ( int N = 2; N <=PAST;N++) {
+//                    if ( N < patternList.size() ) {
+//                        MovingPoint diff = new MovingPoint();
+//                        for ( int i = 2; i <=N; i++ ) {
+//                            diff.add(patternList.get(i));
+//                            diff.time = patternList.get(i).time;
+//                        }
+//                        diff.quot(N-1);
+//
+//                        Enemy rr = new Enemy(r);
+//                        Enemy p = new Enemy(prevR);
+//                        long diffTime = rr.time-diff.time;
+//                        if ( diffTime > PAST) {
+//                            break;
+//                        }
+//                        diff.time = 1;
+//                        // logger.log("Diff(%d): (%2.2f,%2.2f) d: %2.2f h: %2.2f (%d)",N,diff.x,diff.y,diff.calcDistance(new Point()),diff.heading,diff.time - past.time);
+//                        p.setDelta(diff);
+//                        p.prospectNext();
+//                        rr.diff(p);
+//                        Pair<Long,Double> pp = pattarnAvgMap.get(String.valueOf(diffTime)).get(r.name);
+//                        double distance = rr.calcDistance(new Point());
+//                        pp.second = (pp.first * pp.second+distance) / ++pp.first;
+//                        logger.log("A%2d : %2.2f / %d = %2.2f (%2.2f)",diffTime,pp.second,pp.first,pp.second/pp.first,distance);
+//                        // logger.log("Avrage(%d): (%2.2f,%2.2f) d: %2.2f h: %2.2f",N,rr.x,rr.y,rr.calcDistance(new Point()),rr.heading);
+//
+//                    }
+//                }
+//            }
+//            {
+//                for ( int N = 2; N <=PAST;N++) {
+//                    if ( N < patternList.size() ) {
+//
+//                        MovingPoint diff = new MovingPoint(patternList.get(N));
+//                        Enemy rr = new Enemy(r);
+//                        Enemy p = new Enemy(prevR);
+//                        long diffTime = rr.time-diff.time;
+//                        if ( diffTime > PAST) {
+//                            break;
+//                        }
+//                        diff.time = 1;
+//                        // diff.diff(past).quot(diffTime);
+//                        // logger.log("Diff(%d): (%2.2f,%2.2f) d: %2.2f h: %2.2f (%d)",N,diff.x,diff.y,diff.calcDistance(new Point()),diff.heading,diff.time - past.time);
+//                        p.setDelta(diff);
+//                        p.prospectNext();
+//                        rr.diff(p);
+//                        Pair<Long,Double> pp = pattarnPastMap.get(String.valueOf(diffTime)).get(r.name);
+//                        double distance = rr.calcDistance(new Point());
+//                        pp.second = (pp.first * pp.second+distance) / ++pp.first;
+//                        logger.log("P%2d : %2.2f / %d = %2.2f (%2.2f)",diffTime,pp.second,pp.first,pp.second/pp.first,distance);
+//                        // logger.log("Avrage(%d): (%2.2f,%2.2f) d: %2.2f h: %2.2f",N,rr.x,rr.y,rr.calcDistance(new Point()),rr.heading);
+//
+//                    }
+//                }
+//            }
+//        }

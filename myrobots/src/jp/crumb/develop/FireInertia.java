@@ -10,6 +10,7 @@ import jp.crumb.CrumbContext;
 import jp.crumb.CrumbRobot;
 import jp.crumb.utils.Enemy;
 import jp.crumb.utils.Logger;
+import jp.crumb.utils.MoveType;
 import robocode.ScannedRobotEvent;
 
 
@@ -31,20 +32,14 @@ public class FireInertia extends CrumbRobot<CrumbContext> {
         setFireMode(ctx.MODE_FIRE_AUTO);
     }
 
-    @Override
-    protected void scannedRobot(Enemy r) {
-
-        super.scannedRobot(r);
-    }
-
 //    @Override
 //    protected void cbFiring() {
 //        fire(0.5,0,"");
 //    }
 
     @Override
-    protected Enemy calcAbsRobot(ScannedRobotEvent e) {
-        return new Enemy(ctx.my, e , Enemy.AIM_TYPE_INERTIA);
+    protected Enemy createEnemy(ScannedRobotEvent e) {
+        return new Enemy(ctx.my, e , MoveType.TYPE_INERTIA1);
     }
 
 }

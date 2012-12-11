@@ -6,6 +6,8 @@ package jp.crumb.utils;
 
 import java.util.HashMap;
 import java.util.Map;
+import jp.crumb.base.BulletInfo;
+import robocode.Bullet;
 
 /**
  *
@@ -161,5 +163,29 @@ public class Util {
         }
         return ret;
     }
-
+    public static Map.Entry<String,BulletInfo> calcBulletSrc(long now,Bullet bullet,Map<String,BulletInfo> list ) {
+        Point dst = new Point(bullet.getX(),bullet.getY());
+        double bulletRadians = bullet.getHeadingRadians();
+        
+        Map.Entry<String,BulletInfo> cur = null;
+        double curDiffDistance = 0;
+        double curDiffRadians = 0;
+        for(Map.Entry<String,BulletInfo> e : list.entrySet() ) {
+            String key = e.getKey();
+            BulletInfo bulletInfo = e.getValue();
+            double radians = bulletInfo.src.calcRadians(dst);
+            double diffRadians = Math.abs(Util.calcTurnRadians(radians, bulletRadians));
+            double diffDistance = Math.abs((now - bulletInfo.src.time)*bullet.getVelocity() - bulletInfo.src.calcDistance(dst));
+            if ( cur == null || diffRadians < curDiffRadians &&  diffDistance < curDiffDistance ) {
+                cur = e;
+                curDiffRadians = diffRadians;
+                curDiffDistance = diffDistance;
+            }
+        }
+        if ( cur != null ) {
+            return cur;
+        }
+        return null;
+    }
+    
 }

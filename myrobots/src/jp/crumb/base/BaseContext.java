@@ -5,12 +5,6 @@
 package jp.crumb.base;
 
 import java.io.Serializable;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import jp.crumb.utils.Copy;
-import jp.crumb.utils.Enemy;
-import jp.crumb.utils.MovingPoint;
 import jp.crumb.utils.MyPoint;
 import jp.crumb.utils.Pair;
 import jp.crumb.utils.Point;
@@ -46,9 +40,6 @@ public class BaseContext implements Serializable{
     // For auto move
     public Point destination;
 
-    public Map<String, Enemy> nextEnemyMap = new HashMap<>();
-    public Map<String,BulletInfo> nextBulletList = new HashMap<>();
-    public Map<String,BulletInfo> nextEnemyBulletList = new HashMap<>();
 
     public BaseContext() {
     }
@@ -76,24 +67,6 @@ public class BaseContext implements Serializable{
         this.my = new MyPoint(in.my);
         this.nextMy = new MyPoint(in.nextMy);
         
-        this.nextEnemyMap = Util.deepCopyHashMap(in.nextEnemyMap , new Copy<Enemy>(){
-            @Override
-            public Enemy copy(Enemy e) {
-                return new Enemy(e);
-            }
-        });
-        this.nextBulletList = Util.deepCopyHashMap(in.nextBulletList,new Copy<BulletInfo>(){
-            @Override
-            public BulletInfo copy(BulletInfo e) {
-                return new BulletInfo(e);
-            }
-        });
-        this.nextEnemyBulletList = Util.deepCopyHashMap(in.nextEnemyBulletList,new Copy<BulletInfo>(){
-            @Override
-            public BulletInfo copy(BulletInfo e) {
-                return new BulletInfo(e);
-            }
-        });
 
     }    
    
@@ -174,9 +147,9 @@ public class BaseContext implements Serializable{
         return sumRadarTurn;
     }
 
-    public Pair<Double,Integer> calcAbsTurn(double absDegree) {
-        double aheadTurnDegree = Util.calcTurn(my.heading,absDegree);
-        double backTurnDegree  = Util.calcTurn(my.heading,absDegree-180);
+    public Pair<Double,Integer> calcAbsTurn(double dstDegree) {
+        double aheadTurnDegree = Util.calcTurn(my.heading,dstDegree);
+        double backTurnDegree  = Util.calcTurn(my.heading,dstDegree-180);
         if ( Math.abs(aheadTurnDegree) < Math.abs(backTurnDegree)) { // ahead
             return new Pair<>(aheadTurnDegree,1);
         }else { // back

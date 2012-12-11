@@ -5,6 +5,7 @@
 package jp.crumb.utils;
 
 import java.io.Serializable;
+import java.util.List;
 
 /**
  *
@@ -79,5 +80,16 @@ public class MoveType implements Comparable<MoveType> , Serializable{
             return 1;
         }
         return (getHitRate()<o.getHitRate())?-1:1;
+    }
+    public static MoveType getMoveTypeByScore(List<MoveType> list) {
+        MoveType ret = null;
+        double score = Double.NEGATIVE_INFINITY;
+        for( MoveType  moveType : list ) {
+            if ( moveType.score > score ) {
+                score =moveType.score;
+                ret = moveType;
+            }
+        }
+        return ret;
     }
 }

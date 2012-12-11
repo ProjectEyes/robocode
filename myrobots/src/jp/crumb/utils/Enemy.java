@@ -14,11 +14,6 @@ import robocode.ScannedRobotEvent;
  * @author crumb
  */
 public class Enemy extends DeltaMovingPoint {
-    static public final int AIM_TYPE_PINPOINT       = 0;
-    static public final int AIM_TYPE_INERTIA    = 1;
-    static public final int AIM_TYPE_ACCERARATE = 2;
-    static public final int AIM_TYPE_DIFF_ERROR = 3;
-
     static public final int ROLE_DROID   = 1;
     static public final int ROLE_ROBOT   = 2;
     static public final int ROLE_LEADER  = 3;
@@ -31,7 +26,7 @@ public class Enemy extends DeltaMovingPoint {
     public double energy;
     public boolean scanned;
     public int role;
-    public int aimType = AIM_TYPE_ACCERARATE;
+    public int aimType = MoveType.TYPE_ACCURATE1;
 //
     public Map<Integer,MoveType> aimTypeMap = new HashMap();
 
@@ -55,7 +50,7 @@ public class Enemy extends DeltaMovingPoint {
         this.changeAimType(this.aimType);
     }
     public Enemy(MovingPoint my, ScannedRobotEvent e) {
-        this(my, e,AIM_TYPE_ACCERARATE);
+        this(my, e,MoveType.TYPE_ACCURATE1);
     }
 
     public Enemy(Enemy in ) {
@@ -76,7 +71,7 @@ public class Enemy extends DeltaMovingPoint {
     }
 
     public Enemy() {
-        changeAimType(AIM_TYPE_ACCERARATE);
+        changeAimType(MoveType.TYPE_ACCURATE1);
     }
     public MoveType getAimType(int type) {
         return this.aimTypeMap.get(type);
@@ -87,7 +82,7 @@ public class Enemy extends DeltaMovingPoint {
     public void setAimType(MoveType type) {
         this.aimTypeMap.put(aimType, new MoveType(type));
     }
-    // TODO:
+    // TODO: remove aimtype
     public void changeAimType(int type) {
         this.aimType = type;
         if ( getAimType(type) == null ) {
