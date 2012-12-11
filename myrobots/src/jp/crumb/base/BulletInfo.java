@@ -5,7 +5,6 @@
 package jp.crumb.base;
 
 import java.io.Serializable;
-import jp.crumb.utils.DeltaMovingPoint;
 import jp.crumb.utils.MovingPoint;
 
 /**
@@ -32,7 +31,7 @@ public class BulletInfo implements Serializable{
     public BulletInfo(BulletInfo in ) {
         this.bulletName = in.bulletName;
         this.owner = in.owner;
-        this.targetName = targetName;
+        this.targetName = in.targetName;
         this.distance = in.distance;
         this.src = new MovingPoint(in.src);
     }

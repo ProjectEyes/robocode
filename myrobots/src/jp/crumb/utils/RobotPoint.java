@@ -9,21 +9,26 @@ package jp.crumb.utils;
  *
  * @author crumb
  */
-public class DeltaMovingPoint extends MovingPoint {
-    public DeltaMovingPoint() {
+public class RobotPoint extends MovingPoint {
+    public String name = "";
+    public double energy;
+    public MovingPoint delta;
+
+    public RobotPoint() {
     }
 
-    public DeltaMovingPoint(DeltaMovingPoint in) {
+    public RobotPoint(RobotPoint in) {
         this.set(in);
     }
-    public void set(DeltaMovingPoint in) {
+    public void set(RobotPoint in) {
         super.set(in);
+        this.name = in.name;
+        this.energy = in.energy;
         if ( in.delta != null ) {
             this.delta = new MovingPoint(in.delta);
         }
     }
     
-    public MovingPoint delta;
     
     public void setPrev(MovingPoint prev) {
         delta = new MovingPoint();
@@ -38,7 +43,7 @@ public class DeltaMovingPoint extends MovingPoint {
         this.delta = delta;
     }    
     public boolean prospectNext() {
-        DeltaMovingPoint backup = new DeltaMovingPoint(this);
+        RobotPoint backup = new RobotPoint(this);
         if ( delta == null ) {
             inertia(1);
         }else {

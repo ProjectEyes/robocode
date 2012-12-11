@@ -35,8 +35,8 @@ public class TurnTest extends BaseRobo<BaseContext> {
     int i = 5;
     @Override
     protected void cbMoving() {
-        setBack(100);
-        setTurnRight(100);
+        doAhead(-100);
+        doTurnRight(100);
         if( i <= 1 || i >= 8 ) {
             t*=-1;
         }

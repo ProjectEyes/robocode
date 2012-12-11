@@ -5,9 +5,9 @@
 package jp.crumb.base;
 
 import java.io.Serializable;
-import jp.crumb.utils.MyPoint;
 import jp.crumb.utils.Pair;
 import jp.crumb.utils.Point;
+import jp.crumb.utils.RobotPoint;
 import jp.crumb.utils.Util;
 
 /**
@@ -15,8 +15,8 @@ import jp.crumb.utils.Util;
  * @author crumb
  */
 public class BaseContext implements Serializable{
-    public MyPoint my = new MyPoint();
-    public MyPoint nextMy = new MyPoint();
+    public RobotPoint my = new RobotPoint();
+    public RobotPoint nextMy = new RobotPoint();
     
     public double curTurnRemaining;
     public double curTurnRemainingRadians;       
@@ -64,8 +64,8 @@ public class BaseContext implements Serializable{
         if ( in.destination != null ) {
             this.destination = new Point(in.destination);
         }
-        this.my = new MyPoint(in.my);
-        this.nextMy = new MyPoint(in.nextMy);
+        this.my = new RobotPoint(in.my);
+        this.nextMy = new RobotPoint(in.nextMy);
         
 
     }    

@@ -22,7 +22,7 @@ import java.util.Set;
 import jp.crumb.utils.Enemy;
 import jp.crumb.utils.Logger;
 import jp.crumb.utils.MovingPoint;
-import jp.crumb.utils.MyPoint;
+import jp.crumb.utils.RobotPoint;
 import jp.crumb.utils.Pair;
 import jp.crumb.utils.Point;
 import jp.crumb.utils.Util;
@@ -125,8 +125,8 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
         ctx.curRadarTurnRemainingRadians = getRadarTurnRemainingRadians();
         ctx.curDistanceRemaining = getDistanceRemaining();
 
-        MyPoint prevMy = ctx.my;
-        ctx.my = new MyPoint();
+        RobotPoint prevMy = ctx.my;
+        ctx.my = new RobotPoint();
         ctx.my.time = Util.NOW;
         ctx.my.velocity = getVelocity();
         ctx.my.x = getX();
@@ -134,7 +134,7 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
         ctx.my.heading = getHeading();
         ctx.my.headingRadians = getHeadingRadians();
         ctx.my.setPrev(prevMy);
-        ctx.nextMy = new MyPoint(ctx.my);
+        ctx.nextMy = new RobotPoint(ctx.my);
         prospectNextMy(ctx.nextMy,null);
     }
 
@@ -236,18 +236,14 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
         Serializable event = e.getMessage();
         if (event instanceof ScanEnemyEvent ) {
             ScanEnemyEvent ev = (ScanEnemyEvent)event;
-            Enemy enemy = ev.e;
-            enemy.calcPosition(ctx.my);
-            cbScannedRobot(enemy);
+            cbScannedRobot(ev.e);
         }else if (event instanceof TeammateInfoEvent ) {
             ctx.enemies--;
             TeammateInfoEvent ev = (TeammateInfoEvent)event;
             if ( ev.isLeader ) {
                 leader = ev.e.name;
             }
-            Enemy enemy = ev.e;
-            enemy.calcPosition(ctx.my);
-            cbScannedRobot(enemy);
+            cbScannedRobot(ev.e);
         }else if (event instanceof BulletEvent ) {
             BulletEvent ev = (BulletEvent)event;
             addBulletInfo(ev.bulletInfo);
@@ -351,7 +347,7 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
         }
     }
 
-    protected final T prospectNextMy(MyPoint nextMy,T curContext) {
+    protected final T prospectNextMy(RobotPoint nextMy,T curContext) {
         if ( ctx.my.time == 1 ) {
             return null;
         }
@@ -365,7 +361,7 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
         this.cbMoving();
 
         Pair<Double,Double> go = this.calcGoPoint();
-        ctx.my = new MyPoint(nextMy);
+        ctx.my = new RobotPoint(nextMy);
         if ( go != null ) {
 //        this.cbThinking();
 //        
@@ -662,7 +658,7 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
             g.drawString(String.format("( %2.2f , %2.2f )", ctx.my.x, ctx.my.y), (int) ctx.my.x - 20, (int) ctx.my.y - 55);
             g.drawString(String.format("heat: %2.2f", getGunHeat()), (int) ctx.my.x - 20, (int) ctx.my.y - 65);
             g.drawString(String.format("velo: %2.1f", getVelocity()), (int) ctx.my.x - 20, (int) ctx.my.y - 75);
-            MyPoint mypoint = new MyPoint(ctx.nextMy);
+            RobotPoint mypoint = new RobotPoint(ctx.nextMy);
             T curCtx = null;
             for (int i = 0; i < 20; i++) {
                 drawRound(g, mypoint.x, mypoint.y, 2);
@@ -723,12 +719,15 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
             Logger.log("hit : %2.2f(%d)",enemy.getAimType().hitTime,enemy.getAimType().hitCount);
         }        
     }
+
+    
     
     @Deprecated
     @Override
     public void setAhead(double distance) {
         throw new UnsupportedOperationException("Not permitted");
     }    
+    @Deprecated
     @Override
     public void setBack(double distance) {
         throw new UnsupportedOperationException("Not permitted");
