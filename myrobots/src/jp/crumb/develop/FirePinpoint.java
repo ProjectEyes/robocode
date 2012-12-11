@@ -5,6 +5,8 @@
 package jp.crumb.develop;
 
 import java.awt.Color;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import jp.crumb.CrumbContext;
 import jp.crumb.CrumbRobot;
@@ -42,6 +44,17 @@ public class FirePinpoint extends CrumbRobot<CrumbContext> {
     protected Enemy createEnemy(ScannedRobotEvent e) {
         // TODO: AIM type
         return new Enemy(ctx.my, e );
+    }
+    @Override
+    protected List<MoveType> initialShotTypeList(){
+        List<MoveType> moveTypeList = new ArrayList<>();
+        MoveType moveType = new MoveType(MoveType.TYPE_PINPOINT);
+        moveTypeList.add(new MoveType(moveType));
+        return moveTypeList;
+    }
+    @Override
+    protected List<MoveType> initialAimTypeList(){
+        return initialShotTypeList();
     }
 
 }

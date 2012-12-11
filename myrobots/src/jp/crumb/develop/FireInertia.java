@@ -5,6 +5,8 @@
 package jp.crumb.develop;
 
 import java.awt.Color;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import jp.crumb.CrumbContext;
 import jp.crumb.CrumbRobot;
@@ -43,4 +45,15 @@ public class FireInertia extends CrumbRobot<CrumbContext> {
         return new Enemy(ctx.my, e );
     }
 
+    @Override
+    protected List<MoveType> initialShotTypeList(){
+        List<MoveType> moveTypeList = new ArrayList<>();
+        MoveType moveType = new MoveType(MoveType.TYPE_INERTIA_CENTER);
+        moveTypeList.add(new MoveType(moveType));
+        return moveTypeList;
+    }
+    @Override
+    protected List<MoveType> initialAimTypeList(){
+        return initialShotTypeList();
+    }
 }

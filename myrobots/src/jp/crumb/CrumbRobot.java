@@ -691,7 +691,7 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
         }
     }
     
-    protected List<MoveType> initalMoveTypeList(){
+    protected List<MoveType> initialShotTypeList(){
         List<MoveType> moveTypeList = new ArrayList<>();
         MoveType moveType = new MoveType(MoveType.TYPE_UNKNOWN);
         moveType.score = -1; // 
@@ -713,6 +713,9 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
         moveTypeList.add(new MoveType(moveType));
         return moveTypeList;
     }
+    protected List<MoveType> initialAimTypeList(){
+        return initialShotTypeList();
+    }
 
     @Override
     protected Enemy cbScannedRobot(Enemy enemy) {
@@ -730,10 +733,10 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
         }
         
         if ( ! shotTypeMap.containsKey(enemy.name) ) {
-            shotTypeMap.put(enemy.name,initalMoveTypeList());
+            shotTypeMap.put(enemy.name,initialShotTypeList());
         }
         if ( ! aimTypeMap.containsKey(enemy.name) ) {
-            aimTypeMap.put(enemy.name,initalMoveTypeList());
+            aimTypeMap.put(enemy.name,initialAimTypeList());
         }
         Enemy prevR = enemyMap.get(enemy.name);
         if ( prevR != null ) {
