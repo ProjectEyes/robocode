@@ -87,23 +87,20 @@ public class MoveType implements Comparable<MoveType> , Serializable{
         return ret;
     }
     
-    static public final int TYPE_UNKNOWN   = 0xF000;
+//    static public final int TYPE_UNKNOWN   = 0xF000;
     static public final int TYPE_PINPOINT  = 0x0010;
     static private final int TYPE_INERTIA   = 0x0020;
     static private final int TYPE_ACCURATE  = 0x0040;
     static private final int TYPE_FIRST     = 0x0001;
     static private final int TYPE_CENTER    = 0x0002;
-    static private final int TYPE_LAST      = 0x0004;
     static public final int TYPE_INERTIA_FIRST  = TYPE_INERTIA | TYPE_FIRST;
     static public final int TYPE_INERTIA_CENTER = TYPE_INERTIA | TYPE_CENTER;
-    static public final int TYPE_INERTIA_LAST   = TYPE_INERTIA | TYPE_LAST;
     static public final int TYPE_ACCURATE_FIRST = TYPE_ACCURATE | TYPE_FIRST;
     static public final int TYPE_ACCURATE_CENTER = TYPE_ACCURATE | TYPE_CENTER;
-    static public final int TYPE_ACCURATE_LAST  = TYPE_ACCURATE | TYPE_LAST;
 
-    public boolean isTypeUnknown(){
-        return (type & TYPE_UNKNOWN) != 0;
-    }
+//    public boolean isTypeUnknown(){
+//        return (type & TYPE_UNKNOWN) != 0;
+//    }
     public boolean isTypePinPoint(){
         return (type == TYPE_PINPOINT);
     }
@@ -118,9 +115,6 @@ public class MoveType implements Comparable<MoveType> , Serializable{
     }
     public boolean isTypeCenter(){
         return (type & TYPE_CENTER) != 0;
-    }
-    public boolean isTypeLast(){
-        return (type & TYPE_LAST) != 0;
     }
     
 }

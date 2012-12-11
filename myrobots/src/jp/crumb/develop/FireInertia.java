@@ -4,14 +4,12 @@
  */
 package jp.crumb.develop;
 
-import java.awt.Color;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import jp.crumb.CrumbContext;
 import jp.crumb.CrumbRobot;
 import jp.crumb.utils.Enemy;
-import jp.crumb.utils.Logger;
 import jp.crumb.utils.MoveType;
 import robocode.ScannedRobotEvent;
 

@@ -46,8 +46,6 @@ import robocode.TeamRobot;
  */
 abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
     protected static final boolean isPaint = true;
-// TODO : loglv
-//logger.LOGLV= 0;//Logger.LOGLV_RADAR1;
 
 
     protected Logger logger = new Logger();
@@ -83,6 +81,9 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
         }
     };
     private void initEventPriority(){
+        // TODO : loglv
+        logger.LOGLV= Logger.LOGLV_PROSPECT3 | Logger.LOGLV_PROSPECT2 | Logger.LOGLV_FIRE1 ;
+
 	this.setEventPriority("ScannedRobotEvent",10);
 	this.setEventPriority("HitRobotEvent",10);
 	this.setEventPriority("HitWallEvent",10);
@@ -188,7 +189,7 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
 //              }
                 logger.fire1("HIT: %s : %2.2f(%2.2f)  %s => %s",victim,aimDistance,range,info.src,dst);
             }else {
-                logger.fire1("HIT (by chance): %s(%s): %2.2f(%2.2f)  %s => %s",victim,aimDistance,range,info.src,dst);
+                logger.fire1("HIT (by chance): %s(%s): %2.2f(%2.2f)  %s => %s",victim,info.targetName,aimDistance,range,info.src,dst);
             }
         }
         return entry;
@@ -311,6 +312,7 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
         this.ctx.destination = dst;
     }
     protected void cbProspectNextTurn(){ }
+    protected void cbUnprospectiveNextTurn(){}
     protected final Pair<Double,Double> calcGoPoint(){
         if ( ctx.destination == null ) {
             return null;
@@ -598,6 +600,7 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
                 this.cbStatus(e);
             }
             this.cbProspectNextTurn();
+            this.cbUnprospectiveNextTurn();
             this.cbThinking();
             this.cbMoving();
             this.goPoint();

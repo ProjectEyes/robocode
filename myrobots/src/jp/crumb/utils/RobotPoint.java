@@ -35,16 +35,16 @@ public class RobotPoint extends MovingPoint {
         delta.x = x - prev.x;
         delta.y = y - prev.y;
         delta.time = time - prev.time;
-        delta.heading = heading - prev.heading;
-        delta.headingRadians = headingRadians - prev.headingRadians;
+        delta.heading = Util.calcTurn(prev.heading,heading);
+        delta.headingRadians = Util.calcTurnRadians(prev.headingRadians,headingRadians);
         delta.velocity = velocity - prev.velocity;
     }
     public void setDelta(MovingPoint delta) {
         this.delta = delta;
     }
-    public boolean inertia(int deltaTime) {
+    public boolean inertia(long deltaTime) {
         RobotPoint backup = new RobotPoint(this);
-        inertia(deltaTime);
+        super.inertia(deltaTime);
         if ( isLimit()) {
             this.set(backup);
             return false;
