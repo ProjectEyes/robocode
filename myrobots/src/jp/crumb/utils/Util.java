@@ -166,7 +166,8 @@ public class Util {
     public static Map.Entry<String,BulletInfo> calcBulletSrc(long now,Bullet bullet,Map<String,BulletInfo> list ) {
         Point dst = new Point(bullet.getX(),bullet.getY());
         double bulletRadians = bullet.getHeadingRadians();
-        
+        String bulletOwner = bullet.getName();
+
         Map.Entry<String,BulletInfo> cur = null;
         double curDiffDistance = 0;
         double curDiffRadians = 0;
@@ -176,10 +177,12 @@ public class Util {
             double radians = bulletInfo.src.calcRadians(dst);
             double diffRadians = Math.abs(Util.calcTurnRadians(radians, bulletRadians));
             double diffDistance = Math.abs((now - bulletInfo.src.time)*bullet.getVelocity() - bulletInfo.src.calcDistance(dst));
-            if ( cur == null || diffRadians < curDiffRadians &&  diffDistance < curDiffDistance ) {
-                cur = e;
-                curDiffRadians = diffRadians;
-                curDiffDistance = diffDistance;
+            if ( bulletOwner.equals(bulletInfo.owner) ) {
+                if ( cur == null || diffRadians < curDiffRadians &&  diffDistance < curDiffDistance ) {
+                    cur = e;
+                    curDiffRadians = diffRadians;
+                    curDiffDistance = diffDistance;
+                }
             }
         }
         if ( cur != null ) {

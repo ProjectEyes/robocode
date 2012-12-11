@@ -47,7 +47,6 @@ public class CrumbContext extends BaseContext {
     
     public Map<String, Enemy> nextEnemyMap = new HashMap<>();
     public Map<String,BulletInfo> nextBulletList = new HashMap<>();
-    public Map<String,BulletInfo> nextEnemyBulletList = new HashMap<>();
     
     
     public CrumbContext() {
@@ -76,12 +75,6 @@ public class CrumbContext extends BaseContext {
             }
         });
         nextBulletList = Util.deepCopyHashMap(in.nextBulletList,new Copy<BulletInfo>(){
-            @Override
-            public BulletInfo copy(BulletInfo e) {
-                return new BulletInfo(e);
-            }
-        });
-        this.nextEnemyBulletList = Util.deepCopyHashMap(in.nextEnemyBulletList,new Copy<BulletInfo>(){
             @Override
             public BulletInfo copy(BulletInfo e) {
                 return new BulletInfo(e);

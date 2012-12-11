@@ -260,22 +260,22 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
         doAhead(go.first);
         doTurnRight(go.second);
     }
-    private void scannedRobot(ScannedRobotEvent e) {
-        Enemy r = createEnemy(e);
-        if ( ! isTeammate(r.name)) {
+    private void preScannedRobot(ScannedRobotEvent e) {
+        Enemy enemy = createEnemy(e);
+        if ( ! isTeammate(enemy.name)) {
             // Message will reach to teammate at next turn !!
-            Enemy next = new Enemy(r);
+            Enemy next = new Enemy(enemy);
             prospectNextEnemy(next);
             next.time++;
             this.broadcastMessage(new ScanEnemyEvent(next));
         }
-        cbScannedRobot(r);
+        cbScannedRobot(enemy);
     }
 
     protected Enemy cbScannedRobot(Enemy enemy) {
         logger.scan("%15s : %s : %d",enemy.name,enemy,enemy.time);
-        Enemy prevR = enemyMap.get(enemy.name);
-        if ( prevR == null )  { // The first time
+        Enemy prevEnemy = enemyMap.get(enemy.name);
+        if ( prevEnemy == null )  { // The first time
             if ( enemy.energy > 120 ) {
                 enemy.role = Enemy.ROLE_LEADER;
             }else if ( enemy.energy > 100 ) {
@@ -284,14 +284,14 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
                 enemy.role = Enemy.ROLE_ROBOT;
             }
         }
-        if ( prevR != null && prevR.time == enemy.time ) {
+        if ( prevEnemy != null && prevEnemy.time == enemy.time ) {
             return null;
         }
 
-        if ( prevR != null ) {
+        if ( prevEnemy != null ) {
             // Prev info
-            if ( enemy.time != prevR.time && (enemy.time-prevR.time) < SCAN_STALE ) {
-                enemy.setPrev(prevR);
+            if ( enemy.time != prevEnemy.time && (enemy.time-prevEnemy.time) < SCAN_STALE ) {
+                enemy.setPrev(prevEnemy);
             }
         }
 
@@ -430,9 +430,8 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
     protected void cbFiring() {}
     protected void cbFirst() {}
 
-    @Deprecated
     protected boolean prospectNextEnemy(Enemy enemy) {
-        return true;
+        return enemy.prospectNext();
     }
 
     protected void cbStatus(StatusEvent e){}
@@ -495,7 +494,7 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
         }
         addCustomEvent(this.firstTickTimer);
         addCustomEvent(this.eachTickTimer);
-        execute();
+//        execute();
     }
   @Override
     public boolean isTeammate(String name) {
@@ -570,7 +569,7 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
             sendMyInfo();
             
             for ( ScannedRobotEvent e: this.getScannedRobotEvents() ) {
-                this.scannedRobot(e);
+                this.preScannedRobot(e);
             }
             for ( MessageEvent e : this.getMessageEvents() ) {
                 this.dispatchMessage(e);

@@ -19,6 +19,12 @@ import robocode.MessageEvent;
  * @author crumb
  */
 abstract public class Invader extends CrumbRobot<CrumbContext> {
+    @Override
+    public void run() {
+        super.run();
+        setColors(new Color(1.0f,0,0,0.1f),new Color(1.0f,0.5f,0),new Color(1.0f,0,0.5f));
+        this.setBulletColor(new Color(255,100,100));
+    }
 
     static final int MODE_CUSTOM_GO        = 0;
     static final int MODE_CUSTOM_NOT_READY = 1;
@@ -103,12 +109,6 @@ abstract public class Invader extends CrumbRobot<CrumbContext> {
         super.cbThinking();
     }    
 
-    @Override
-    public void run() {
-        setColors(new Color(1.0f,0,0,0.1f),new Color(1.0f,0.5f,0),new Color(1.0f,0,0.5f));
-        this.setBulletColor(new Color(255,100,100));
-        super.run();
-    }
     
     private void openFire () {
         setFireMode(ctx.MODE_FIRE_AUTO);

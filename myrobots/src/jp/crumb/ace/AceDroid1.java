@@ -4,13 +4,12 @@
  */
 package jp.crumb.ace;
 
-import jp.crumb.CrumbRobot;
 
 
 /**
  *
  * @author crumb
  */
-public class AceSlave extends AceRobot {
+public class AceDroid1 extends AceDroid {
 
 }

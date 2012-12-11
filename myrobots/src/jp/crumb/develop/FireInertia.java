@@ -21,6 +21,7 @@ import robocode.ScannedRobotEvent;
 public class FireInertia extends CrumbRobot<CrumbContext> {
     @Override
     protected void cbThinking() {
+System.out.println(ctx.nextEnemyMap.size());
         for ( Map.Entry<String,Enemy> e : ctx.nextEnemyMap.entrySet() ) {
             if ( ! isTeammate(e.getValue().name) ) {
                 ctx.setLockonTarget(e.getValue().name);
@@ -32,26 +33,11 @@ public class FireInertia extends CrumbRobot<CrumbContext> {
         setFireMode(ctx.MODE_FIRE_AUTO);
     }
 
-//    @Override
-//    protected void cbFiring() {
-//        fire(0.5,0,"");
-//    }
 
     @Override
-    protected Enemy createEnemy(ScannedRobotEvent e) {
-        // TODO: AIM type
-        return new Enemy(ctx.my, e );
+    protected MoveType getAimType(String name) {
+        return new MoveType(MoveType.TYPE_INERTIA_FIRST);
     }
 
-    @Override
-    protected List<MoveType> initialShotTypeList(){
-        List<MoveType> moveTypeList = new ArrayList<>();
-        MoveType moveType = new MoveType(MoveType.TYPE_INERTIA_CENTER);
-        moveTypeList.add(new MoveType(moveType));
-        return moveTypeList;
-    }
-    @Override
-    protected List<MoveType> initialAimTypeList(){
-        return initialShotTypeList();
-    }
+
 }

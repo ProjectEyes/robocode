@@ -50,10 +50,18 @@ public class MoveType implements Comparable<MoveType> , Serializable{
         hitCount++;
         hitTime = sumHit/(double)hitCount;
     }
-    public void updateScore(double s){
-        double sumScore = scoreCount * score + s;
+    public void updateScore(double s,double limit){
+        double count = scoreCount;
+        if ( scoreCount > limit ) {
+            count = limit;
+        }
+        double sumScore = count * score + s;
         scoreCount++;
-        score = sumScore/(double)scoreCount;
+        count++;
+        score = sumScore/(double)count;
+    }
+    public void updateScore(double s){
+        updateScore(s,Double.POSITIVE_INFINITY);
     }
     public void revartAim(double time){
         double sumAim = aimCount * aimTime - time;
