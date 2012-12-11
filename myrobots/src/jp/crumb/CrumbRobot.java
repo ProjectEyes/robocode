@@ -8,19 +8,20 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 import jp.crumb.base.BaseRobo;
 import jp.crumb.base.BulletInfo;
-import jp.crumb.base.CancelEnemyBalletEvent;
-import jp.crumb.utils.RobotPoint;
 import jp.crumb.utils.Enemy;
 import jp.crumb.utils.MoveType;
 import jp.crumb.utils.MovingPoint;
 import jp.crumb.utils.Pair;
 import jp.crumb.utils.Point;
+import jp.crumb.utils.RobotPoint;
 import jp.crumb.utils.TimedPoint;
 import jp.crumb.utils.Util;
 import robocode.Bullet;
 import robocode.BulletHitEvent;
+import robocode.BulletMissedEvent;
 import robocode.Droid;
 import robocode.HitByBulletEvent;
 import robocode.MessageEvent;
@@ -37,6 +38,7 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
     protected static final int DEFAULT_MAX_HIT_TIME = 40;
     protected int MAX_HIT_TIME = DEFAULT_MAX_HIT_TIME;
     protected static final double ENEMY_BULLET_DIFF_THRESHOLD = Math.PI/4; // more than 45 degrees
+    protected static final double BULLET_DIFF_THRESHOLD = Math.PI/4; // more than 45 degrees
 
 //    protected static final int MODE_NORMAL = MODE_RADAR_SEARCH;
 //    protected static final int MODE_LOCKON = MODE_RADAR_LOCKON | MODE_GUN_LOCKON;
@@ -101,20 +103,31 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
     protected  double RANGE_RADAR_LOCKON = DEFAULT_RANGE_RADAR_LOCKON;
 
     protected static Map<String,List<MoveType>> shotTypeMap = new HashMap<>();
-// Todo:
-//    protected static Map<String,List<MoveType>> aimTypeMap = new HashMap();
-    protected List<RobotPoint> myLog = new ArrayList<>();
-    protected static Map<String, List<Enemy> > enemyLog = new HashMap<>();
+    protected static Map<String,List<MoveType>> aimTypeMap = new HashMap();
+
+    protected Map<Long,RobotPoint> myLog = new HashMap<>();
+    protected static Map<String, Map<Long,Enemy> > enemyLog = new HashMap<>();
 
     @Override
     protected void updateCurrent() {
         super.updateCurrent();
-        myLog.add(ctx.my);
+        myLog.put(ctx.my.time,ctx.my);
     }
-    protected RobotPoint prevMy(long prev) {
-        long size = myLog.size();
-        if ( size > prev )  {
-            return myLog.get((int)size-1-(int)prev);
+    // TODO: to abs time
+//    protected RobotPoint prevMy(long prev) {
+//        long size = myLog.size();
+//        if ( size > prev )  {
+//            return myLog.get((int)size-1-(int)prev);
+//        }
+//        return null;
+//    }
+    protected RobotPoint logMy(long absTime) {
+        return myLog.get(absTime);
+    }
+    protected RobotPoint logEnemy(String name,long absTime) {
+        Map<Long,Enemy> log = enemyLog.get(name);
+        if ( log != null ) {
+            return log.get(absTime);
         }
         return null;
     }
@@ -123,30 +136,31 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
     // TODO: change aimtype 
     @Override
     protected Enemy createEnemy(ScannedRobotEvent e) {
-        return new Enemy(ctx.my, e , MoveType.TYPE_ACCURATE1);
+        return new Enemy(ctx.my, e);
     }    
-    
+    @Deprecated
     @Override
     protected boolean prospectNextEnemy(Enemy enemy) {
-        boolean ret = true;
-        if ( enemy.aimType == MoveType.TYPE_PINPOINT ) {
-        }else if ( enemy.aimType == MoveType.TYPE_ACCURATE1 ) {
-            enemy.prospectNext(ctx.my);
-        }else if ( enemy.aimType == MoveType.TYPE_INERTIA1 ) {
-            if ( enemy.isLimit() ) {
-                ret = false;
-            }else {
-                enemy.inertia(1);
-                ret = true;
-            }
-        }else if ( enemy.aimType == MoveType.TYPE_UNKNOWN ) {
-            // TODO: DIFF fier
-        }
-        return ret;
+        return enemy.prospectNext();
     }
-    protected void prospectNextEnemy(Enemy enemy,int interval) {
+    @Deprecated
+    protected void prospectNextEnemy(Enemy enemy,long interval) {
         for (int i = 1; i <= interval; i++) {
             prospectNextEnemy(enemy);
+        }
+    }
+
+    protected void prospectNextRobot(RobotPoint robot,MoveType moveType,long term) {
+        if ( moveType.isTypePinPoint() ) {
+        }else if ( moveType.isTypeInertia() ) {
+            robot.inertia(term);
+        }else if ( moveType.isTypeAccurate() ) {
+            for ( int i = 0 ; i < term ; i++ ) {
+                robot.prospectNext();
+            }
+        }else if ( moveType.isTypeUnknown() ) {
+            // TODO: Unknown How do you do ?
+            throw new UnsupportedOperationException("Unknown type : " + moveType.type);
         }
     }
     
@@ -216,6 +230,7 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
         }
         double maxPower = 0.0;
         double aimDistance = Util.fieldFullDistance;
+        MoveType aimType = MoveType.getMoveTypeByScore(aimTypeMap.get(target.name));
         Enemy prospectTarget = new Enemy(target);
         for ( int i = 1; i <= MAX_HIT_TIME; i++ ) {
             double d = Util.calcPointToLineRange(ctx.my,prospectTarget,ctx.curGunHeadingRadians);
@@ -228,7 +243,8 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
                     aimDistance = bultDistance;
                 }
             }
-            prospectNextEnemy(prospectTarget);
+            // TODO: calcFire() CHECK : using aimType
+            prospectNextRobot(prospectTarget,aimType,1);
         }
         return new Pair<>(maxPower,aimDistance);
     }
@@ -267,65 +283,105 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
         return (power==0.0)?0.01:power;
     }
 
-    
-    protected double calcShotRadians(RobotPoint target,double velocity,Point src,int shotType,long deltaTime){
+    protected Pair<Long,Double> calcShot(MoveType moveType,RobotPoint target,Point src,double bulletVelocity){
+        return calcShot(moveType, target, src, bulletVelocity,0);
+    }
+    protected Pair<Long,Double> calcShot(MoveType moveType,RobotPoint target,Point src,double bulletVelocity,long deltaTime){
         double distance = src.calcDistance(target);
-        double ret = 0;
-        if ( shotType == MoveType.TYPE_UNKNOWN ) {
-            //TODO: default
-        }else if ( shotType == MoveType.TYPE_PINPOINT ) {
-            ret = src.calcRadians(target);
-        }else if ( shotType == MoveType.TYPE_INERTIA1 ) {
+        double retRadians = 0;
+        long   retTime = 0;
+        if ( moveType.isTypeUnknown() ) {
+            //TODO: Unknown How do you do ? 
+            throw new UnsupportedOperationException("Unknown type : " + moveType.type);
+        }else if ( moveType.isTypeUnknown() ) {
+            retRadians = src.calcRadians(target);
+            retTime    = (long)Math.ceil(src.calcDistance(target));
+        }else if ( moveType.isTypeInertia() || moveType.isTypeAccurate()  ) {
             // ((deltaTime>0)?deltaTime:(long)Math.ceil(Math.abs(distance/velocity)))
             //  - Calc only fixed time ( hitted )
             //  - for prospecting time ( shoting ) =>  with updating distance each ticks.
             RobotPoint cpMyAsEnemy = new RobotPoint(target);
-            for ( int i = 1 ; i <= ((deltaTime>0)?deltaTime:(long)Math.ceil(Math.abs(distance/velocity))) ; i++ ) {
-                cpMyAsEnemy.inertia(1);
-                distance = src.calcDistance(cpMyAsEnemy);
-                ret = src.calcRadians(cpMyAsEnemy);
-                if ( distance - Math.abs(velocity*i) < (Util.tankWidth/2) ) { // hit ?
-                    logger.prospect4("INERTIA1 : %2.2f  (%2.2f - %2.2f = %2.2f)" ,Math.toDegrees(ret),distance,Math.abs(velocity*i),distance - Math.abs(velocity*i));
-                    break;
-                }
+            double hitArea;
+            if ( moveType.isTypeFirst() ) {
+                hitArea = 0;
+            }else if ( moveType.isTypeCenter() ) {
+                hitArea = (Util.tankWidth/2);                
+            }else if ( moveType.isTypeLast() ) {
+                hitArea = -(Util.tankWidth/2);                
+            }else{
+                throw new UnsupportedOperationException("Unknown type : " + moveType.type);
             }
-        }else if ( shotType == MoveType.TYPE_INERTIA2 ) {
-            RobotPoint cpMyAsEnemy = new RobotPoint(target);
-            for ( int i = 1 ; i <= ((deltaTime>0)?deltaTime:(long)Math.ceil(Math.abs(distance/velocity))) ; i++ ) {
-                cpMyAsEnemy.inertia(1);
+            // TODO : TEST !!
+            for ( retTime = 1 ; retTime <= ((deltaTime>0)?deltaTime:(long)Math.ceil(Math.abs(distance/bulletVelocity))) ; retTime++ ) {
+                prospectNextRobot(cpMyAsEnemy,moveType,1);
                 distance = src.calcDistance(cpMyAsEnemy);
-                ret = src.calcRadians(cpMyAsEnemy);
-                if ( distance - Math.abs(velocity*i) < 0 ) { // hit ?
-                    logger.prospect4("INERTIA2 : %2.2f  (%2.2f - %2.2f = %2.2f)" ,Math.toDegrees(ret),distance,Math.abs(velocity*i),distance - Math.abs(velocity*i));
-                    break;
-                }
-            }
-        }else if ( shotType == MoveType.TYPE_ACCURATE1 ) {
-            RobotPoint cpMyAsEnemy = new RobotPoint(target);
-            for ( int i = 1 ; i <= ((deltaTime>0)?deltaTime:(long)Math.ceil(Math.abs(distance/velocity))) ; i++ ) {
-                cpMyAsEnemy.prospectNext();
-                distance = src.calcDistance(cpMyAsEnemy);
-                ret = src.calcRadians(cpMyAsEnemy);
-                if ( distance - Math.abs(velocity*i) < (Util.tankWidth/2) ) { // hit ?
-                    logger.prospect4("ACCURATE1 : %2.2f  (%2.2f - %2.2f = %2.2f)" ,Math.toDegrees(ret),distance,Math.abs(velocity*i),distance - Math.abs(velocity*i));
-                    break;
-                }
-            }
-        }else if ( shotType == MoveType.TYPE_ACCURATE2 ) {
-            RobotPoint cpMyAsEnemy = new RobotPoint(target);
-            for ( int i = 1 ; i <= ((deltaTime>0)?deltaTime:(long)Math.ceil(Math.abs(distance/velocity))) ; i++ ) {
-                cpMyAsEnemy.prospectNext();
-                distance = src.calcDistance(cpMyAsEnemy);
-                ret = src.calcRadians(cpMyAsEnemy);
-                if ( distance - Math.abs(velocity*i) < 0 ) { // hit ?
-                    logger.prospect4("ACCURATE2 : %2.2f  (%2.2f - %2.2f = %2.2f)" ,Math.toDegrees(ret),distance,Math.abs(velocity*i),distance - Math.abs(velocity*i));
+                retRadians = src.calcRadians(cpMyAsEnemy);
+                if ( distance - Math.abs(bulletVelocity*retTime) < hitArea ) { // hit ?
+                    logger.prospect4("INERTIA1 : %2.2f  (%2.2f - %2.2f = %2.2f)" ,Math.toDegrees(retRadians),distance,Math.abs(bulletVelocity*retTime),distance - Math.abs(bulletVelocity*retTime));
                     break;
                 }
             }
         }
-        return ret;
+        return new Pair<>(retTime,retRadians);
     }    
-    // TODO: lockOn() Use calcShotRadians
+//    protected Pair<Long,Double> calcShotRadians(RobotPoint target,double velocity,Point src,int shotType,long deltaTime){
+//        double distance = src.calcDistance(target);
+//        double retRadians = 0;
+//        long   retTime = 0;
+//        if ( shotType == MoveType.TYPE_UNKNOWN ) {
+//        }else if ( shotType == MoveType.TYPE_PINPOINT ) {
+//            retRadians = src.calcRadians(target);
+//            retTime    = (long)Math.ceil(src.calcDistance(target));
+//        }else if ( shotType == MoveType.TYPE_INERTIA1 ) {
+//            // ((deltaTime>0)?deltaTime:(long)Math.ceil(Math.abs(distance/velocity)))
+//            //  - Calc only fixed time ( hitted )
+//            //  - for prospecting time ( shoting ) =>  with updating distance each ticks.
+//            RobotPoint cpMyAsEnemy = new RobotPoint(target);
+//            for ( retTime = 1 ; retTime <= ((deltaTime>0)?deltaTime:(long)Math.ceil(Math.abs(distance/velocity))) ; retTime++ ) {
+//                cpMyAsEnemy.inertia(1);
+//                distance = src.calcDistance(cpMyAsEnemy);
+//                retRadians = src.calcRadians(cpMyAsEnemy);
+//                if ( distance - Math.abs(velocity*retTime) < (Util.tankWidth/2) ) { // hit ?
+//                    logger.prospect4("INERTIA1 : %2.2f  (%2.2f - %2.2f = %2.2f)" ,Math.toDegrees(retRadians),distance,Math.abs(velocity*retTime),distance - Math.abs(velocity*retTime));
+//                    break;
+//                }
+//            }
+//        }else if ( shotType == MoveType.TYPE_INERTIA2 ) {
+//            RobotPoint cpMyAsEnemy = new RobotPoint(target);
+//            for ( retTime = 1 ; retTime <= ((deltaTime>0)?deltaTime:(long)Math.ceil(Math.abs(distance/velocity))) ; retTime++ ) {
+//                cpMyAsEnemy.inertia(1);
+//                distance = src.calcDistance(cpMyAsEnemy);
+//                retRadians = src.calcRadians(cpMyAsEnemy);
+//                if ( distance - Math.abs(velocity*retTime) < 0 ) { // hit ?
+//                    logger.prospect4("INERTIA2 : %2.2f  (%2.2f - %2.2f = %2.2f)" ,Math.toDegrees(retRadians),distance,Math.abs(velocity*retTime),distance - Math.abs(velocity*retTime));
+//                    break;
+//                }
+//            }
+//        }else if ( shotType == MoveType.TYPE_ACCURATE1 ) {
+//            RobotPoint cpMyAsEnemy = new RobotPoint(target);
+//            for ( retTime = 1 ; retTime <= ((deltaTime>0)?deltaTime:(long)Math.ceil(Math.abs(distance/velocity))) ; retTime++ ) {
+//                cpMyAsEnemy.prospectNext();
+//                distance = src.calcDistance(cpMyAsEnemy);
+//                retRadians = src.calcRadians(cpMyAsEnemy);
+//                if ( distance - Math.abs(velocity*retTime) < (Util.tankWidth/2) ) { // hit ?
+//                    logger.prospect4("ACCURATE1 : %2.2f  (%2.2f - %2.2f = %2.2f)" ,Math.toDegrees(retRadians),distance,Math.abs(velocity*retTime),distance - Math.abs(velocity*retTime));
+//                    break;
+//                }
+//            }
+//        }else if ( shotType == MoveType.TYPE_ACCURATE2 ) {
+//            RobotPoint cpMyAsEnemy = new RobotPoint(target);
+//            for ( retTime = 1 ; retTime <= ((deltaTime>0)?deltaTime:(long)Math.ceil(Math.abs(distance/velocity))) ; retTime++ ) {
+//                cpMyAsEnemy.prospectNext();
+//                distance = src.calcDistance(cpMyAsEnemy);
+//                retRadians = src.calcRadians(cpMyAsEnemy);
+//                if ( distance - Math.abs(velocity*retTime) < 0 ) { // hit ?
+//                    logger.prospect4("ACCURATE2 : %2.2f  (%2.2f - %2.2f = %2.2f)" ,Math.toDegrees(retRadians),distance,Math.abs(velocity*retTime),distance - Math.abs(velocity*retTime));
+//                    break;
+//                }
+//            }
+//        }
+//        return new Pair<>(retTime,retRadians);
+//    }    
     protected static final int MAX_CALC = 5;
     protected void lockOn(String lockonTarget) {
         Enemy lockOnTarget = getNextEnemy(lockonTarget);
@@ -339,9 +395,34 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
         double allTime = distance / Util.bultSpeed(power)+1; // 1 = gunturn
 
 
-        RobotPoint prospectMy  = new RobotPoint(ctx.my);
-        prospectMy.prospectNext();
 
+        {
+        MoveType aimType = MoveType.getMoveTypeByScore(aimTypeMap.get(lockonTarget));
+        long gunTurnTime = 1;
+        for (int i = 0 ; i < MAX_CALC ; i++ ) {
+            // prospect me while gun turn
+            RobotPoint prospectMy  = new RobotPoint(ctx.my);
+            prospectNextMy(prospectMy,gunTurnTime);
+            // prospect target while gun turn
+            Enemy prospectTarget = new Enemy(lockOnTarget);
+            prospectNextRobot(prospectTarget, aimType, gunTurnTime);
+            // 
+            distance = prospectMy.calcDistance(prospectTarget);
+            power = this.selectPowerFromDistance(distance);
+            double bulletVelocity = Util.bultSpeed(power);
+            Pair<Long,Double> shot = calcShot(aimType,prospectTarget,prospectMy,bulletVelocity);
+            long bulletTime = shot.first;
+            double bulletRadians = shot.second;
+            gunTurn = ctx.calcAbsGunTurn(bulletRadians);
+            long nextGunTurnTime = (long) Math.ceil(gunTurn / Util.gunTurnSpeed());
+            if ( gunTurnTime == nextGunTurnTime) {
+                ctx.lockOnPoint = Util.calcPoint(bulletRadians,bulletTime*bulletVelocity);
+                logger.log("GUNTURN1 : " + gunTurn);
+                break;
+            }
+        }
+        }
+        // TODO: lockOn() Use calcShotRadians => should remove this loop
         for (int i = 0 ; i < MAX_CALC ; i++ ) {
             Enemy prospectTarget = new Enemy(lockOnTarget);
             prospectNextEnemy(prospectTarget,(int)Math.ceil(allTime));
@@ -353,6 +434,7 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
             // Todo:
             if (Math.abs(allTime - (bultTime + gunTurnTime)) < 1) {
                 ctx.lockOnPoint = prospectTarget;
+                logger.log("GUNTURN2 : " + gunTurn);
                 break;
             }
             allTime = bultTime + gunTurnTime;
@@ -408,7 +490,14 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
         }else if (event instanceof CancelEnemyBalletEvent ) {
             CancelEnemyBalletEvent ev = (CancelEnemyBalletEvent)event;
             removeEnemyBulletInfo(ev.key);
+        }else if (event instanceof ShotTypeEvent ) {
+            ShotTypeEvent ev = (ShotTypeEvent)event;
+            shotTypeMap.put(ev.name,ev.shotTypeList);
+        }else if (event instanceof AimTypeEvent ) {
+            AimTypeEvent ev = (AimTypeEvent)event;
+            aimTypeMap.put(ev.name,ev.aimTypeList);
         }
+        
     }
 
     @Override
@@ -484,7 +573,7 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
                 }
             }
         }
-        // TODO : TEST
+        // TODO : TEST !!
         if ( lockOnTarget != null ) {
             double distance = ctx.my.calcDistance(lockOnTarget);
             if (    ctx.enemies == 1 || 
@@ -601,6 +690,29 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
             firing(1,0);
         }
     }
+    
+    protected List<MoveType> initalMoveTypeList(){
+        List<MoveType> moveTypeList = new ArrayList<>();
+        MoveType moveType = new MoveType(MoveType.TYPE_UNKNOWN);
+        moveType.score = -1; // 
+        moveTypeList.add(new MoveType(moveType));
+        moveType = new MoveType(MoveType.TYPE_PINPOINT);
+        moveType.score = 0.001; // Initial type (will be overrided by first hit!!)
+        moveTypeList.add(new MoveType(moveType));
+        moveType = new MoveType(MoveType.TYPE_INERTIA_FIRST);
+        moveTypeList.add(new MoveType(moveType));
+        moveType = new MoveType(MoveType.TYPE_INERTIA_CENTER);
+        moveTypeList.add(new MoveType(moveType));
+        moveType = new MoveType(MoveType.TYPE_INERTIA_LAST);
+        moveTypeList.add(new MoveType(moveType));
+        moveType = new MoveType(MoveType.TYPE_ACCURATE_FIRST);
+        moveTypeList.add(new MoveType(moveType));
+        moveType = new MoveType(MoveType.TYPE_ACCURATE_CENTER);
+        moveTypeList.add(new MoveType(moveType));
+        moveType = new MoveType(MoveType.TYPE_ACCURATE_LAST);
+        moveTypeList.add(new MoveType(moveType));
+        return moveTypeList;
+    }
 
     @Override
     protected Enemy cbScannedRobot(Enemy enemy) {
@@ -612,29 +724,16 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
         ctx.nextEnemyMap.put(constEnemy.name, new Enemy(constEnemy));
         if ( ! isTeammate(enemy.name)) {
             if ( ! enemyLog.containsKey(enemy.name)) {
-                enemyLog.put(enemy.name,new ArrayList());
+                enemyLog.put(enemy.name,new HashMap<Long,Enemy>());
             }
-            enemyLog.get(enemy.name).add(new Enemy(constEnemy));
+            enemyLog.get(enemy.name).put(enemy.time,new Enemy(constEnemy));
         }
         
         if ( ! shotTypeMap.containsKey(enemy.name) ) {
-            // TODO: init shotTypeMap
-            List<MoveType> shotTypeList = new ArrayList<>();
-            MoveType moveType = new MoveType(MoveType.TYPE_UNKNOWN);
-            moveType.score = -1; // 
-            shotTypeList.add(new MoveType(moveType));
-            moveType = new MoveType(MoveType.TYPE_PINPOINT);
-            shotTypeList.add(new MoveType(moveType));
-            moveType = new MoveType(MoveType.TYPE_INERTIA1);
-            shotTypeList.add(new MoveType(moveType));
-            moveType = new MoveType(MoveType.TYPE_INERTIA2);
-            shotTypeList.add(new MoveType(moveType));
-            moveType = new MoveType(MoveType.TYPE_ACCURATE1);
-            shotTypeList.add(new MoveType(moveType));
-            moveType = new MoveType(MoveType.TYPE_ACCURATE2);
-            moveType.score = 0.001; // Initial type (will be overrided by first hit!!)
-            shotTypeList.add(new MoveType(moveType));
-            shotTypeMap.put(enemy.name,shotTypeList);
+            shotTypeMap.put(enemy.name,initalMoveTypeList());
+        }
+        if ( ! aimTypeMap.containsKey(enemy.name) ) {
+            aimTypeMap.put(enemy.name,initalMoveTypeList());
         }
         Enemy prevR = enemyMap.get(enemy.name);
         if ( prevR != null ) {
@@ -685,11 +784,76 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
     }
 
     @Override
-    protected void cbBulletHit(BulletHitEvent e) {
-        super.cbBulletHit(e);
+    protected Map.Entry<String, BulletInfo> cbBulletMissed(BulletMissedEvent e) {
+        Map.Entry<String,BulletInfo> entry = super.cbBulletMissed(e);
+        if ( entry != null ) {
+            reEvalShot(entry.getValue());
+        }
+        return entry;
+    }
+
+    protected void reEvalShot(BulletInfo info) {
+        // TODO: AIMING estimate
+        long deltaTime = ctx.my.time - info.src.time;
+        // TODO: prevMy
+        RobotPoint prevMy = logMy(info.src.time);
+        // Map<Long,Enemy> histEnemies = enemyLog.get(info.targetName);
+        List<MoveType> aimTypeList = aimTypeMap.get(info.targetName);
+        for (MoveType moveType : aimTypeList) {
+            // double tankWidthRadians = Math.asin((Util.tankWidth/2)/distance);
+
+            if (moveType.isTypeUnknown()) {
+            } else {
+                Pair<Long, Double> shot = calcShot(moveType, prevMy, info.src, info.src.velocity);
+                MovingPoint bulletPoint = new MovingPoint(info.src);
+                bulletPoint.headingRadians = shot.second;
+                bulletPoint.heading = Math.toDegrees(shot.second);
+                // Validate on history
+                RobotPoint prevTarget = null;
+                double closest = Util.fieldFullDistance;
+                double closestDistance = Util.fieldFullDistance;
+                double bulletDistance = 0;
+                for (long i = info.src.time; i <= ctx.my.time; i++) {
+                    RobotPoint target = logEnemy(info.targetName, i);
+                    if (target == null) {
+                        // No data 
+                        prospectNextRobot(prevTarget, moveType, 1);
+                        target = prevTarget;
+                    }
+                    prevTarget = target;
+                    if (prevTarget == null) {
+                        continue;
+                    }
+                    bulletPoint.inertia(1);
+
+                    double d = bulletPoint.calcDistance(target);
+                    if (d < (Util.tankWidth / 2)) { // hit 
+                        closest = 0.0;
+                        closestDistance = bulletDistance;
+                        break;
+                    }
+                    if (d < closest) {
+                        closest = d;
+                        closestDistance = bulletDistance;
+                    }
+                    bulletDistance += info.src.velocity;
+                }
+                // Closest will nearly equals right angle with the bullet line. 
+                double diffRadians = closest / closestDistance; // So use sin
+                diffRadians = (Math.abs(diffRadians) < ENEMY_BULLET_DIFF_THRESHOLD) ? diffRadians : BULLET_DIFF_THRESHOLD;
+                moveType.updateScore(Math.PI / 2 - diffRadians);
+                logger.prospect4("AIMTYPE : %d  degree: %2.2f => %2.2f = %2.2f", moveType.type, closest, Math.toDegrees(diffRadians), Math.toDegrees(moveType.score));
+            }
+        }
+        broadcastMessage(new AimTypeEvent(info.targetName, aimTypeList));
+    }
+    
+    @Override
+    protected Map.Entry<String, BulletInfo> cbBulletHit(BulletHitEvent e) {
+        Map.Entry<String,BulletInfo> entry = super.cbBulletHit(e);
         Bullet bullet = e.getBullet();
         Point dst = new Point(bullet.getX(),bullet.getY());
-         for ( Map.Entry<String,BulletInfo> ebi : enemyBulletList.entrySet() ) {
+        for ( Map.Entry<String,BulletInfo> ebi : enemyBulletList.entrySet() ) {
             BulletInfo bulletInfo = ebi.getValue();
             if ( e.getTime() == bulletInfo.src.time && bulletInfo.src.calcDegree(dst) < Util.tankSize ) {
                 logger.fire2("CANCEL BULLET() %s : %s ", dst,bulletInfo.src);
@@ -697,6 +861,10 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
                 break;
             }
         }
+        if ( entry != null ) {
+            reEvalShot(entry.getValue());
+        }
+        return entry;
     }
 
     @Override
@@ -712,22 +880,27 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
             impactEnemyBulletInfo(entry.getKey());
         // TODO: hit by bullet
             long deltaTime = ctx.my.time-info.src.time;
-            RobotPoint prevMy = prevMy(deltaTime);
+            // TODO: prevMy
+            // RobotPoint prevMy = prevMy(deltaTime);
+            RobotPoint prevMy = logMy(info.src.time);
             double distance = info.src.calcDistance(prevMy);
-            RobotPoint my = new RobotPoint(prevMy);
-            for ( MoveType moveType : shotTypeMap.get(enemyName) ) {
+            
+            List<MoveType> shotTypeList = shotTypeMap.get(enemyName);
+            for ( MoveType moveType : shotTypeList ) {
                 double tankWidthRadians = Math.asin((Util.tankWidth/2)/distance);
                 
-                if ( moveType.type == MoveType.TYPE_UNKNOWN ) {
+                if ( moveType.isTypeUnknown() ) {
                 }else{
-                    double diffRadians = Util.calcTurnRadians(bulletRadians,calcShotRadians(prevMy,bulletVelocity,info.src,moveType.type,deltaTime));
+                    double shotRadians = calcShot(moveType,prevMy,info.src,bulletVelocity,deltaTime).second;
+                    double diffRadians = Util.calcTurnRadians(bulletRadians,shotRadians);
                     diffRadians = (Math.abs(diffRadians)<ENEMY_BULLET_DIFF_THRESHOLD)?diffRadians:ENEMY_BULLET_DIFF_THRESHOLD;
                     double correctedRadians = Math.abs(diffRadians) - Math.abs(tankWidthRadians);
                     correctedRadians = (correctedRadians<0)?0:correctedRadians;
                     moveType.updateScore(Math.PI/2-correctedRadians);
-                    logger.prospect4(moveType.type + " : " + Math.toDegrees(diffRadians) + " => " + Math.toDegrees(correctedRadians) + " = " + Math.toDegrees(moveType.score));
+                    logger.prospect4("TYPE : %d  degree: %2.2f => %2.2f = %2.2f",moveType.type,Math.toDegrees(diffRadians), Math.toDegrees(correctedRadians),Math.toDegrees(moveType.score));
                 }
             }
+            broadcastMessage(new ShotTypeEvent(enemyName, shotTypeList));
 
         }
     }
@@ -744,7 +917,8 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
                 logger.fire4("ENEMY(collision): %s = %s dist(%2.2f)", info.src,cpPrev , info.src.calcDistance(cpPrev));
                 removeEnemyBulletInfo(entry.getKey());
                 return;// Maybe collision
-                // TODO: teammate & myself
+                // TODO: Cannot judge collision with teammate & myself.Maybe should treat only myself and receive it from teammate
+                // 
             }
         }
         // Detect wall
@@ -762,13 +936,14 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
         MovingPoint src = cpPrev;
 
         if ( ! isTeammate(enemy.name) ) {
-            RobotPoint prevMy = prevMy(ctx.my.time-src.time+1);
-            RobotPoint my = new RobotPoint(prevMy);
-            double distance = src.calcDistance(my);
+            // TODO: prevMy
+            // RobotPoint prevMy = prevMy(ctx.my.time-src.time+1);
+            RobotPoint prevMy = logMy(src.time-1); // Detect enemy-firing after one turn from actual.
+            double distance = src.calcDistance(prevMy);
             MoveType shotType =MoveType.getMoveTypeByScore(shotTypeMap.get(enemy.name));
             double bulletVelocity = Util.bultSpeed(prev.energy-enemy.energy);
             logger.prospect2("ENEMY(fire): %d : %s(%2.2f)", shotType.type,Util.bultPower(bulletVelocity), Util.bultSpeed(prev.energy-enemy.energy));
-            double radians = calcShotRadians(my,bulletVelocity,src,shotType.type,0); //
+            double radians = calcShot(shotType,prevMy,src,bulletVelocity).second; //
 
             src.headingRadians = radians;
             src.heading  = Math.toDegrees(radians);

@@ -10,21 +10,17 @@ import java.awt.Graphics2D;
 import java.awt.Polygon;
 import java.io.IOException;
 import java.io.Serializable;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import jp.crumb.utils.Enemy;
 import jp.crumb.utils.Logger;
 import jp.crumb.utils.MovingPoint;
-import jp.crumb.utils.RobotPoint;
 import jp.crumb.utils.Pair;
 import jp.crumb.utils.Point;
+import jp.crumb.utils.RobotPoint;
 import jp.crumb.utils.Util;
 import robocode.BattleEndedEvent;
 import robocode.Bullet;
@@ -154,7 +150,7 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
         bulletList.remove(key);
     }
     
-    protected void cbBulletMissed(BulletMissedEvent e) {
+    protected Map.Entry<String,BulletInfo> cbBulletMissed(BulletMissedEvent e) {
         Bullet bullet = e.getBullet();
         Point dst = new Point(bullet.getX(),bullet.getY());
         Map.Entry<String,BulletInfo> entry = Util.calcBulletSrc(ctx.my.time,bullet,bulletList);
@@ -162,11 +158,12 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
             logger.fire1("Unknown bullet missed: ");
         }else{
             impactBullet(entry.getKey());
-        }
+       }
         logger.fire1("MISS: %s",dst);
+        return entry;
     }
     
-    protected void cbBulletHit(BulletHitEvent e){
+    protected Map.Entry<String, BulletInfo>  cbBulletHit(BulletHitEvent e){
         Bullet bullet = e.getBullet();
         Point dst = new Point(bullet.getX(),bullet.getY());
         String victim = bullet.getVictim();
@@ -177,26 +174,24 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
         Map.Entry<String,BulletInfo> entry = Util.calcBulletSrc(ctx.my.time,bullet,bulletList);
         if ( entry == null ) {
             logger.fire1("Unknown bullet hit: ");
+            logger.fire1("HIT (by chance): %s: %2.2f(%2.2f)  %s => %s",victim,aimDistance,range,"NULL",dst);
         }else{
             impactBullet(entry.getKey());
             info = entry.getValue();
             aimDistance = entry.getValue().distance;
             range = info.src.calcDistance(dst);
-        }
-        // Judge by chance
-        if ( info != null && info.targetName.equals(victim) && Math.abs(aimDistance - range) < Util.tankSize) {
-            Enemy target = enemyMap.get(victim);
-            if ( target != null ) {
-                target.getAimType().updateHit(range);
-            }
-            logger.fire1("HIT: %s : %2.2f(%2.2f)  %s => %s",victim,aimDistance,range,info.src,dst);
-        }else{
-            if ( info != null ) {
+            if ( info.targetName.equals(victim) && Math.abs(aimDistance - range) < Util.tankSize) {
+                // TODO: merge to AIMING
+//              Enemy target = enemyMap.get(victim);
+//              if ( target != null ) {
+//                  target.getAimType().updateHit(range);
+//              }
+                logger.fire1("HIT: %s : %2.2f(%2.2f)  %s => %s",victim,aimDistance,range,info.src,dst);
+            }else {
                 logger.fire1("HIT (by chance): %s(%s): %2.2f(%2.2f)  %s => %s",victim,aimDistance,range,info.src,dst);
-            }else{
-                logger.fire1("HIT (by chance): %s: %2.2f(%2.2f)  %s => %s",victim,aimDistance,range,"NULL",dst);
             }
         }
+        return entry;
     }
 
 
@@ -209,10 +204,11 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
         }else{
             impactBullet(entry.getKey());
             BulletInfo info = entry.getValue();
-            Enemy target = enemyMap.get(info.targetName);
-            if ( target != null ) {
-                target.getAimType().revartAim(info.distance/info.src.velocity);
-            }
+            // TODO: merge to AIMING
+//            Enemy target = enemyMap.get(info.targetName);
+//            if ( target != null ) {
+//                target.getAimType().revartAim(info.distance/info.src.velocity);
+//            }
         }
         logger.fire1("INTERCEPT: %s",dst);
     }
@@ -296,7 +292,6 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
             if ( enemy.time != prevR.time && (enemy.time-prevR.time) < SCAN_STALE ) {
                 enemy.setPrev(prevR);
             }
-            enemy.setAimType(prevR.getAimType());
         }
 
         // TODO: seperate teammateMap
@@ -344,6 +339,12 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
             return new BaseContext();
         }else{
             return new BaseContext(in);
+        }
+    }
+    protected final void prospectNextMy(RobotPoint nextMy,long delta) {
+        T curCtx = null;
+        for (int i = 0; i < delta; i++) {
+            curCtx = prospectNextMy(nextMy, curCtx);
         }
     }
 
@@ -397,10 +398,11 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
                 ctx.curGunHeading , ctx.curGunHeadingRadians,
                 bulletVelocity
         );
-        Enemy enemy = enemyMap.get(targetName);
-        if ( enemy != null ) {
-            enemy.getAimType().updateAim(distance/bulletVelocity);
-        }
+        // TODO: merge to AIMING
+//        Enemy enemy = enemyMap.get(targetName);
+//        if ( enemy != null ) {
+//            enemy.getAimType().updateAim(distance/bulletVelocity);
+//        }
         BulletInfo bulletInfo = new BulletInfo(name,targetName,distance,src);
         addBulletInfo(bulletInfo);
         broadcastMessage(new BulletEvent(bulletInfo));
@@ -426,6 +428,7 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
     protected void cbFiring() {}
     protected void cbFirst() {}
 
+    @Deprecated
     protected boolean prospectNextEnemy(Enemy enemy) {
         return true;
     }
@@ -680,7 +683,8 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
                 }
                 drawRound(g, r.x, r.y, 35);
                 g.drawString(String.format("%s : %s", r.name, r), (int) r.x - 20, (int) r.y - 30);
-                g.drawString(String.format("hit: %d / %d  : %2.2f / %2.2f", r.getAimType().hitCount, r.getAimType().aimCount, r.getAimType().hitTime, r.getAimType().aimTime), (int) r.x - 20, (int) r.y - 40);
+                // TODO: merge to AIMING
+                // g.drawString(String.format("hit: %d / %d  : %2.2f / %2.2f", r.getAimType().hitCount, r.getAimType().aimCount, r.getAimType().hitTime, r.getAimType().aimTime), (int) r.x - 20, (int) r.y - 40);
             }
             for (Map.Entry<String, BulletInfo> e : bulletList.entrySet()) {
                 BulletInfo info = e.getValue();
@@ -707,17 +711,18 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
     }
 
     private void dumpLog(){
-        List<Enemy> enemyArray = new ArrayList(enemyMap.values());
-        Collections.sort(enemyArray,new Comparator<Enemy>(){
-            @Override
-            public int compare(Enemy o1, Enemy o2) {
-                return o1.getAimType().compareTo(o2.getAimType());
-            }});
-        for (Enemy enemy :  enemyArray ) {
-            Logger.log("=== %s (%2.2f%%)===",enemy.name,enemy.getAimType().getHitRate()*100);
-            Logger.log("aim : %2.2f(%d)",enemy.getAimType().aimTime,enemy.getAimType().aimCount);
-            Logger.log("hit : %2.2f(%d)",enemy.getAimType().hitTime,enemy.getAimType().hitCount);
-        }        
+        // TODO: merge to AIMING
+//        List<Enemy> enemyArray = new ArrayList(enemyMap.values());
+//        Collections.sort(enemyArray,new Comparator<Enemy>(){
+//            @Override
+//            public int compare(Enemy o1, Enemy o2) {
+//                return o1.getAimType().compareTo(o2.getAimType());
+//            }});
+//        for (Enemy enemy :  enemyArray ) {
+//            Logger.log("=== %s (%2.2f%%)===",enemy.name,enemy.getAimType().getHitRate()*100);
+//            Logger.log("aim : %2.2f(%d)",enemy.getAimType().aimTime,enemy.getAimType().aimCount);
+//            Logger.log("hit : %2.2f(%d)",enemy.getAimType().hitTime,enemy.getAimType().hitCount);
+//        }        
     }
 
     

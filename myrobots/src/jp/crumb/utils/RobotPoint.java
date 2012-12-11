@@ -41,12 +41,21 @@ public class RobotPoint extends MovingPoint {
     }
     public void setDelta(MovingPoint delta) {
         this.delta = delta;
-    }    
-    public boolean prospectNext() {
+    }
+    public boolean inertia(int deltaTime) {
         RobotPoint backup = new RobotPoint(this);
+        inertia(deltaTime);
+        if ( isLimit()) {
+            this.set(backup);
+            return false;
+        }
+        return true;
+    }
+    public boolean prospectNext() {
         if ( delta == null ) {
-            inertia(1);
+            return inertia(1);
         }else {
+            RobotPoint backup = new RobotPoint(this);
             if (delta.heading != 0) {
                 double deltaHeading = delta.heading / delta.time;
                 deltaHeading = (Math.abs(deltaHeading)<Util.turnSpeed(velocity))?deltaHeading:Util.turnSpeed(velocity)*Math.abs(deltaHeading)/deltaHeading;
@@ -76,12 +85,12 @@ public class RobotPoint extends MovingPoint {
             Point deltaByTurn = Util.calcPoint(headingRadians, velocity);
             x += deltaByTurn.x;
             y += deltaByTurn.y;
+            if ( isLimit()) {
+                this.set(backup);
+                return false;
+            }
+            return true;
         }
-        if ( isLimit()) {
-            this.set(backup);
-            return false;
-        }
-        return true;
     }
 
 }

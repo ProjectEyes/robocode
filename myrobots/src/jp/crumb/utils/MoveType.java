@@ -12,13 +12,7 @@ import java.util.List;
  * @author crumb
  */
 public class MoveType implements Comparable<MoveType> , Serializable{
-    static public final int TYPE_UNKNOWN  = 0;
-    static public final int TYPE_PINPOINT = 1;
-    static public final int TYPE_INERTIA1  = 2;
-    static public final int TYPE_INERTIA2  = 3;
-    static public final int TYPE_ACCURATE1 = 4;
-    static public final int TYPE_ACCURATE2 = 5;
-
+    
     public int type;
     public int aimCount;
     public int hitCount;
@@ -92,4 +86,41 @@ public class MoveType implements Comparable<MoveType> , Serializable{
         }
         return ret;
     }
+    
+    static public final int TYPE_UNKNOWN   = 0xF000;
+    static public final int TYPE_PINPOINT  = 0x0010;
+    static private final int TYPE_INERTIA   = 0x0020;
+    static private final int TYPE_ACCURATE  = 0x0040;
+    static private final int TYPE_FIRST     = 0x0001;
+    static private final int TYPE_CENTER    = 0x0002;
+    static private final int TYPE_LAST      = 0x0004;
+    static public final int TYPE_INERTIA_FIRST  = TYPE_INERTIA | TYPE_FIRST;
+    static public final int TYPE_INERTIA_CENTER = TYPE_INERTIA | TYPE_CENTER;
+    static public final int TYPE_INERTIA_LAST   = TYPE_INERTIA | TYPE_LAST;
+    static public final int TYPE_ACCURATE_FIRST = TYPE_ACCURATE | TYPE_FIRST;
+    static public final int TYPE_ACCURATE_CENTER = TYPE_ACCURATE | TYPE_CENTER;
+    static public final int TYPE_ACCURATE_LAST  = TYPE_ACCURATE | TYPE_LAST;
+
+    public boolean isTypeUnknown(){
+        return (type & TYPE_UNKNOWN) != 0;
+    }
+    public boolean isTypePinPoint(){
+        return (type == TYPE_PINPOINT);
+    }
+    public boolean isTypeInertia(){
+        return (type & TYPE_INERTIA) != 0;
+    }
+    public boolean isTypeAccurate(){
+        return (type & TYPE_ACCURATE) != 0;
+    }
+    public boolean isTypeFirst(){
+        return (type & TYPE_FIRST) != 0;
+    }
+    public boolean isTypeCenter(){
+        return (type & TYPE_CENTER) != 0;
+    }
+    public boolean isTypeLast(){
+        return (type & TYPE_LAST) != 0;
+    }
+    
 }

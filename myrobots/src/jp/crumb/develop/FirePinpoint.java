@@ -40,7 +40,8 @@ public class FirePinpoint extends CrumbRobot<CrumbContext> {
 
     @Override
     protected Enemy createEnemy(ScannedRobotEvent e) {
-        return new Enemy(ctx.my, e , MoveType.TYPE_PINPOINT);
+        // TODO: AIM type
+        return new Enemy(ctx.my, e );
     }
 
 }

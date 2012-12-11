@@ -39,7 +39,8 @@ public class FireInertia extends CrumbRobot<CrumbContext> {
 
     @Override
     protected Enemy createEnemy(ScannedRobotEvent e) {
-        return new Enemy(ctx.my, e , MoveType.TYPE_INERTIA1);
+        // TODO: AIM type
+        return new Enemy(ctx.my, e );
     }
 
 }

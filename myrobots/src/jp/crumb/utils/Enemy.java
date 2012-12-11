@@ -21,11 +21,8 @@ public class Enemy extends RobotPoint {
 
     public boolean scanned;
     public int role;
-    public int aimType = MoveType.TYPE_ACCURATE1;
-//
-    public Map<Integer,MoveType> aimTypeMap = new HashMap();
 
-    public Enemy(MovingPoint my, ScannedRobotEvent e,int aimType) {
+    public Enemy(MovingPoint my, ScannedRobotEvent e) {
         super(); // default constractor
         this.time = e.getTime();
         this.name = e.getName();
@@ -40,13 +37,7 @@ public class Enemy extends RobotPoint {
         this.energy = e.getEnergy();
         this.scanned = true;
         this.role   = 0;
-        this.aimType = aimType; // TODO: move to static map
-        this.changeAimType(this.aimType);
     }
-    public Enemy(MovingPoint my, ScannedRobotEvent e) {
-        this(my, e,MoveType.TYPE_ACCURATE1);
-    }
-
     public Enemy(Enemy in ) {
         this.set(in);
     }
@@ -55,33 +46,12 @@ public class Enemy extends RobotPoint {
         super.set(in);
         this.scanned = in.scanned;
         this.role = in.role;
-        this.aimType = in.aimType;
-        this.aimTypeMap = new HashMap(in.aimTypeMap);
     }
 
     public Enemy() {
-        changeAimType(MoveType.TYPE_ACCURATE1);
     }
-    public MoveType getAimType(int type) {
-        return this.aimTypeMap.get(type);
-    }
-    public MoveType getAimType() {
-        return this.getAimType(this.aimType);
-    }
-    public void setAimType(MoveType type) {
-        this.aimTypeMap.put(aimType, new MoveType(type));
-    }
-    // TODO: remove aimtype
-    public void changeAimType(int type) {
-        this.aimType = type;
-        if ( getAimType(type) == null ) {
-            this.aimTypeMap.put(type, new MoveType(type));
-        }
-    }
-//        this.bearing = base.calcDegree(this);
-//        this.bearingRadians = Math.toRadians(heading);
-//        this.distance = base.calcDistance(this);
-    public boolean prospectNext(MovingPoint base) {
+    @Override
+    public boolean prospectNext() {
         if ( this.energy == 0 ) {
             return false;
         }
