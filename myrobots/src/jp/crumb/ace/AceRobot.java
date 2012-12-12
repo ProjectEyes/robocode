@@ -42,8 +42,8 @@ abstract public class AceRobot<T extends AceContext> extends CrumbRobot<T> {
         this.setBulletColor(new Color(200,255,100));
     }
 
-    protected static final double SHOT_SCORE_ESTIMATE_LIMIT = 20;
-    protected static final double AIM_SCORE_ESTIMATE_LIMIT = 20;
+    protected static final double SHOT_SCORE_ESTIMATE_LIMIT = 10;
+    protected static final double AIM_SCORE_ESTIMATE_LIMIT = 10;
 
     protected static final double ENEMY_BULLET_DIFF_THRESHOLD = Math.PI/4; // more than 45 degrees
     protected static final double BULLET_DIFF_THRESHOLD = Math.PI/4; // more than 45 degrees
@@ -103,7 +103,7 @@ abstract public class AceRobot<T extends AceContext> extends CrumbRobot<T> {
         if ( aimTypeMap.get(name) == null ) {
             return new MoveType(MoveType.TYPE_ACCURATE_FIRST);
         }
-        return MoveType.getMoveTypeByScore(aimTypeMap.get(name));
+        return MoveType.getByScore(aimTypeMap.get(name));
     }
 
     @Override
@@ -117,7 +117,7 @@ abstract public class AceRobot<T extends AceContext> extends CrumbRobot<T> {
     @Override
     protected void updateCurrent() {
         super.updateCurrent();
-        myLog.put(ctx.my.time,ctx.my);
+        myLog.put(ctx.my.timeStamp,ctx.my);
     }
     protected RobotPoint logMy(long absTime) {
         return myLog.get(absTime);
@@ -181,13 +181,12 @@ abstract public class AceRobot<T extends AceContext> extends CrumbRobot<T> {
 
     protected void reEvalShot(BulletInfo info) {
         // TODO: AIMING estimate
-        long deltaTime = ctx.my.time - info.src.time;
-        RobotPoint prevMy = logMy(info.src.time);
+        RobotPoint prevMy = logMy(info.src.timeStamp);
         List<MoveType> aimTypeList = aimTypeMap.get(info.targetName);
         for (MoveType moveType : aimTypeList) {
-            RobotPoint target = logEnemy(info.targetName, info.src.time);
+            RobotPoint target = logEnemy(info.targetName, info.src.timeStamp);
             if (target == null) {
-                Logger.log("Cannot evaluate shot target log is NULL %d",info.src.time);
+                Logger.log("Cannot evaluate shot target log is NULL %d",info.src.timeStamp);
                 return; // Cannot evaluate...
             }
             Pair<Long, Double> shot = calcShot(moveType, target, prevMy, info.src.velocity);
@@ -199,7 +198,7 @@ abstract public class AceRobot<T extends AceContext> extends CrumbRobot<T> {
             double closestDistance = Util.fieldFullDistance;
             double bulletDistance = 0;
             RobotPoint prevTarget = target;
-            for (long i = info.src.time + 1; i <= ctx.my.time; i++) {
+            for (long i = info.src.timeStamp + 1; i <= ctx.my.time; i++) {
                 target = logEnemy(info.targetName, i);
                 if (target == null) {
                     // No data
@@ -238,7 +237,7 @@ abstract public class AceRobot<T extends AceContext> extends CrumbRobot<T> {
         Point dst = new Point(bullet.getX(),bullet.getY());
         for ( Map.Entry<String,BulletInfo> ebi : enemyBulletList.entrySet() ) {
             BulletInfo bulletInfo = ebi.getValue();
-            if ( e.getTime() == bulletInfo.src.time && bulletInfo.src.calcDegree(dst) < Util.tankSize ) {
+            if ( e.getTime() == bulletInfo.src.timeStamp && bulletInfo.src.calcDegree(dst) < Util.tankSize ) {
                 logger.fire2("CANCEL BULLET() %s : %s ", dst,bulletInfo.src);
                 impactEnemyBulletInfo(bulletInfo.bulletName);
                 break;
@@ -283,8 +282,8 @@ abstract public class AceRobot<T extends AceContext> extends CrumbRobot<T> {
             BulletInfo info = entry.getValue();
             impactEnemyBulletInfo(entry.getKey());
         // TODO: hit by bullet
-            long deltaTime = ctx.my.time-info.src.time;
-            RobotPoint prevMy = logMy(info.src.time);
+            long deltaTime = ctx.my.time-info.src.timeStamp;
+            RobotPoint prevMy = logMy(info.src.timeStamp);
             double distance = info.src.calcDistance(prevMy);
 
             List<MoveType> shotTypeList = shotTypeMap.get(enemyName);
@@ -305,14 +304,13 @@ abstract public class AceRobot<T extends AceContext> extends CrumbRobot<T> {
     }
 
     protected void enemyBullet(Enemy prev,Enemy enemy){
-        MoveType aimType = MoveType.getMoveTypeByScore(aimTypeMap.get(prev.name));
+        MoveType aimType = MoveType.getByScore(aimTypeMap.get(prev.name));
         Enemy cpPrev = new Enemy(prev);
         prospectNextRobot(cpPrev, aimType,1);
-        cpPrev.time ++;
         // Detect collsion
         for ( Map.Entry<String,BulletInfo> entry : enemyBulletList.entrySet() ) {
             BulletInfo info =  entry.getValue();
-            if ( info.src.time == cpPrev.time && info.src.calcDistance(cpPrev) <= Util.tankSize * 1.5 ) {
+            if ( info.src.timeStamp == cpPrev.time && info.src.calcDistance(cpPrev) <= Util.tankSize * 1.5 ) {
                 logger.fire4("ENEMY(collision): %s = %s dist(%2.2f)", info.src,cpPrev , info.src.calcDistance(cpPrev));
                 removeEnemyBulletInfo(entry.getKey());
                 return;// Maybe collision
@@ -331,13 +329,12 @@ abstract public class AceRobot<T extends AceContext> extends CrumbRobot<T> {
         // Bullet src
         cpPrev = new Enemy(prev);
         prospectNextRobot(cpPrev, aimType,1);
-        cpPrev.time++;
         MovingPoint src = cpPrev;
 
         if ( ! isTeammate(enemy.name) ) {
             RobotPoint prevMy = logMy(src.time-1); // Detect enemy-firing after one turn from actual.
             double distance = src.calcDistance(prevMy);
-            MoveType shotType =MoveType.getMoveTypeByScore(shotTypeMap.get(enemy.name));
+            MoveType shotType =MoveType.getByScore(shotTypeMap.get(enemy.name));
             double bulletVelocity = Util.bultSpeed(prev.energy-enemy.energy);
             logger.fire1("ENEMY(fire): x%02x : %s(%2.2f)", shotType.type,Util.bultPower(bulletVelocity), Util.bultSpeed(prev.energy-enemy.energy));
             double radians = calcShot(shotType,prevMy,src,bulletVelocity).second; //
@@ -407,16 +404,16 @@ abstract public class AceRobot<T extends AceContext> extends CrumbRobot<T> {
     protected void paint(Graphics2D g) {
         if ( isPaint) {
             super.paint(g);
-            for (Map.Entry<String, Enemy> e : ctx.nextEnemyMap.entrySet()) {
-                Enemy enemy = e.getValue();
-                g.setColor(new Color(0.3f, 0.5f, 1.0f,PAINT_OPACITY));
-                Enemy next = new Enemy(enemy);
-                for (int i = 1; i < 20; i++) {
-                    MoveType aimType = MoveType.getMoveTypeByScore(aimTypeMap.get(next.name));
-                    prospectNextRobot(next, aimType,1);
-                    drawRound(g, next.x, next.y, 2);
-                }
-            }
+//            for (Map.Entry<String, Enemy> e : ctx.nextEnemyMap.entrySet()) {
+//                Enemy enemy = e.getValue();
+//                g.setColor(new Color(0.3f, 0.5f, 1.0f,PAINT_OPACITY));
+//                Enemy next = new Enemy(enemy);
+//                for (int i = 1; i < 20; i++) {
+//                    MoveType aimType = MoveType.getByScore(aimTypeMap.get(next.name));
+//                    prospectNextRobot(next, aimType,1);
+//                    drawRound(g, next.x, next.y, 2);
+//                }
+//            }
             // Bullet
             g.setColor(new Color(1.0f, 0.5f, 0.5f, PAINT_OPACITY));
             for (Map.Entry<String, BulletInfo> e : enemyBulletList.entrySet()) {

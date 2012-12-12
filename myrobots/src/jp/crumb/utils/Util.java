@@ -176,7 +176,7 @@ public class Util {
             BulletInfo bulletInfo = e.getValue();
             double radians = bulletInfo.src.calcRadians(dst);
             double diffRadians = Math.abs(Util.calcTurnRadians(radians, bulletRadians));
-            double diffDistance = Math.abs((now - bulletInfo.src.time)*bullet.getVelocity() - bulletInfo.src.calcDistance(dst));
+            double diffDistance = Math.abs((now - bulletInfo.src.timeStamp)*bullet.getVelocity() - bulletInfo.src.calcDistance(dst));
             if ( bulletOwner.equals(bulletInfo.owner) ) {
                 if ( cur == null || diffRadians < curDiffRadians &&  diffDistance < curDiffDistance ) {
                     cur = e;

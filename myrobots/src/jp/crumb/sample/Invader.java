@@ -93,7 +93,7 @@ abstract public class Invader extends CrumbRobot<CrumbContext> {
 
     @Override
     protected void cbThinking() {
-        if ( readyCount == teammate.size()+1 || ctx.my.time == 100 ) {
+        if ( readyCount == teammate.size()+1 || ctx.my.timeStamp == 100 ) {
             openFire();
             broadcastMessage(new InvaderEvent(3,null));
         }

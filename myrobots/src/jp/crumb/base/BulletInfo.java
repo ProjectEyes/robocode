@@ -21,7 +21,7 @@ public class BulletInfo implements Serializable{
         return name + time;
     }
     public BulletInfo(String owner,String targetName,double distance,MovingPoint src) {
-        this.bulletName = getKey(owner,src.time);
+        this.bulletName = getKey(owner,src.timeStamp);
         this.owner = owner;
         this.targetName = targetName;
         this.distance = distance;

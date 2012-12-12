@@ -107,12 +107,7 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
         }else if ( moveType.isTypeInertia() ) {
             return robot.inertia(term);
         }else if ( moveType.isTypeAccurate() ) {
-            for ( int i = 0 ; i < term ; i++ ) {
-                if ( ! robot.prospectNext() ) {
-                    return false;
-                }
-            }
-            return true;
+            return robot.prospectNext(term);
         }else {
             throw new UnsupportedOperationException("Unknown MoveType : " + moveType.type);
         }
@@ -166,7 +161,7 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
     
     
     protected Pair<Double,Double> calcFire(Enemy target,MoveType aimType,long deltaThreshold,long recentThreshold){
-        if ( target.delta == null || target.delta.time > deltaThreshold || (ctx.my.time - target.time) > recentThreshold ) {
+        if ( target.delta == null || target.delta.time > deltaThreshold || (ctx.my.timeStamp - target.timeStamp) > recentThreshold ) {
             return new Pair<>(0.0,Util.fieldFullDistance);
         }
         double maxPower = 0.0;
@@ -237,7 +232,7 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
         if ( moveType.isTypePinPoint() ) {
             retRadians = src.calcRadians(target);
             retTime    = (long)Math.ceil(src.calcDistance(target));
-        }else if ( moveType.isTypeInertia() || moveType.isTypeAccurate()  ) {
+        }else {
             // ((deltaTime>0)?deltaTime:(long)Math.ceil(Math.abs(distance/velocity)))
             //  - Calc only fixed time ( hitted )
             //  - for prospecting time ( shoting ) =>  with updating distance each ticks.
@@ -567,7 +562,7 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
             if ( enemyMap.entrySet().size() >= ctx.others ) {
                 isAllScan = true;
                 for ( Map.Entry<String,Enemy> e : enemyMap.entrySet() ) {
-                    if ( ! e.getValue().scanned && e.getValue().time != 0 ) { // not scanned &&not dead
+                    if ( ! e.getValue().scanned && e.getValue().timeStamp != 0 ) { // not scanned &&not dead
                         isAllScan = false;
                         break;
                     }
@@ -605,10 +600,12 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
     
     @Override
     protected void cbRobotDeath(RobotDeathEvent e) {
+        super.cbRobotDeath(e);
         Enemy nextEnemy = getNextEnemy(e.getName());
         if ( nextEnemy != null ) {
-            nextEnemy.time = 0;
+            nextEnemy.timeStamp = 0; // Dead flag
         }
+        
     }
     /*
      * Bullets 

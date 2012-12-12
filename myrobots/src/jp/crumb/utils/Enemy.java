@@ -25,6 +25,7 @@ public class Enemy extends RobotPoint {
     public Enemy(MovingPoint my, ScannedRobotEvent e) {
         super(); // default constractor
         this.time = e.getTime();
+        this.timeStamp = this.time;
         this.name = e.getName();
         double bearingRadians = (e.getBearingRadians() + my.headingRadians)%(Math.PI*2);
         double distance = e.getDistance();

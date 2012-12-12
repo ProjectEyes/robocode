@@ -18,6 +18,7 @@ public class MovingPoint extends TimedPoint {
     }
 
     public MovingPoint(double x,double y,long time,double heading, double headingRadians, double velocity) {
+        this.timeStamp = time;
         this.x = x;
         this.y = y;
         this.time = time;
@@ -72,6 +73,7 @@ public class MovingPoint extends TimedPoint {
     public void inertia(double interval) {
         double dist = velocity * interval;
         this.add(Util.calcPoint(headingRadians, dist));
+        time += Math.ceil(interval);
     }
     public boolean isLimit() {
         if (    x < Util.runnableMinX ||
@@ -93,6 +95,6 @@ public class MovingPoint extends TimedPoint {
     }
     @Override
     public String toString() {
-        return String.format("t(%d): d[%2.2f] dr[%2.2f] p(%2.2f,%2.2f) v:%2.2f", time,heading,headingRadians,x, y,velocity);
+        return String.format("t(%d/%d): d[%2.2f] dr[%2.2f] p(%2.2f,%2.2f) v:%2.2f", time,timeStamp,heading,headingRadians,x, y,velocity);
     }
 }

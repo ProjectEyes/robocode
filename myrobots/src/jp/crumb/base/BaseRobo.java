@@ -125,6 +125,7 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
         RobotPoint prevMy = ctx.my;
         ctx.my = new RobotPoint();
         ctx.my.time = Util.NOW;
+        ctx.my.timeStamp = Util.NOW;
         ctx.my.velocity = getVelocity();
         ctx.my.x = getX();
         ctx.my.y = getY();
@@ -220,6 +221,7 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
     private void sendMyInfo(){
         Enemy my = new Enemy();
         my.time = ctx.my.time +1;
+        my.timeStamp = my.time;
         my.name = name;
         my.x = ctx.nextMy.x;
         my.y = ctx.nextMy.y;
@@ -266,7 +268,6 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
             // Message will reach to teammate at next turn !!
             Enemy next = new Enemy(enemy);
             prospectNextEnemy(next);
-            next.time++;
             this.broadcastMessage(new ScanEnemyEvent(next));
         }
         cbScannedRobot(enemy);
@@ -284,13 +285,10 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
                 enemy.role = Enemy.ROLE_ROBOT;
             }
         }
-        if ( prevEnemy != null && prevEnemy.time == enemy.time ) {
-            return null;
-        }
-
         if ( prevEnemy != null ) {
-            // Prev info
-            if ( enemy.time != prevEnemy.time && (enemy.time-prevEnemy.time) < SCAN_STALE ) {
+            if ( prevEnemy.time == enemy.time ) {
+                return null;
+            }else if ((enemy.time-prevEnemy.timeStamp) < SCAN_STALE ) {
                 enemy.setPrev(prevEnemy);
             }
         }
@@ -303,7 +301,7 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
     protected void cbRobotDeath(RobotDeathEvent e) {
         Enemy enemy = enemyMap.get(e.getName());
         if ( enemy != null ) {
-            enemy.time = 0;
+            enemy.timeStamp = 0;
         }
     }    
         
@@ -375,8 +373,9 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
             delta.velocity = go.first;
             nextMy.setDelta(delta);
             nextMy.prospectNext();
+        }else {
+            nextMy.time++;
         }
-        nextMy.time++;
         ctx = backupContext;
 //        nextMy.prospectNext();
 //        if ( true ) {
@@ -414,7 +413,7 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
 
     
     public boolean isStale(Enemy e) {
-         if ( e == null || (ctx.my.time - e.time) > SCAN_STALE ) {
+         if ( e == null || (ctx.my.time - e.timeStamp) > SCAN_STALE ) {
              return true;
          }
          return false;

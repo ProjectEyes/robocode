@@ -51,6 +51,16 @@ public class RobotPoint extends MovingPoint {
         }
         return true;
     }
+    public boolean prospectNext(long deltaTime) {
+        long t = time;
+        for ( long i = 0; i < deltaTime; i++) {
+            if (! prospectNext() ) {
+                time = t+deltaTime;
+                return false;
+            }
+        }
+        return true;
+    }
     public boolean prospectNext() {
         if ( delta == null ) {
             return inertia(1);
@@ -85,6 +95,7 @@ public class RobotPoint extends MovingPoint {
             Point deltaByTurn = Util.calcPoint(headingRadians, velocity);
             x += deltaByTurn.x;
             y += deltaByTurn.y;
+            time +=1;
             if ( isLimit()) {
                 this.set(backup);
                 return false;
