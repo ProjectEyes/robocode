@@ -28,7 +28,7 @@ public class TimedPoint extends Point{
     public void set(TimedPoint in) {
         super.set(in);
         this.time = in.time;
-        this.timeStamp = in.time;
+        this.timeStamp = in.timeStamp;
     }
 
     public TimedPoint add(TimedPoint p) {

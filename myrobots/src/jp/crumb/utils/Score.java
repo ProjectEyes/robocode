@@ -31,6 +31,9 @@ public class Score implements Serializable{
         if ( scoreCount > limit ) {
             count = limit;
         }
+        if ( scoreCount < limit ) {
+            count = limit;
+        }
         double sumScore = count * score + s;
         scoreCount++;
         count++;

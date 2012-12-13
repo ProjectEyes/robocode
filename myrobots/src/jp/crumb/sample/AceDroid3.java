@@ -2,15 +2,16 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-package jp.crumb.ace;
+package jp.crumb.sample;
 
-import jp.crumb.CrumbRobot;
+import jp.crumb.ace.AceDroid;
+
 
 
 /**
  *
  * @author crumb
  */
-public class AceLeader extends AceRobot {
+public class AceDroid3 extends AceDroid {
 
 }

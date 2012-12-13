@@ -66,6 +66,24 @@ public class Util {
         }
         return power;
     }
+    public static double damageByPower(double power) {
+        if ( power > 1.0 ) {
+            return 6.0*power-2.0;
+        }else{
+            return 4.0*power;
+        }
+    }
+    public static double powerByDamage(double damage) {
+        if ( damage <= 0.0 ) {
+            return 0.00001;
+        }else if ( damage < 4.0 ) {
+            return (damage/4.0) * 1.00001;
+        }else if ( damage > 16.0 ) {
+            return 3.0;
+        }else {
+            return ((damage+2)/6)* 1.00001;
+        }
+    }
 
     public static double radarTurnSpeed() {
         return 45;

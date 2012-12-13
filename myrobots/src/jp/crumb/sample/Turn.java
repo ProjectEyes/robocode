@@ -14,7 +14,7 @@ import jp.crumb.utils.Util;
  *
  * @author crumb
  */
-public class TurnTest extends BaseRobo<BaseContext> {
+public class Turn extends BaseRobo<BaseContext> {
 
     @Override
     public void run() {

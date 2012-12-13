@@ -45,7 +45,7 @@ import robocode.TeamRobot;
  * @author crumb
  */
 abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
-    protected static final boolean isPaint = true;
+    protected static final boolean isPaint = false;
 
 
     protected Logger logger = new Logger();
@@ -82,7 +82,7 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
     };
     private void initEventPriority(){
         // TODO : loglv
-        logger.LOGLV= Logger.LOGLV_PROSPECT3 | Logger.LOGLV_PROSPECT2 | Logger.LOGLV_FIRE1 ;
+        logger.LOGLV= Logger.LOGLV_PROSPECT1 | Logger.LOGLV_FIRE1 | Logger.LOGLV_SCAN;
 
 	this.setEventPriority("ScannedRobotEvent",10);
 	this.setEventPriority("HitRobotEvent",10);
@@ -104,7 +104,6 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
             return;
         }
         ctx.prevRadarHeadingRadians = ctx.curRadarHeadingRadians;   
-        ctx.energy = getEnergy();
         ctx.curGunHeadingRadians = getGunHeadingRadians();
         ctx.curGunHeading = getGunHeading();
         ctx.curRadarHeadingRadians = getRadarHeadingRadians();
@@ -126,6 +125,7 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
         ctx.my = new RobotPoint();
         ctx.my.time = Util.NOW;
         ctx.my.timeStamp = Util.NOW;
+        ctx.my.energy = getEnergy();
         ctx.my.velocity = getVelocity();
         ctx.my.x = getX();
         ctx.my.y = getY();
@@ -228,7 +228,7 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
         my.heading = ctx.nextMy.heading;
         my.headingRadians = ctx.nextMy.headingRadians;
         my.velocity = ctx.nextMy.velocity;
-        my.energy = ctx.energy;
+        my.energy = ctx.my.energy;
         broadcastMessage(new TeammateInfoEvent(my,isLeader));
     }
     private void dispatchMessage(MessageEvent e) {
@@ -698,16 +698,6 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
             }
 
 
-//            g.setColor(new Color(0, 0, 255));
-//            Point i = r.inertia(ctx.my.time - r.time);
-//            drawRound(g, i.x, i.y, 40);
-//            g.setColor(new Color(255, 0, 255));
-//            Point p = r.prospect(ctx.my.time - r.time);
-//            drawRound(g, p.x, p.y, 40);
-//            for( MovingPoint p : ctx.enemyPatternMap.get(lockon) ) {
-//                System.out.println(p);
-//            }
-//        }
         }
     }
 

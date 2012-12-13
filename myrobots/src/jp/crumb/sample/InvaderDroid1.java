@@ -4,6 +4,9 @@
  */
 package jp.crumb.sample;
 
+import jp.crumb.sample.InvaderDroid;
+import jp.crumb.sample.InvaderDroid;
+
 /**
  *
  * @author crumb

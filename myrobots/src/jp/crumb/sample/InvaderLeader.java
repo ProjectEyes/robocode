@@ -4,6 +4,8 @@
  */
 package jp.crumb.sample;
 
+import jp.crumb.sample.Invader;
+
 /**
  *
  * @author crumb

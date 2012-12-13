@@ -25,7 +25,6 @@ public class BaseContext implements Serializable{
     public double curRadarTurnRemaining;            
     public double curRadarTurnRemainingRadians;
     
-    public double energy;
     public double curGunHeadingRadians;
     public double curGunHeading;
     public double curRadarHeadingRadians;
@@ -51,7 +50,6 @@ public class BaseContext implements Serializable{
         this.curGunTurnRemainingRadians = in.curGunTurnRemainingRadians;
         this.curRadarTurnRemaining = in.curRadarTurnRemaining;
         this.curRadarTurnRemainingRadians = in.curRadarTurnRemainingRadians;
-        this.energy = in.energy;
         this.curGunHeadingRadians = in.curGunHeadingRadians;
         this.curGunHeading = in.curGunHeading;
         this.curRadarHeadingRadians = in.curRadarHeadingRadians;
