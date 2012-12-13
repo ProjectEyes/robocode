@@ -2,7 +2,7 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-package jp.crumb.ace;
+package jp.crumb.adv;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -15,13 +15,13 @@ import jp.crumb.utils.Util;
  *
  * @author crumb
  */
-public class AceContext extends CrumbContext{
+public class PatternContext extends CrumbContext{
     public Map<String,BulletInfo> nextEnemyBulletList = new HashMap<>();
 
 
-    public AceContext() {
+    public PatternContext() {
     }
-    public AceContext(AceContext in) {
+    public PatternContext(PatternContext in) {
         super(in);
         this.nextEnemyBulletList = Util.deepCopyHashMap(in.nextEnemyBulletList,new Copy<BulletInfo>(){
             @Override

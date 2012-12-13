@@ -8,8 +8,8 @@ import java.awt.Color;
 import java.util.Map;
 import jp.crumb.CrumbContext;
 import jp.crumb.CrumbRobot;
-import jp.crumb.ace.AceContext;
-import jp.crumb.ace.AceRobot;
+import jp.crumb.adv.PatternContext;
+import jp.crumb.adv.PatternRobot;
 import jp.crumb.utils.Enemy;
 
 
@@ -17,7 +17,7 @@ import jp.crumb.utils.Enemy;
  *
  * @author crumb
  */
-public class RadarLockOn extends AceRobot<AceContext>{
+public class RadarLockOn extends PatternRobot<PatternContext>{
     @Override
     protected void cbThinking() {
         setFireMode(ctx.MODE_FIRE_MANUAL);

@@ -31,6 +31,7 @@ public class Score implements Serializable{
         if ( scoreCount > limit ) {
             count = limit;
         }
+        // TODO: For reducing initial errors
         if ( scoreCount < limit ) {
             count = limit;
         }

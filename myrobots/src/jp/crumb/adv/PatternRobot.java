@@ -2,14 +2,13 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-package jp.crumb.ace;
+package jp.crumb.adv;
 
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Graphics2D;
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -36,7 +35,7 @@ import robocode.MessageEvent;
  *
  * @author crumb
  */
-abstract public class AceRobot<T extends AceContext> extends CrumbRobot<T> {
+abstract public class PatternRobot<T extends PatternContext> extends CrumbRobot<T> {
     @Override
     public void run() {
         super.run();
@@ -44,12 +43,15 @@ abstract public class AceRobot<T extends AceContext> extends CrumbRobot<T> {
         this.setBulletColor(new Color(200,255,100));
     }
 
-    protected static final long SIMPLE_PATTERN_TERM_MAX =200;
-    protected static final long SIMPLE_PATTERN_TERM_MIN = 10;
+    protected static final long SIMPLE_PATTERN_TERM_MAX =1000;
+    protected static final long SIMPLE_PATTERN_TERM_MIN = 15;
 
-    protected static final double PATTERN_SCORE_ESTIMATE_LIMIT = 10;
-    protected static final double SHOT_SCORE_ESTIMATE_LIMIT = 10;
-    protected static final double AIM_SCORE_ESTIMATE_LIMIT = 10;
+    protected static final double SIMPLE_PATTERN_SCORE_ESTIMATE_LIMIT = 20;
+    protected static final double SHOT_SCORE_ESTIMATE_LIMIT = 7;
+    protected static final double AIM_SCORE_ESTIMATE_LIMIT = 5;
+//    protected static final double PATTERN_SCORE_ESTIMATE_LIMIT = 10;
+//    protected static final double SHOT_SCORE_ESTIMATE_LIMIT = 10;
+//    protected static final double AIM_SCORE_ESTIMATE_LIMIT = 10;
 
     protected static final double ENEMY_BULLET_DIFF_THRESHOLD = Math.PI/6; // more than 30 degrees
     protected static final double BULLET_DIFF_THRESHOLD = Math.PI/6; // more than 30 degrees
@@ -118,11 +120,11 @@ abstract public class AceRobot<T extends AceContext> extends CrumbRobot<T> {
     }
 
     @Override
-    protected AceContext createContext(AceContext in) {
+    protected PatternContext createContext(PatternContext in) {
         if ( in == null ) {
-            return new AceContext();
+            return new PatternContext();
         }
-        return new AceContext(in);
+        return new PatternContext(in);
     }
 
     @Override
@@ -182,7 +184,7 @@ abstract public class AceRobot<T extends AceContext> extends CrumbRobot<T> {
         return true;
     }
 
-    void evalSimplePattern(Enemy prevEnemy,Enemy constEnemy){
+    protected void evalSimplePattern(Enemy prevEnemy,Enemy constEnemy){
         Map<Long,Score> scores = simplePatternScoreMap.get(constEnemy.name);
         long deltaTime = constEnemy.time - prevEnemy.time;
         for ( long i = SIMPLE_PATTERN_TERM_MIN ; i <= SIMPLE_PATTERN_TERM_MAX; i++) {
@@ -196,7 +198,7 @@ abstract public class AceRobot<T extends AceContext> extends CrumbRobot<T> {
             prospectEnemy.prospectNext(deltaTime);
             double d = prospectEnemy.calcDistance(constEnemy);
             Score s = scores.get(i);
-            s.updateScore(Util.fieldFullDistance-d,PATTERN_SCORE_ESTIMATE_LIMIT);
+            s.updateScore(Util.fieldFullDistance-d,SIMPLE_PATTERN_SCORE_ESTIMATE_LIMIT);
             logger.prospect4("SIMPLE(%02d):%2.2f => %2.2f = %2.2f",i,d,d,s.score);
             //logger.log("SIMPLE(%02d):%2.2f => %2.2f = %2.2f",i,d,d,s.score);
         }
@@ -410,7 +412,7 @@ abstract public class AceRobot<T extends AceContext> extends CrumbRobot<T> {
             src.headingRadians = radians;
             src.heading  = Math.toDegrees(radians);
             src.velocity = bulletVelocity;
-            BulletInfo bulletInfo = new BulletInfo(enemy.name,name,distance,src);
+            BulletInfo bulletInfo = new BulletInfo(enemy.name,name,distance,src,shotType.type);
             addEnemyBulletInfo(bulletInfo);
         }
     }

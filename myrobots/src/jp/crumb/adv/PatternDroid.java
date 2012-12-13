@@ -2,7 +2,7 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-package jp.crumb.ace;
+package jp.crumb.adv;
 
 import robocode.Droid;
 
@@ -10,10 +10,10 @@ import robocode.Droid;
  *
  * @author crumb
  */
-abstract public class AceDroid extends AceRobot<AceContext> implements Droid {
+abstract public class PatternDroid extends PatternRobot<PatternContext> implements Droid {
 
 
-    public AceDroid() {
+    public PatternDroid() {
     }
 
     @Override

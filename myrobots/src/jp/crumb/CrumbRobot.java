@@ -116,6 +116,9 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
     protected boolean prospectNextRobotSimplePattern(RobotPoint robot,long term){
         throw new UnsupportedOperationException("[SimplePattern] Not supported yet");
     }
+    protected boolean prospectNextRobotReactPattern(RobotPoint robot,long term){
+        throw new UnsupportedOperationException("[SimplePattern] Not supported yet");
+    }
 
     protected boolean prospectNextRobot(RobotPoint robot,MoveType moveType,long term) {
         if ( moveType.isTypePinPoint() || robot.energy == 0.0 ) {
@@ -126,6 +129,8 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
             return prospectNextRobotAccurate(robot,term);
         }else if ( moveType.isTypeSimplePattern()) {
             return prospectNextRobotSimplePattern(robot,term);
+        }else if ( moveType.isTypeReactPattern()) {
+            return prospectNextRobotReactPattern(robot,term);
         }else {
             throw new UnsupportedOperationException("Unknown MoveType : " + moveType.type);
         }
@@ -239,7 +244,6 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
                 normalMode();
             }
             MoveType aimType = getAimType(targetName);
-            logger.fire1("FIRE( type = power => bearing): x%02x = ( %2.2f ) => %2.2f",aimType.type,maxPower,ctx.curGunHeading);
             doFire(maxPower,aimDistance,targetName);
         }
     }
@@ -358,6 +362,9 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
         setGunMode(ctx.MODE_GUN_AUTO);
         setRadarMode(ctx.MODE_RADAR_SEARCH);
         setFireMode(ctx.MODE_FIRE_AUTO);
+        // Todo: initial move (towards radar scan)
+        doAhead(50);
+        doTurnRight(10);
         super.cbFirst();
     }
     
@@ -458,9 +465,6 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
    @Override
     protected void cbMoving(){
         if ( ctx.isMoveMode(ctx.MODE_MOVE_MANUAL )) {
-            return;
-        }
-        if ( ctx.my.time < 10 ) {
             return;
         }
         

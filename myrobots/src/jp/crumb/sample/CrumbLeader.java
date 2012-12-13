@@ -12,6 +12,6 @@ import jp.crumb.CrumbRobot;
  *
  * @author crumb
  */
-public class Leader extends CrumbRobot {
+public class CrumbLeader extends CrumbRobot {
 
 }

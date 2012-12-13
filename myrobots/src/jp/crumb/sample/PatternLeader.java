@@ -4,8 +4,8 @@
  */
 package jp.crumb.sample;
 
-import jp.crumb.ace.AceContext;
-import jp.crumb.ace.AceRobot;
+import jp.crumb.adv.PatternContext;
+import jp.crumb.adv.PatternRobot;
 
 
 
@@ -13,6 +13,6 @@ import jp.crumb.ace.AceRobot;
  *
  * @author crumb
  */
-public class AceLeader extends AceRobot<AceContext> {
+public class PatternLeader extends PatternRobot<PatternContext> {
 
 }

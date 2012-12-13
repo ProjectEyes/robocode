@@ -45,7 +45,7 @@ import robocode.TeamRobot;
  * @author crumb
  */
 abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
-    protected static final boolean isPaint = false;
+    protected static final boolean isPaint = true;
 
 
     protected Logger logger = new Logger();
@@ -82,7 +82,8 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
     };
     private void initEventPriority(){
         // TODO : loglv
-        logger.LOGLV= Logger.LOGLV_PROSPECT1 | Logger.LOGLV_FIRE1 | Logger.LOGLV_SCAN;
+//        logger.LOGLV= Logger.LOGLV_PROSPECT1 | Logger.LOGLV_FIRE1 | Logger.LOGLV_SCAN;
+        logger.LOGLV= Logger.LOGLV_PROSPECT1 | Logger.LOGLV_FIRE1;
 
 	this.setEventPriority("ScannedRobotEvent",10);
 	this.setEventPriority("HitRobotEvent",10);
@@ -387,11 +388,14 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
 
 
 
-    protected final void doFire(double power, double distance,String targetName ) {
+    protected void doFire(double power, double distance,String targetName ) {
+        doFire(power, distance, targetName,0);
+    }
+    protected void doFire(double power, double distance,String targetName, int type) {
         if ( ctx.gunHeat != 0 ) {
             return;
         }
-        logger.fire1("FIRE( power => bearing): ( %2.2f ) => %2.2f",power,ctx.curGunHeading);
+        logger.fire1("FIRE(x%02x): ( %2.2f ) => %2.2f",type,power,ctx.curGunHeading);
         this.paint(getGraphics());
         double bulletVelocity = Util.bultSpeed(power);
         MovingPoint src = new MovingPoint(
@@ -404,7 +408,7 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
 //        if ( enemy != null ) {
 //            enemy.getAimType().updateAim(distance/bulletVelocity);
 //        }
-        BulletInfo bulletInfo = new BulletInfo(name,targetName,distance,src);
+        BulletInfo bulletInfo = new BulletInfo(name,targetName,distance,src,type);
         addBulletInfo(bulletInfo);
         broadcastMessage(new BulletEvent(bulletInfo));
         super.fire(power); // No return

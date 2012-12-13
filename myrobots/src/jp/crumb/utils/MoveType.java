@@ -72,6 +72,7 @@ public class MoveType extends Score implements Comparable<MoveType> , Serializab
     static private final int TYPE_INERTIA          = 0x0020;
     static private final int TYPE_ACCURATE         = 0x0040;
     static private final int TYPE_SIMPLE_PATTERN   = 0x0100;
+    static private final int TYPE_REACT_PATTERN    = 0x0200;
     static private final int TYPE_FIRST            = 0x0001;
     static private final int TYPE_CENTER           = 0x0002;
     static public final int TYPE_INERTIA_FIRST  = TYPE_INERTIA | TYPE_FIRST;
@@ -80,6 +81,8 @@ public class MoveType extends Score implements Comparable<MoveType> , Serializab
     static public final int TYPE_ACCURATE_CENTER = TYPE_ACCURATE | TYPE_CENTER;
     static public final int TYPE_SIMPLE_PATTERN_FIRST = TYPE_SIMPLE_PATTERN | TYPE_FIRST;
     static public final int TYPE_SIMPLE_PATTERN_CENTER = TYPE_SIMPLE_PATTERN | TYPE_CENTER;
+    static public final int TYPE_REACT_PATTERN_FIRST = TYPE_REACT_PATTERN | TYPE_FIRST;
+    static public final int TYPE_REACT_PATTERN_CENTER = TYPE_REACT_PATTERN | TYPE_CENTER;
 
 //    public boolean isTypeUnknown(){
 //        return (type & TYPE_UNKNOWN) != 0;
@@ -95,6 +98,9 @@ public class MoveType extends Score implements Comparable<MoveType> , Serializab
     }
     public boolean isTypeSimplePattern(){
         return (type & TYPE_SIMPLE_PATTERN) != 0;
+    }
+    public boolean isTypeReactPattern(){
+        return (type & TYPE_REACT_PATTERN) != 0;
     }
     public boolean isTypeFirst(){
         return (type & TYPE_FIRST) != 0;

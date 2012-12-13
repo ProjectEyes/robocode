@@ -1,6 +1,6 @@
 #Robocode robot team
 #Tue Dec 04 03:08:38 JST 2012
-team.members=jp.crumb.sample.Leader*,jp.crumb.sample.Slave*,jp.crumb.sample.Droid1*,jp.crumb.sample.Droid2*,jp.crumb.sample.Droid3*
+team.members=jp.crumb.sample.CrumbLeader*,jp.crumb.sample.CrumbSlave*,jp.crumb.sample.CrumbDroid1*,jp.crumb.sample.CrumbDroid2*,jp.crumb.sample.CrumbDroid3*
 team.author.name=crumb.jp
 robocode.version=1.7.4.4
-team.description=sample
+team.description=crumb

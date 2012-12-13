@@ -11,5 +11,5 @@ import jp.crumb.CrumbDroid;
  *
  * @author crumb
  */
-public class Droid2 extends CrumbDroid {
+public class CrumbDroid2 extends CrumbDroid {
 }

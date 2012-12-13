@@ -5,8 +5,8 @@
 package jp.crumb.develop;
 
 import java.util.Map;
-import jp.crumb.ace.AceContext;
-import jp.crumb.ace.AceRobot;
+import jp.crumb.adv.PatternContext;
+import jp.crumb.adv.PatternRobot;
 import jp.crumb.utils.Enemy;
 import jp.crumb.utils.MoveType;
 
@@ -15,7 +15,7 @@ import jp.crumb.utils.MoveType;
  *
  * @author crumb
  */
-public class Pattern extends AceRobot<AceContext> {
+public class SimplePattern extends PatternRobot<PatternContext> {
     @Override
     protected void cbThinking() {
         for ( Map.Entry<String,Enemy> e : ctx.nextEnemyMap.entrySet() ) {

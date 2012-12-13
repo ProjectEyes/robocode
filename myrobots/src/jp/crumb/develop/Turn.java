@@ -2,7 +2,7 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-package jp.crumb.sample;
+package jp.crumb.develop;
 
 import jp.crumb.base.BaseContext;
 import jp.crumb.base.BaseRobo;

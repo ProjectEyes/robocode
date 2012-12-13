@@ -17,15 +17,17 @@ public class BulletInfo implements Serializable{
     public String targetName;
     public double distance;
     public MovingPoint src;
+    public int type;
     public static String getKey(String name, long time){
         return name + time;
     }
-    public BulletInfo(String owner,String targetName,double distance,MovingPoint src) {
+    public BulletInfo(String owner,String targetName,double distance,MovingPoint src,int type) {
         this.bulletName = getKey(owner,src.timeStamp);
         this.owner = owner;
         this.targetName = targetName;
         this.distance = distance;
         this.src = src;
+        this.type = type;
     }
 
     public BulletInfo(BulletInfo in ) {
@@ -34,6 +36,7 @@ public class BulletInfo implements Serializable{
         this.targetName = in.targetName;
         this.distance = in.distance;
         this.src = new MovingPoint(in.src);
+        this.type = in.type;
     }
     
 }

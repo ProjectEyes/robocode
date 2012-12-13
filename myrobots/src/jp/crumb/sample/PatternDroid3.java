@@ -4,7 +4,7 @@
  */
 package jp.crumb.sample;
 
-import jp.crumb.ace.AceDroid;
+import jp.crumb.adv.PatternDroid;
 
 
 
@@ -12,6 +12,6 @@ import jp.crumb.ace.AceDroid;
  *
  * @author crumb
  */
-public class AceDroid3 extends AceDroid {
+public class PatternDroid3 extends PatternDroid {
 
 }
