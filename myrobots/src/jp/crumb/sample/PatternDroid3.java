@@ -4,8 +4,6 @@
  */
 package jp.crumb.sample;
 
-import jp.crumb.adv.PatternDroid;
-
 
 
 /**

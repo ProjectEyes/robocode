@@ -251,7 +251,7 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
                 normalMode();
             }
             aimType.updateAim();
-            doFire(maxPower,aimDistance,targetName);
+            doFire(maxPower,aimDistance,targetName,aimType.type);
         }
     }
     
@@ -703,6 +703,7 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
                 g.drawString(String.format("targ: %s", ctx.lockonTarget), (int) ctx.my.x - 20, (int) ctx.my.y - 40);
             }
             for (Map.Entry<String, Enemy> e : ctx.nextEnemyMap.entrySet()) {
+                Enemy base = enemyMap.get(e.getKey());
                 Enemy enemy = e.getValue();
                 g.setColor(new Color(1.0f, 0.7f, 0, PAINT_OPACITY));
                 if (isStale(enemy)) {
@@ -710,15 +711,14 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
                 }
                 Point priority = Util.calcPoint(ctx.my.calcRadians(enemy), calcPriority(enemy)).add(ctx.my);
                 g.drawLine((int) enemy.x, (int) enemy.y, (int) priority.x, (int) priority.y);
-                g.drawString(String.format("%2.2f", calcPriority(enemy)), (int) enemy.x - 20, (int) enemy.y - 80);
-//              g.drawString(String.format("( %2.2f , %2.2f )", enemy.x , enemy.y), (int) r.x - 20, (int) r.y- 45);
                 double enemyDistance = ctx.my.calcDistance(enemy);
                 double enemyBearing  = ctx.my.calcDegree(enemy);
-                g.drawString(String.format("dist(degr): %2.2f(%2.2f)", enemyDistance,enemyBearing), (int) enemy.x - 20, (int) enemy.y - 50);
-                g.drawString(String.format("head(velo): %2.2f(%2.2f)", enemy.heading, enemy.velocity), (int) enemy.x - 20, (int) enemy.y - 60);
+                g.drawString(String.format("%s : %s", enemy.name, enemy), (int) base.x - 20, (int) base.y - 40);
+                g.drawString(String.format("dist(degr): %2.2f(%2.2f)", enemyDistance,enemyBearing), (int) base.x - 20, (int) base.y - 50);
+                g.drawString(String.format("head(velo): %2.2f(%2.2f)", enemy.heading, enemy.velocity), (int) base.x - 20, (int) base.y - 60);
+                g.drawString(String.format("%2.2f", calcPriority(enemy)), (int) base.x - 20, (int) base.y - 70);
                 g.setColor(new Color(0.2f, 1.0f, 0.7f, PAINT_OPACITY));
                 drawRound(g, enemy.x, enemy.y, 35);
-                g.drawString(String.format("%s : %s", enemy.name, enemy), (int) enemy.x - 20, (int) enemy.y - 40);
 
                 g.setColor(new Color(0.3f, 0.5f, 1.0f,PAINT_OPACITY));
                 Enemy next = new Enemy(enemy);
@@ -760,112 +760,3 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
     }
 }
 
-
-//        int PAST = 40;
-//            pattarnAvgMap.put("I", new HashMap<String,Pair<Long,Double>>());
-//            pattarnAvgMap.put("A", new HashMap<String,Pair<Long,Double>>());
-//            for ( int i = 1;i<=PAST;i++) {
-//                pattarnAvgMap.put(String.valueOf(i), new HashMap<String,Pair<Long,Double>>());
-//                pattarnPastMap.put(String.valueOf(i), new HashMap<String,Pair<Long,Double>>());
-//            }
-//        }
-//        if ( ! pattarnAvgMap.get("I").containsKey(r.name) )  {
-//            pattarnAvgMap.get("I").put(r.name, new Pair<>(0L,0.0));
-//        }
-//        if ( ! pattarnAvgMap.get("A").containsKey(r.name) )  {
-//            pattarnAvgMap.get("A").put(r.name, new Pair<>(0L,0.0));
-//        }
-//
-//        for ( int i = 1;i<=PAST;i++) {
-//            if ( ! pattarnAvgMap.get(String.valueOf(i)).containsKey(r.name)) {
-//                pattarnAvgMap.get(String.valueOf(i)).put(r.name, new Pair<>(0L,0.0));
-//            }
-//            if ( ! pattarnPastMap.get(String.valueOf(i)).containsKey(r.name)) {
-//                pattarnPastMap.get(String.valueOf(i)).put(r.name, new Pair<>(0L,0.0));
-//            }
-//        }
-//
-//
-//        if ( prevR != null ) {
-//            List<MovingPoint> patternList = enemyPatternMap.get(r.name);
-//            MovingPoint pt = new MovingPoint(r).diff(prevR);
-//            patternList.add(0,pt);
-//            // @@@
-//            logger.LOGLV = Logger.LOGLV_SCAN;
-//            {
-//                Enemy rr = new Enemy(r);
-//                Enemy p = new Enemy(prevR);
-//                p.inertia(1);
-//                rr.diff(p);
-//                Pair<Long,Double> pp = pattarnAvgMap.get("I").get(r.name);
-//                double distance = rr.calcDistance(new Point());
-//                pp.second = (pp.first * pp.second+distance) / ++pp.first;
-//                logger.log("I : %2.2f / %d = %2.2f (%2.2f)",pp.second,pp.first,pp.second/pp.first,distance);
-//            }
-//            {
-//                Enemy rr = new Enemy(r);
-//                Enemy p = new Enemy(prevR);
-//                p.prospectNext();
-//                rr.diff(p);
-//                Pair<Long,Double> pp = pattarnAvgMap.get("A").get(r.name);
-//                double distance = rr.calcDistance(new Point());
-//                pp.second = (pp.first * pp.second+distance) / ++pp.first;
-//                logger.log("A : %2.2f / %d = %2.2f (%2.2f)",pp.second,pp.first,pp.second/pp.first,distance);
-//            }
-//            {
-//                for ( int N = 2; N <=PAST;N++) {
-//                    if ( N < patternList.size() ) {
-//                        MovingPoint diff = new MovingPoint();
-//                        for ( int i = 2; i <=N; i++ ) {
-//                            diff.add(patternList.get(i));
-//                            diff.time = patternList.get(i).time;
-//                        }
-//                        diff.quot(N-1);
-//
-//                        Enemy rr = new Enemy(r);
-//                        Enemy p = new Enemy(prevR);
-//                        long diffTime = rr.time-diff.time;
-//                        if ( diffTime > PAST) {
-//                            break;
-//                        }
-//                        diff.time = 1;
-//                        // logger.log("Diff(%d): (%2.2f,%2.2f) d: %2.2f h: %2.2f (%d)",N,diff.x,diff.y,diff.calcDistance(new Point()),diff.heading,diff.time - past.time);
-//                        p.setDelta(diff);
-//                        p.prospectNext();
-//                        rr.diff(p);
-//                        Pair<Long,Double> pp = pattarnAvgMap.get(String.valueOf(diffTime)).get(r.name);
-//                        double distance = rr.calcDistance(new Point());
-//                        pp.second = (pp.first * pp.second+distance) / ++pp.first;
-//                        logger.log("A%2d : %2.2f / %d = %2.2f (%2.2f)",diffTime,pp.second,pp.first,pp.second/pp.first,distance);
-//                        // logger.log("Avrage(%d): (%2.2f,%2.2f) d: %2.2f h: %2.2f",N,rr.x,rr.y,rr.calcDistance(new Point()),rr.heading);
-//
-//                    }
-//                }
-//            }
-//            {
-//                for ( int N = 2; N <=PAST;N++) {
-//                    if ( N < patternList.size() ) {
-//
-//                        MovingPoint diff = new MovingPoint(patternList.get(N));
-//                        Enemy rr = new Enemy(r);
-//                        Enemy p = new Enemy(prevR);
-//                        long diffTime = rr.time-diff.time;
-//                        if ( diffTime > PAST) {
-//                            break;
-//                        }
-//                        diff.time = 1;
-//                        // diff.diff(past).quot(diffTime);
-//                        // logger.log("Diff(%d): (%2.2f,%2.2f) d: %2.2f h: %2.2f (%d)",N,diff.x,diff.y,diff.calcDistance(new Point()),diff.heading,diff.time - past.time);
-//                        p.setDelta(diff);
-//                        p.prospectNext();
-//                        rr.diff(p);
-//                        Pair<Long,Double> pp = pattarnPastMap.get(String.valueOf(diffTime)).get(r.name);
-//                        double distance = rr.calcDistance(new Point());
-//                        pp.second = (pp.first * pp.second+distance) / ++pp.first;
-//                        logger.log("P%2d : %2.2f / %d = %2.2f (%2.2f)",diffTime,pp.second,pp.first,pp.second/pp.first,distance);
-//                        // logger.log("Avrage(%d): (%2.2f,%2.2f) d: %2.2f h: %2.2f",N,rr.x,rr.y,rr.calcDistance(new Point()),rr.heading);
-//
-//                    }
-//                }
-//            }
-//        }

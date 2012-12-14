@@ -4,7 +4,6 @@
  */
 package jp.crumb.sample;
 
-import java.awt.Color;
 import jp.crumb.CrumbRobot;
 
 
@@ -12,6 +11,6 @@ import jp.crumb.CrumbRobot;
  *
  * @author crumb
  */
-public class Leader extends CrumbRobot {
+public class NormalLeader extends CrumbRobot {
 
 }

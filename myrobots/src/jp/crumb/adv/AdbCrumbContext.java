@@ -15,13 +15,13 @@ import jp.crumb.utils.Util;
  *
  * @author crumb
  */
-public class PatternContext extends CrumbContext{
+public class AdbCrumbContext extends CrumbContext{
     public Map<String,BulletInfo> nextEnemyBulletList = new HashMap<>();
 
 
-    public PatternContext() {
+    public AdbCrumbContext() {
     }
-    public PatternContext(PatternContext in) {
+    public AdbCrumbContext(AdbCrumbContext in) {
         super(in);
         this.nextEnemyBulletList = Util.deepCopyHashMap(in.nextEnemyBulletList,new Copy<BulletInfo>(){
             @Override

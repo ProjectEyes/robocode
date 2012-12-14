@@ -37,7 +37,7 @@ import robocode.MessageEvent;
  *
  * @author crumb
  */
-abstract public class PatternRobot<T extends PatternContext> extends CrumbRobot<T> {
+abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobot<T> {
     @Override
     public void run() {
         super.run();
@@ -144,11 +144,11 @@ abstract public class PatternRobot<T extends PatternContext> extends CrumbRobot<
     }
 
     @Override
-    protected PatternContext createContext(PatternContext in) {
+    protected AdbCrumbContext createContext(AdbCrumbContext in) {
         if ( in == null ) {
-            return new PatternContext();
+            return new AdbCrumbContext();
         }
-        return new PatternContext(in);
+        return new AdbCrumbContext(in);
     }
 
     @Override
@@ -224,7 +224,7 @@ abstract public class PatternRobot<T extends PatternContext> extends CrumbRobot<
         if ( s.score == 0.0 ) {
             return robot.prospectNext(term);
         }
-logger.log("(%d/%d) %s: %2.2f => %d",robot.time,robot.timeStamp,s.name,s.score,robot.time-Integer.valueOf(s.name));
+//logger.log("(%d/%d) %s: %2.2f => %d",robot.time,robot.timeStamp,s.name,s.score,robot.time-Integer.valueOf(s.name));
 
 
         for ( long l = 1; l <= term; l++) {
@@ -265,6 +265,12 @@ logger.log("(%d/%d) %s: %2.2f => %d",robot.time,robot.timeStamp,s.name,s.score,r
 //                logger.log("%d: %s(%d) : %s",l,s.name,absLogTime,logEnemy.delta);
                 robot.setDelta(logEnemy.delta);
                 robot.add(logEnemy.delta);
+                if ( isPaint ) {
+                    getGraphics().setColor(Color.GRAY);
+                    drawRound(getGraphics(),logEnemy.x,logEnemy.y,10);
+                    getGraphics().setColor(Color.LIGHT_GRAY);
+                    drawRound(getGraphics(),robot.x,robot.y,10);
+                }
             }else{
                 robot.prospectNext(1);
             }
@@ -425,7 +431,7 @@ logger.log("(%d/%d) %s: %2.2f => %d",robot.time,robot.timeStamp,s.name,s.score,r
         broadcastMessage(new AimTypeEvent(info.targetName, aimTypeList));
     }
     @Override
-    protected void doFire(double power, double distance, String targetName) {
+    protected void doFire(double power, double distance, String targetName,int type) {
         if ( ! reactPatternScoreMap.containsKey(targetName)) {
             TreeMap<Long,Pair<Score,TimedPoint>> scores = new TreeMap<>();
             reactPatternScoreMap.put(targetName,scores);
@@ -439,7 +445,7 @@ logger.log("(%d/%d) %s: %2.2f => %d",robot.time,robot.timeStamp,s.name,s.score,r
         vecter.time = enemy.time;
         vecter.timeStamp = enemy.timeStamp;
         scores.put(enemy.time,new Pair<>(new Score(String.valueOf(enemy.time)),vecter));
-        super.doFire(power, distance, targetName);
+        super.doFire(power, distance, targetName,type);
     }
     @Override
     protected Map.Entry<String, BulletInfo> cbBulletHit(BulletHitEvent e) {
@@ -474,17 +480,18 @@ logger.log("(%d/%d) %s: %2.2f => %d",robot.time,robot.timeStamp,s.name,s.score,r
     }
 
     @Override
-    protected void cbBulletHitBullet(BulletHitBulletEvent e){
-        super.cbBulletHitBullet(e);
+    protected Map.Entry<String,BulletInfo> cbBulletHitBullet(BulletHitBulletEvent e){
+        Map.Entry<String,BulletInfo> entry = super.cbBulletHitBullet(e);
         Bullet bullet = e.getHitBullet();
-        Map.Entry<String,BulletInfo> entry = Util.calcBulletSrc(ctx.my.time,bullet,enemyBulletList);
-        if ( entry == null ) {
+        Map.Entry<String,BulletInfo> eEntry = Util.calcBulletSrc(ctx.my.time,bullet,enemyBulletList);
+        if ( eEntry == null ) {
             logger.fire1("Unknown bullet hit: ");
         }else{
-            impactEnemyBulletInfo(entry.getKey());
             BulletInfo info = entry.getValue();
             getAimType(info.targetName, info.type).revartAim();
+            impactEnemyBulletInfo(entry.getKey());
         }
+        return entry;
     }
     @Override
     protected void cbHitByBullet(HitByBulletEvent e) {
@@ -628,16 +635,6 @@ logger.log("(%d/%d) %s: %2.2f => %d",robot.time,robot.timeStamp,s.name,s.score,r
     protected void paint(Graphics2D g) {
         if ( isPaint) {
             super.paint(g);
-//            for (Map.Entry<String, Enemy> e : ctx.nextEnemyMap.entrySet()) {
-//                Enemy enemy = e.getValue();
-//                g.setColor(new Color(0.3f, 0.5f, 1.0f,PAINT_OPACITY));
-//                Enemy next = new Enemy(enemy);
-//                for (int i = 1; i < 20; i++) {
-//                    MoveType aimType = MoveType.getByScore(aimTypeMap.get(next.name));
-//                    prospectNextRobot(next, aimType,1);
-//                    drawRound(g, next.x, next.y, 2);
-//                }
-//            }
             // Bullet
             g.setColor(new Color(1.0f, 0.5f, 0.5f, PAINT_OPACITY));
             for (Map.Entry<String, BulletInfo> e : enemyBulletList.entrySet()) {
@@ -669,17 +666,20 @@ logger.log("(%d/%d) %s: %2.2f => %d",robot.time,robot.timeStamp,s.name,s.score,r
     protected void dumpLog(){
         // g.drawString(String.format("hit: %d / %d  : %2.2f / %2.2f", r.getAimType().hitCount, r.getAimType().aimCount, r.getAimType().hitTime, r.getAimType().aimTime), (int) r.x - 20, (int) r.y - 40);
         // TODO: merge to AIMING
-//        List<Enemy> enemyArray = new ArrayList(enemyMap.values());
-//        Collections.sort(enemyArray,new Comparator<Enemy>(){
-//            @Override
-//            public int compare(Enemy o1, Enemy o2) {
-//                return o1.getAimType().compareTo(o2.getAimType());
-//            }});
-//        for (Enemy enemy :  enemyArray ) {
-//            Logger.log("=== %s (%2.2f%%)===",enemy.name,enemy.getAimType().getHitRate()*100);
-//            Logger.log("aim : %2.2f(%d)",enemy.getAimType().aimTime,enemy.getAimType().aimCount);
-//            Logger.log("hit : %2.2f(%d)",enemy.getAimType().hitTime,enemy.getAimType().hitCount);
-//        }        
+        for ( Map.Entry<String,List<MoveType>> e : aimTypeMap.entrySet() ) {
+            String enemyName = e.getKey();
+            Logger.log("=== %s ===",enemyName);
+            long hitCount = 0;
+            long aimCount = 0;
+            for ( MoveType aimType : e.getValue() ) {
+                hitCount+= aimType.hitCount;
+                aimCount+= aimType.aimCount;
+            }
+            Logger.log("ALL : %2.2f %% (%d/%d)",(double)hitCount/(double)aimCount*100.0,hitCount,aimCount);
+            for ( MoveType aimType : e.getValue() ) {            
+                Logger.log("x%02x : %2.2f %% (%d/%d) : %2.2f",aimType.type,aimType.avrage()*100.0,aimType.hitCount,aimType.aimCount,aimType.score);
+            }
+        }
         
     }
 }

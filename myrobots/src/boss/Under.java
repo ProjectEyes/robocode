@@ -1,4 +1,4 @@
-package jp.crumb.sample;
+package boss;
 
 /*
  * To change this template, choose Tools | Templates
@@ -6,25 +6,7 @@ package jp.crumb.sample;
  */
 
 
-import java.awt.Color;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.SortedMap;
-import java.util.TreeMap;
-import jp.crumb.sample.*;
-import jp.crumb.adv.PatternContext;
-import jp.crumb.adv.PatternRobot;
-import jp.crumb.utils.Enemy;
-import jp.crumb.utils.MoveType;
-import jp.crumb.utils.MovingPoint;
-import jp.crumb.utils.Pair;
-import jp.crumb.utils.Point;
-import jp.crumb.utils.RobotPoint;
-import jp.crumb.utils.Score;
-import jp.crumb.utils.TimedPoint;
-import jp.crumb.utils.Util;
+import robocode.Droid;
 
 
 
@@ -32,26 +14,27 @@ import jp.crumb.utils.Util;
  *
  * @author crumb
  */
-public class ReactPatternLeader extends PatternRobot<PatternContext> {
+public abstract class Under extends Boss implements Droid{
     @Override
-    public void run() {
-        super.run();
-        setColors(new Color(0,0,0), new Color(0, 0,0), new Color(255, 255, 150)); // body,gun,radar
-        this.setBulletColor(new Color(0,0,0));
-    }
-    
-
-    @Override
-    protected List<MoveType> initialAimTypeList() {
-        List<MoveType> moveTypeList = new ArrayList<>();
-        MoveType moveType = new MoveType(MoveType.TYPE_REACT_PATTERN_FIRST);
-        moveTypeList.add(moveType);
-        moveType = new MoveType(MoveType.TYPE_REACT_PATTERN_CENTER);
-        moveTypeList.add(moveType);
-        return moveTypeList;
+    protected void cbFirst() {
+        super.cbFirst();
+        GT_DIM = 2.0;
     }
 
-    
-
+    @Override
+    protected void cbThinking() {
+        if ( ! ctx.isGunMode(ctx.MODE_GUN_MANUAL )) {
+            this.setGunMode(ctx.MODE_GUN_LOCKON);
+        }
+        if ( ctx.lockonTarget == null ) {
+            super.cbThinking();
+        }
+    }
+    @Override
+    protected void cbFiring() {
+        if ( ctx.isFireMode(ctx.MODE_FIRE_AUTO) ) {
+            firing(3,0);
+        }
+    }
   
 }

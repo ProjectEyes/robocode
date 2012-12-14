@@ -2,18 +2,20 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-package jp.crumb;
+package jp.crumb.sample;
 
+import jp.crumb.CrumbContext;
+import jp.crumb.CrumbRobot;
 import robocode.Droid;
 
 /**
  *
  * @author crumb
  */
-public class CrumbDroid extends CrumbRobot<CrumbContext> implements Droid {
+public class BasicDroid extends CrumbRobot<CrumbContext> implements Droid {
 
 
-    public CrumbDroid() {
+    public BasicDroid() {
     }
 
     @Override

@@ -18,7 +18,7 @@ import robocode.ScannedRobotEvent;
  *
  * @author crumb
  */
-public class FirePinpoint extends CrumbRobot<CrumbContext> {
+public class Pinpoint extends CrumbRobot<CrumbContext> {
     @Override
     protected void cbThinking() {
         for ( Map.Entry<String,Enemy> e : ctx.nextEnemyMap.entrySet() ) {

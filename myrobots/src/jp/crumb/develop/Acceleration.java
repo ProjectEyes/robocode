@@ -9,8 +9,8 @@ import java.util.List;
 import java.util.Map;
 import jp.crumb.CrumbContext;
 import jp.crumb.CrumbRobot;
-import jp.crumb.adv.PatternContext;
-import jp.crumb.adv.PatternRobot;
+import jp.crumb.adv.AdbCrumbContext;
+import jp.crumb.adv.AdvCrumbRobot;
 import jp.crumb.utils.Enemy;
 import jp.crumb.utils.MoveType;
 import jp.crumb.utils.RobotPoint;
@@ -20,7 +20,7 @@ import jp.crumb.utils.RobotPoint;
  *
  * @author crumb
  */
-public class FireInertia extends PatternRobot<PatternContext> {
+public class Acceleration extends AdvCrumbRobot<AdbCrumbContext> {
     @Override
     protected void cbThinking() {
         for ( Map.Entry<String,Enemy> e : ctx.nextEnemyMap.entrySet() ) {
@@ -37,7 +37,7 @@ public class FireInertia extends PatternRobot<PatternContext> {
     @Override
     protected List<MoveType> initialAimTypeList() {
         List<MoveType> moveTypeList = new ArrayList<>();
-        MoveType moveType = new MoveType(MoveType.TYPE_INERTIA_CENTER);
+        MoveType moveType = new MoveType(MoveType.TYPE_ACCELERATION_CENTER);
         moveType.score = 0.001; // Initial type (will be overrided by first hit!!)
         moveTypeList.add(moveType);
         return moveTypeList;
@@ -46,7 +46,7 @@ public class FireInertia extends PatternRobot<PatternContext> {
     @Override
     protected List<MoveType> initialShotTypeList() {
        List<MoveType> moveTypeList = new ArrayList<>();
-       MoveType moveType = new MoveType(MoveType.TYPE_INERTIA_CENTER);
+       MoveType moveType = new MoveType(MoveType.TYPE_ACCELERATION_CENTER);
        moveTypeList.add(moveType);
        return moveTypeList;
      }

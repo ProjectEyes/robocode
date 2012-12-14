@@ -4,9 +4,12 @@
  */
 package jp.crumb.develop;
 
+import java.awt.Color;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
-import jp.crumb.adv.PatternContext;
-import jp.crumb.adv.PatternRobot;
+import jp.crumb.adv.AdbCrumbContext;
+import jp.crumb.adv.AdvCrumbRobot;
 import jp.crumb.utils.Enemy;
 import jp.crumb.utils.MoveType;
 
@@ -15,23 +18,23 @@ import jp.crumb.utils.MoveType;
  *
  * @author crumb
  */
-public class SimplePattern extends PatternRobot<PatternContext> {
+public class SimplePattern extends AdvCrumbRobot<AdbCrumbContext> {
     @Override
-    protected void cbThinking() {
-        for ( Map.Entry<String,Enemy> e : ctx.nextEnemyMap.entrySet() ) {
-            if ( ! isTeammate(e.getValue().name) && e.getValue().timeStamp != 0 ) {
-                ctx.setLockonTarget(e.getValue().name);
-            }
-        }
-        setRadarMode(ctx.MODE_RADAR_LOCKON);
-        setGunMode(ctx.MODE_GUN_LOCKON);
-        setMoveMode(ctx.MODE_MOVE_LOCKON1);
-        setFireMode(ctx.MODE_FIRE_AUTO);
+    public void run() {
+        super.run();
+        setColors(new Color(0,0,0), new Color(0, 0,0), new Color(255, 255, 150)); // body,gun,radar
+        this.setBulletColor(new Color(0,0,0));
     }
+    
 
     @Override
-    protected MoveType getAimType(String name) {
-        return new MoveType(MoveType.TYPE_SIMPLE_PATTERN_CENTER);
+    protected List<MoveType> initialAimTypeList() {
+        List<MoveType> moveTypeList = new ArrayList<>();        
+        MoveType moveType = new MoveType(MoveType.TYPE_SIMPLE_PATTERN_FIRST);
+        moveTypeList.add(moveType);
+        moveType = new MoveType(MoveType.TYPE_SIMPLE_PATTERN_CENTER);
+        moveTypeList.add(moveType);
+        return moveTypeList;
     }
 
 

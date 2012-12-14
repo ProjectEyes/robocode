@@ -4,12 +4,10 @@
  */
 package jp.crumb.sample;
 
-import jp.crumb.CrumbDroid;
-
 
 /**
  *
  * @author crumb
  */
-public class Droid2 extends CrumbDroid {
+public class BasicDroid2 extends BasicDroid {
 }

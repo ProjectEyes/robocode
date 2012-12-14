@@ -1,4 +1,4 @@
-package jp.crumb.sample;
+package jp.crumb.develop;
 
 /*
  * To change this template, choose Tools | Templates
@@ -8,23 +8,10 @@ package jp.crumb.sample;
 
 import java.awt.Color;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.SortedMap;
-import java.util.TreeMap;
-import jp.crumb.sample.*;
-import jp.crumb.adv.PatternContext;
-import jp.crumb.adv.PatternRobot;
-import jp.crumb.utils.Enemy;
+import jp.crumb.adv.AdbCrumbContext;
+import jp.crumb.adv.AdvCrumbRobot;
 import jp.crumb.utils.MoveType;
-import jp.crumb.utils.MovingPoint;
-import jp.crumb.utils.Pair;
-import jp.crumb.utils.Point;
-import jp.crumb.utils.RobotPoint;
-import jp.crumb.utils.Score;
-import jp.crumb.utils.TimedPoint;
-import jp.crumb.utils.Util;
 
 
 
@@ -32,7 +19,7 @@ import jp.crumb.utils.Util;
  *
  * @author crumb
  */
-public class ReactPatternLeader extends PatternRobot<PatternContext> {
+public class ReactPattern extends AdvCrumbRobot<AdbCrumbContext> {
     @Override
     public void run() {
         super.run();
@@ -51,7 +38,4 @@ public class ReactPatternLeader extends PatternRobot<PatternContext> {
         return moveTypeList;
     }
 
-    
-
-  
 }

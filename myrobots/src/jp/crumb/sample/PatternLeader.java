@@ -4,15 +4,12 @@
  */
 package jp.crumb.sample;
 
-import jp.crumb.adv.PatternContext;
-import jp.crumb.adv.PatternRobot;
-
 
 
 /**
  *
  * @author crumb
  */
-public class PatternLeader extends PatternRobot<PatternContext> {
+public class PatternLeader extends Pattern {
 
 }

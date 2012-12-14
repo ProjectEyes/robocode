@@ -5,7 +5,6 @@
 package jp.crumb.utils;
 
 import java.io.Serializable;
-import java.util.List;
 
 /**
  *
@@ -16,8 +15,6 @@ public class MoveType extends Score implements Comparable<MoveType> , Serializab
     public int type;
     public int aimCount;
     public int hitCount;
-    public double aimAvg;
-    public double hitAvg;
     public MoveType(int type){
         super(String.valueOf(type));
         this.type = type;
@@ -27,8 +24,6 @@ public class MoveType extends Score implements Comparable<MoveType> , Serializab
         this.type = in.type;
         this.aimCount  = in.aimCount;
         this.hitCount  = in.hitCount;
-        this.aimAvg = in.aimAvg;
-        this.hitAvg = in.hitAvg;
     }
     public double getHitRate(){
         if ( aimCount == 0 ) {
@@ -37,25 +32,17 @@ public class MoveType extends Score implements Comparable<MoveType> , Serializab
         return (double)hitCount/(double)aimCount;
     }
     public void updateAim(){
-        double sumAim = aimCount * aimAvg + 1;
-        aimCount++;
-        aimAvg = sumAim/(double)aimCount;
+        this.aimCount+=1;
     }
     public void updateHit(){
-        double sumHit = hitCount * hitAvg + 1;
-        hitCount++;
-        hitAvg = sumHit/(double)hitCount;
+        this.hitCount+=1;
     }
     public void revartAim(){
-        double sumAim = aimCount * aimAvg - 1;
-        aimCount--;
-        if ( aimCount == 0 ) {
-            aimAvg = 0;
-        }else{
-            aimAvg = sumAim /(double)aimCount;
-        }
+        this.aimCount-=1;
     }
-
+    public double avrage(){
+        return (double)hitCount/(double)aimCount;
+    }
     @Override
     public int compareTo(MoveType o) {
         if ( aimCount == 0 ) {

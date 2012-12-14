@@ -9,8 +9,8 @@ import java.util.List;
 import java.util.Map;
 import jp.crumb.CrumbContext;
 import jp.crumb.CrumbRobot;
-import jp.crumb.adv.PatternContext;
-import jp.crumb.adv.PatternRobot;
+import jp.crumb.adv.AdbCrumbContext;
+import jp.crumb.adv.AdvCrumbRobot;
 import jp.crumb.utils.Enemy;
 import jp.crumb.utils.MoveType;
 import jp.crumb.utils.RobotPoint;
@@ -20,7 +20,7 @@ import jp.crumb.utils.RobotPoint;
  *
  * @author crumb
  */
-public class FireInertia extends PatternRobot<PatternContext> {
+public class Inertia extends AdvCrumbRobot<AdbCrumbContext> {
     @Override
     protected void cbThinking() {
         for ( Map.Entry<String,Enemy> e : ctx.nextEnemyMap.entrySet() ) {

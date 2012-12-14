@@ -30,6 +30,7 @@ import robocode.BulletHitEvent;
 import robocode.BulletMissedEvent;
 import robocode.Condition;
 import robocode.CustomEvent;
+import robocode.DeathEvent;
 import robocode.HitByBulletEvent;
 import robocode.HitRobotEvent;
 import robocode.HitWallEvent;
@@ -39,6 +40,7 @@ import robocode.RoundEndedEvent;
 import robocode.ScannedRobotEvent;
 import robocode.StatusEvent;
 import robocode.TeamRobot;
+import robocode.WinEvent;
 
 
 /**
@@ -47,8 +49,6 @@ import robocode.TeamRobot;
  */
 abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
     protected static final boolean isPaint = true;
-
-
     protected Logger logger = new Logger();
 
     protected static final double MOVE_COMPLETE_THRESHOLD = 1.0;
@@ -194,7 +194,7 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
     }
 
 
-    protected void cbBulletHitBullet(BulletHitBulletEvent e){
+    protected Map.Entry<String,BulletInfo> cbBulletHitBullet(BulletHitBulletEvent e){
         Bullet bullet = e.getBullet();
         Point dst = new Point(bullet.getX(),bullet.getY());
         Map.Entry<String,BulletInfo> entry = Util.calcBulletSrc(ctx.my.time,bullet,bulletList);
@@ -204,6 +204,7 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
             impactBullet(entry.getKey());
         }
         logger.fire1("INTERCEPT: %s",dst);
+        return entry;
     }
     
 
@@ -530,6 +531,16 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
         super.setTurnRadarRight(degrees);
         ctx.curRadarTurnRemaining = degrees;
         ctx.curRadarTurnRemainingRadians = Math.toRadians(degrees);
+    }
+
+    @Override
+    public void onDeath(DeathEvent event) {
+        dumpLog();
+    }
+
+    @Override
+    public void onWin(WinEvent event) {
+        dumpLog();
     }
     
     @Override

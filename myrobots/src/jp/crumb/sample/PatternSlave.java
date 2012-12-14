@@ -4,8 +4,6 @@
  */
 package jp.crumb.sample;
 
-import jp.crumb.adv.PatternContext;
-import jp.crumb.adv.PatternRobot;
 
 
 
@@ -13,6 +11,6 @@ import jp.crumb.adv.PatternRobot;
  *
  * @author crumb
  */
-public class PatternSlave extends PatternRobot<PatternContext> {
+public class PatternSlave extends Pattern {
 
 }

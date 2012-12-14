@@ -6,25 +6,13 @@ package jp.crumb.sample;
  */
 
 
+import jp.crumb.develop.*;
 import java.awt.Color;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.SortedMap;
-import java.util.TreeMap;
-import jp.crumb.sample.*;
-import jp.crumb.adv.PatternContext;
-import jp.crumb.adv.PatternRobot;
-import jp.crumb.utils.Enemy;
+import jp.crumb.adv.AdbCrumbContext;
+import jp.crumb.adv.AdvCrumbRobot;
 import jp.crumb.utils.MoveType;
-import jp.crumb.utils.MovingPoint;
-import jp.crumb.utils.Pair;
-import jp.crumb.utils.Point;
-import jp.crumb.utils.RobotPoint;
-import jp.crumb.utils.Score;
-import jp.crumb.utils.TimedPoint;
-import jp.crumb.utils.Util;
 
 
 
@@ -32,7 +20,7 @@ import jp.crumb.utils.Util;
  *
  * @author crumb
  */
-public class ReactPatternLeader extends PatternRobot<PatternContext> {
+public class Pattern extends AdvCrumbRobot<AdbCrumbContext> {
     @Override
     public void run() {
         super.run();
@@ -44,7 +32,11 @@ public class ReactPatternLeader extends PatternRobot<PatternContext> {
     @Override
     protected List<MoveType> initialAimTypeList() {
         List<MoveType> moveTypeList = new ArrayList<>();
-        MoveType moveType = new MoveType(MoveType.TYPE_REACT_PATTERN_FIRST);
+        MoveType moveType = new MoveType(MoveType.TYPE_SIMPLE_PATTERN_FIRST);
+        moveTypeList.add(moveType);
+        moveType = new MoveType(MoveType.TYPE_SIMPLE_PATTERN_CENTER);
+        moveTypeList.add(moveType);
+        moveType = new MoveType(MoveType.TYPE_REACT_PATTERN_FIRST);
         moveTypeList.add(moveType);
         moveType = new MoveType(MoveType.TYPE_REACT_PATTERN_CENTER);
         moveTypeList.add(moveType);

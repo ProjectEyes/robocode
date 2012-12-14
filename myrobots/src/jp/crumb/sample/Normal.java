@@ -6,25 +6,13 @@ package jp.crumb.sample;
  */
 
 
+import jp.crumb.develop.*;
 import java.awt.Color;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.SortedMap;
-import java.util.TreeMap;
-import jp.crumb.sample.*;
-import jp.crumb.adv.PatternContext;
-import jp.crumb.adv.PatternRobot;
-import jp.crumb.utils.Enemy;
+import jp.crumb.adv.AdbCrumbContext;
+import jp.crumb.adv.AdvCrumbRobot;
 import jp.crumb.utils.MoveType;
-import jp.crumb.utils.MovingPoint;
-import jp.crumb.utils.Pair;
-import jp.crumb.utils.Point;
-import jp.crumb.utils.RobotPoint;
-import jp.crumb.utils.Score;
-import jp.crumb.utils.TimedPoint;
-import jp.crumb.utils.Util;
 
 
 
@@ -32,22 +20,28 @@ import jp.crumb.utils.Util;
  *
  * @author crumb
  */
-public class ReactPatternLeader extends PatternRobot<PatternContext> {
+public class Normal extends AdvCrumbRobot<AdbCrumbContext> {
     @Override
     public void run() {
         super.run();
-        setColors(new Color(0,0,0), new Color(0, 0,0), new Color(255, 255, 150)); // body,gun,radar
+        setColors(new Color(100,100,100), new Color(100,100,100), new Color(255, 255, 150)); // body,gun,radar
         this.setBulletColor(new Color(0,0,0));
     }
     
 
     @Override
-    protected List<MoveType> initialAimTypeList() {
+    protected List<MoveType> initialAimTypeList(){
         List<MoveType> moveTypeList = new ArrayList<>();
-        MoveType moveType = new MoveType(MoveType.TYPE_REACT_PATTERN_FIRST);
+        MoveType moveType = new MoveType(MoveType.TYPE_PINPOINT);
         moveTypeList.add(moveType);
-        moveType = new MoveType(MoveType.TYPE_REACT_PATTERN_CENTER);
+        moveType = new MoveType(MoveType.TYPE_INERTIA_FIRST);
         moveTypeList.add(moveType);
+        moveType = new MoveType(MoveType.TYPE_INERTIA_CENTER);
+        moveTypeList.add(moveType);
+        moveType = new MoveType(MoveType.TYPE_ACCELERATION_FIRST);
+        moveType.score = 0.001; // Initial type (will be overrided by first hit!!)
+        moveTypeList.add(moveType);
+        moveType = new MoveType(MoveType.TYPE_ACCELERATION_CENTER);
         return moveTypeList;
     }
 

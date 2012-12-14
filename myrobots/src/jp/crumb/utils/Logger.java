@@ -46,6 +46,7 @@ public class Logger {
     public static final int LOGLV_DEBUG4   = 0x80000000;
     public static final int LOGLV_DEBUG    = 0xF0000000;
 //    public static int LOGLV = LOGLV_ALL;
+//    public int LOGLV = LOGLV_CRASH |  LOGLV_GUN1 | LOGLV_GUN2;
     public int LOGLV = LOGLV_CRASH |  LOGLV_GUN1 | LOGLV_GUN2;
 //    public static int LOGLV = LOGLV_DEBUG1 | LOGLV_DEBUG2;
 
