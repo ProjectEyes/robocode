@@ -46,7 +46,7 @@ abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobo
     }
 
     protected static final long REACT_PATTERN_TERM = 20;
-    protected static final double REACT_PATTERN_SCORE_ESTIMATE_LIMIT = 200;
+    protected static final double REACT_PATTERN_SCORE_ESTIMATE_LIMIT = 50;
     protected static final double REACT_PATTERN_SCORE_ESTIMATE_MIN = 20;
 
     protected static final long SIMPLE_PATTERN_TERM_MAX =1000;
@@ -62,7 +62,6 @@ abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobo
 //    protected static final double SHOT_SCORE_ESTIMATE_LIMIT = 10;
 //    protected static final double AIM_SCORE_ESTIMATE_LIMIT = 10;
 
-    protected static final double PERFECT_SCORE = 100; // Distance
     
 //    protected static final double ENEMY_BULLET_DIFF_THRESHOLD = Math.PI/6; // more than 30 degrees
 //    protected static final double BULLET_DIFF_THRESHOLD = Math.PI/6; // more than 30 degrees
@@ -264,7 +263,7 @@ abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobo
                 logger.prospect4("%d: %s(%d) : %s",l,s.name,absLogTime,logEnemy.delta);
 //                logger.log("%d: %s(%d) : %s",l,s.name,absLogTime,logEnemy.delta);
                 robot.setDelta(logEnemy.delta);
-                robot.add(logEnemy.delta);
+                robot.prospectNext(1);
                 if ( isPaint ) {
                     getGraphics().setColor(Color.GRAY);
                     drawRound(getGraphics(),logEnemy.x,logEnemy.y,10);
@@ -303,7 +302,7 @@ abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobo
                     prospectEnemy.setDelta(logEnemy.delta);
                     prospectEnemy.prospectNext(deltaTime);
                     double d = prospectEnemy.calcDistance(constEnemy);
-                    s.updateScore(Util.fieldFullDistance-d,REACT_PATTERN_SCORE_ESTIMATE_LIMIT,REACT_PATTERN_SCORE_ESTIMATE_MIN);
+                    s.updateScore(PERFECT_SCORE-d,REACT_PATTERN_SCORE_ESTIMATE_LIMIT,REACT_PATTERN_SCORE_ESTIMATE_MIN);
                     logger.prospect4("REACT(%02d): %2.2f(%2.2f)",shotTime,s.score,d);
 
                     //double pastR = new Point(0,0).calcDegree(p.getValue().second);
@@ -332,7 +331,7 @@ abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobo
             prospectEnemy.prospectNext(deltaTime);
             double d = prospectEnemy.calcDistance(constEnemy);
             Score s = scores.get(i);
-            s.updateScore(Util.fieldFullDistance-d,SIMPLE_PATTERN_SCORE_ESTIMATE_LIMIT,SIMPLE_PATTERN_TERM_MIN);
+            s.updateScore(PERFECT_SCORE-d,SIMPLE_PATTERN_SCORE_ESTIMATE_LIMIT,SIMPLE_PATTERN_TERM_MIN);
             logger.prospect4("REACT(%02d): %2.2f(%2.2f)",absTime,s.score,d);
             //logger.log("SIMPLE(%02d):%2.2f => %2.2f = %2.2f",i,d,d,s.score);
         }

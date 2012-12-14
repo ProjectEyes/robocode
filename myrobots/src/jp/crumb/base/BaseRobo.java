@@ -49,7 +49,7 @@ import robocode.WinEvent;
  */
 abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
     protected static final boolean isPaint = true;
-    protected Logger logger = new Logger();
+    protected Logger logger = new Logger(0);
 
     protected static final double MOVE_COMPLETE_THRESHOLD = 1.0;
 
@@ -84,7 +84,7 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
     private void initEventPriority(){
         // TODO : loglv
 //        logger.LOGLV= Logger.LOGLV_PROSPECT1 | Logger.LOGLV_FIRE1 | Logger.LOGLV_SCAN;
-        logger.LOGLV= Logger.LOGLV_PROSPECT1 | Logger.LOGLV_FIRE1;
+//        logger.LOGLV= Logger.LOGLV_PROSPECT1 | Logger.LOGLV_FIRE1;
 
 	this.setEventPriority("ScannedRobotEvent",10);
 	this.setEventPriority("HitRobotEvent",10);

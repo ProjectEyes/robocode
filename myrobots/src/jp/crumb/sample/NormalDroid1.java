@@ -9,6 +9,6 @@ package jp.crumb.sample;
  *
  * @author crumb
  */
-public class NormalDroid1 extends BasicDroid {
+public class NormalDroid1 extends NormalDroid {
 
 }

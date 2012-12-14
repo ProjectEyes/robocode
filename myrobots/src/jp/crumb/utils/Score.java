@@ -40,7 +40,7 @@ public class Score implements Serializable{
         score = sumScore/(double)count;
     }
     public void updateScore(double s){
-        updateScore(s,Double.POSITIVE_INFINITY,0);
+        updateScore((s<0)?0:s,Double.POSITIVE_INFINITY,0);
     }
 
     public static <T extends Score> T getByScore(Collection<T> list) {

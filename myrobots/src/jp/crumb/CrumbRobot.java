@@ -36,6 +36,7 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
         this.setBulletColor(new Color(255,255,255));
     }
 
+    protected static final double PERFECT_SCORE = 100; // Distance
     protected static final int MAX_CALC = 5;
 
     protected static final double PREPARE_LOCK_TIME=2;
@@ -193,7 +194,7 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
             limit = need;
         }
         // TODO: Should adjust by score  to power or limit (limit is better ?)
-        
+        limit = limit*aimType.score/PERFECT_SCORE;
         if ( power > limit ) {
             power = limit;
         }
@@ -234,9 +235,9 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
         String targetName = "";
         for (Map.Entry<String, Enemy> e : ctx.nextEnemyMap.entrySet()) {
             Enemy target = e.getValue();
-            if ( ! isStale(target) ) {
+            if ( ! isStale(target) && ! isTeammate(e.getKey()) ) {
                 MoveType aimtype = getAimType(target.name);
-                Pair<Double,Double> result = calcFire(target,aimtype,1,0);
+                Pair<Double,Double> result = calcFire(target,aimtype,deltaThreshold,recentThreshold);
                 if ( aimDistance > result.second ) {
                     maxPower = result.first;
                     aimDistance = result.second;
@@ -245,7 +246,6 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
                 }
             }
         }
-        
         if ( aimType != null && ! isTeammate(targetName) && maxPower > 0 ) {
             if ( ctx.enemies > 1 ) {
                 normalMode();
@@ -422,9 +422,9 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
     @Override
     protected void cbThinking() {
 //        Enemy lockOnTarget = getNextEnemy(ctx.lockonTarget);
-        ctx.lockonTarget = null;
         Enemy lockOnTarget = null;
-        if (isLeader || teammate.isEmpty() ) {
+        if (isLeader || teammate.isEmpty() || ctx.nextEnemyMap.get(leader) == null ) {
+            ctx.lockonTarget = null;
             for (Map.Entry<String, Enemy> e : ctx.nextEnemyMap.entrySet()) {
                 Enemy r = e.getValue();
                 if (teammate.contains(r.name)) {
@@ -450,6 +450,8 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
                     broadcastMessage(new LockonEvent(ctx.lockonTarget));
                 }
             }
+        }else{
+            lockOnTarget = ctx.nextEnemyMap.get(ctx.lockonTarget);
         }
         if ( lockOnTarget != null ) {
             double distance = ctx.my.calcDistance(lockOnTarget);

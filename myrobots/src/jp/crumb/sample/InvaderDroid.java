@@ -14,7 +14,7 @@ abstract public class InvaderDroid extends Invader implements Droid{
     @Override
     protected void cbFiring() {
         if ( ctx.isFireMode(ctx.MODE_FIRE_AUTO) ) {
-            firing(3,0);
+            firing(3,1);
         }
     }
 

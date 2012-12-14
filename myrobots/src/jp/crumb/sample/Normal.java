@@ -25,7 +25,7 @@ public class Normal extends AdvCrumbRobot<AdbCrumbContext> {
     public void run() {
         super.run();
         setColors(new Color(100,100,100), new Color(100,100,100), new Color(255, 255, 150)); // body,gun,radar
-        this.setBulletColor(new Color(0,0,0));
+        this.setBulletColor(new Color(100,100,100));
     }
     
 
@@ -42,6 +42,7 @@ public class Normal extends AdvCrumbRobot<AdbCrumbContext> {
         moveType.score = 0.001; // Initial type (will be overrided by first hit!!)
         moveTypeList.add(moveType);
         moveType = new MoveType(MoveType.TYPE_ACCELERATION_CENTER);
+        moveTypeList.add(moveType);
         return moveTypeList;
     }
 
