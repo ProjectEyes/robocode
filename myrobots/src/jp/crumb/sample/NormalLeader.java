@@ -4,12 +4,14 @@
  */
 package jp.crumb.sample;
 
-import jp.crumb.CrumbDroid;
+import java.awt.Color;
+import jp.crumb.CrumbRobot;
 
 
 /**
  *
  * @author crumb
  */
-public class CrumbDroid3 extends CrumbDroid {
+public class Leader extends CrumbRobot {
+
 }
