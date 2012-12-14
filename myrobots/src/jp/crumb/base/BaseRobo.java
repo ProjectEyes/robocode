@@ -15,6 +15,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import jp.crumb.utils.AimType;
 import jp.crumb.utils.Enemy;
 import jp.crumb.utils.Logger;
 import jp.crumb.utils.MovingPoint;
@@ -184,11 +185,6 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
             aimDistance = entry.getValue().distance;
             range = info.src.calcDistance(dst);
             if ( info.targetName.equals(victim) && Math.abs(aimDistance - range) < Util.tankSize) {
-                // TODO: merge to AIMING
-//              Enemy target = enemyMap.get(victim);
-//              if ( target != null ) {
-//                  target.getAimType().updateHit(range);
-//              }
                 logger.fire1("HIT: %s : %2.2f(%2.2f)  %s => %s",victim,aimDistance,range,info.src,dst);
             }else {
                 logger.fire1("HIT (by chance): %s(%s): %2.2f(%2.2f)  %s => %s",victim,info.targetName,aimDistance,range,info.src,dst);
@@ -206,12 +202,6 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
             logger.fire1("Unknown bullet hit: ");
         }else{
             impactBullet(entry.getKey());
-            BulletInfo info = entry.getValue();
-            // TODO: merge to AIMING
-//            Enemy target = enemyMap.get(info.targetName);
-//            if ( target != null ) {
-//                target.getAimType().revartAim(info.distance/info.src.velocity);
-//            }
         }
         logger.fire1("INTERCEPT: %s",dst);
     }
@@ -403,11 +393,6 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
                 ctx.curGunHeading , ctx.curGunHeadingRadians,
                 bulletVelocity
         );
-        // TODO: merge to AIMING
-//        Enemy enemy = enemyMap.get(targetName);
-//        if ( enemy != null ) {
-//            enemy.getAimType().updateAim(distance/bulletVelocity);
-//        }
         BulletInfo bulletInfo = new BulletInfo(name,targetName,distance,src,type);
         addBulletInfo(bulletInfo);
         broadcastMessage(new BulletEvent(bulletInfo));
@@ -688,8 +673,6 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
                 }
                 drawRound(g, r.x, r.y, 35);
                 g.drawString(String.format("%s : %s", r.name, r), (int) r.x - 20, (int) r.y - 30);
-                // TODO: merge to AIMING
-                // g.drawString(String.format("hit: %d / %d  : %2.2f / %2.2f", r.getAimType().hitCount, r.getAimType().aimCount, r.getAimType().hitTime, r.getAimType().aimTime), (int) r.x - 20, (int) r.y - 40);
             }
             for (Map.Entry<String, BulletInfo> e : bulletList.entrySet()) {
                 BulletInfo info = e.getValue();
@@ -705,19 +688,7 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
         }
     }
 
-    private void dumpLog(){
-        // TODO: merge to AIMING
-//        List<Enemy> enemyArray = new ArrayList(enemyMap.values());
-//        Collections.sort(enemyArray,new Comparator<Enemy>(){
-//            @Override
-//            public int compare(Enemy o1, Enemy o2) {
-//                return o1.getAimType().compareTo(o2.getAimType());
-//            }});
-//        for (Enemy enemy :  enemyArray ) {
-//            Logger.log("=== %s (%2.2f%%)===",enemy.name,enemy.getAimType().getHitRate()*100);
-//            Logger.log("aim : %2.2f(%d)",enemy.getAimType().aimTime,enemy.getAimType().aimCount);
-//            Logger.log("hit : %2.2f(%d)",enemy.getAimType().hitTime,enemy.getAimType().hitCount);
-//        }        
+    protected void dumpLog(){
     }
 
     

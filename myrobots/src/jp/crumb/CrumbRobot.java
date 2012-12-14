@@ -89,7 +89,7 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
     }
 
     protected MoveType getAimType(String name) {
-        return new MoveType(MoveType.TYPE_ACCURATE_FIRST);
+        return new MoveType(MoveType.TYPE_ACCELERATION_FIRST);
     }
     
     @Override
@@ -111,7 +111,7 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
     protected boolean prospectNextRobotInertia(RobotPoint robot,long term,Object context){
         return robot.inertia(term);
     }
-    protected boolean prospectNextRobotAccurate(RobotPoint robot,long term,Object context){
+    protected boolean prospectNextRobotAcceleration(RobotPoint robot,long term,Object context){
         return robot.prospectNext(term);
     }
     protected boolean prospectNextRobotSimplePattern(RobotPoint robot,long term,Object context){
@@ -129,8 +129,8 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
             return prospectNextRobotPinPoint(robot,term,context);
         }else if ( moveType.isTypeInertia() ) {
             return prospectNextRobotInertia(robot,term,context);
-        }else if ( moveType.isTypeAccurate() ) {
-            return prospectNextRobotAccurate(robot,term,context);
+        }else if ( moveType.isTypeAcceleration() ) {
+            return prospectNextRobotAcceleration(robot,term,context);
         }else if ( moveType.isTypeSimplePattern()) {
             return prospectNextRobotSimplePattern(robot,term,context);
         }else if ( moveType.isTypeReactPattern()) {
@@ -186,16 +186,18 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
         return Util.bultPower( distance/time );
     }
 
-    protected double powerLimit(double enemyEnergy,double power) {
+    protected double powerLimit(double enemyEnergy,MoveType aimType,double power) {
         double limit = ctx.my.energy / 10;
         double need = Util.powerByDamage(enemyEnergy);
         if ( need < limit ) {
             limit = need;
         }
-        if ( power < limit ) {
-            return power;
+        // TODO: Should adjust by score  to power or limit (limit is better ?)
+        
+        if ( power > limit ) {
+            power = limit;
         }
-        return limit;
+        return power;
     }
     
     protected Pair<Double,Double> calcFire(Enemy target,MoveType aimType,long deltaThreshold,long recentThreshold){
@@ -211,14 +213,13 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
             if ( d < (Util.tankWidth/2) ) { // crossing shot line
                 double bultDistance = Util.calcPointToLineDistance(ctx.my,prospectTarget,ctx.curGunHeadingRadians);
                 double power = decideBulletPowerFromDistance(bultDistance,i);
-                power = powerLimit(target.energy,power);
+                power = powerLimit(target.energy,aimType,power);
                 if ( maxPower < power ) { // hit ? : power more than 0.0
                     logger.fire3("POWER(%s): (%2.2f) => (%2.2f)", target.name,maxPower,power);
                     maxPower = power;
                     aimDistance = bultDistance;
                 }
             }
-            // TODO: calcFire() CHECK : using aimType
             prospectNextRobot(prospectTarget,aimType,1,prospectContext);
         }
         return new Pair<>(maxPower,aimDistance);
@@ -229,32 +230,34 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
         }
         double maxPower = 0.0;
         double aimDistance = Util.fieldFullDistance;
+        MoveType aimType = null;
         String targetName = "";
         for (Map.Entry<String, Enemy> e : ctx.nextEnemyMap.entrySet()) {
             Enemy target = e.getValue();
             if ( ! isStale(target) ) {
-                MoveType aimType = getAimType(target.name);
-                Pair<Double,Double> result = calcFire(target,aimType,1,0);
+                MoveType aimtype = getAimType(target.name);
+                Pair<Double,Double> result = calcFire(target,aimtype,1,0);
                 if ( aimDistance > result.second ) {
                     maxPower = result.first;
                     aimDistance = result.second;
                     targetName = target.name;
+                    aimType = aimtype;
                 }
             }
         }
         
-        if ( ! isTeammate(targetName) && maxPower > 0 ) {
+        if ( aimType != null && ! isTeammate(targetName) && maxPower > 0 ) {
             if ( ctx.enemies > 1 ) {
                 normalMode();
             }
-            MoveType aimType = getAimType(targetName);
+            aimType.updateAim();
             doFire(maxPower,aimDistance,targetName);
         }
     }
     
-    private double selectPowerFromDistance(double targetEnergy,double distance) {
+    private double selectPowerFromDistance(double targetEnergy,MoveType aimType,double distance) {
         double power = decideBulletPowerFromDistance(distance,SELECT_POWER_RANGE_TIME);
-        power = powerLimit(targetEnergy,power);
+        power = powerLimit(targetEnergy,aimType,power);
         return (power==0.0)?0.01:power;
     }
 
@@ -314,7 +317,7 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
             prospectNextRobot(prospectTarget, aimType, gunTurnTime);
             // 
             double distance = prospectMy.calcDistance(prospectTarget);
-            double power = this.selectPowerFromDistance(lockOnTarget.energy,distance);
+            double power = this.selectPowerFromDistance(lockOnTarget.energy,aimType,distance);
             double bulletVelocity = Util.bultSpeed(power);
             Pair<Long,Double> shot = calcShot(aimType,prospectTarget,prospectMy,bulletVelocity);
             long bulletTime = shot.first;
@@ -385,15 +388,15 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
             removeBulletInfo(n);
         }
 
-        // TODO: @@ Merge Death event.
+        List<String> rmList = new ArrayList<>();
         for (Map.Entry<String, Enemy> e : ctx.nextEnemyMap.entrySet()) {
             Enemy r = e.getValue();
             if ( r.timeStamp != 0 && ctx.my.time-r.timeStamp > STALE_AS_DEAD) {
-                System.out.println("***********" + r);
-                r.timeStamp = 0;
-                enemyMap.get(r.name).timeStamp = 0;
-                System.out.println("@@@" + r);
+                rmList.add(e.getKey());
             }
+        }
+        for ( String name : rmList ) {
+            ctx.nextEnemyMap.remove(name);
         }
     }
     protected static final long STALE_AS_DEAD = 30;
@@ -578,11 +581,7 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
     @Override
     protected void cbRobotDeath(RobotDeathEvent e) {
         super.cbRobotDeath(e);
-        Enemy nextEnemy = getNextEnemy(e.getName());
-        if ( nextEnemy != null ) {
-            nextEnemy.timeStamp = 0; // Dead flag
-        }
-        
+        ctx.nextEnemyMap.remove(e.getName());
     }
     /*
      * Bullets 

@@ -16,8 +16,8 @@ public class MoveType extends Score implements Comparable<MoveType> , Serializab
     public int type;
     public int aimCount;
     public int hitCount;
-    public double aimTime;
-    public double hitTime;
+    public double aimAvg;
+    public double hitAvg;
     public MoveType(int type){
         super(String.valueOf(type));
         this.type = type;
@@ -27,8 +27,8 @@ public class MoveType extends Score implements Comparable<MoveType> , Serializab
         this.type = in.type;
         this.aimCount  = in.aimCount;
         this.hitCount  = in.hitCount;
-        this.aimTime = in.aimTime;
-        this.hitTime = in.hitTime;
+        this.aimAvg = in.aimAvg;
+        this.hitAvg = in.hitAvg;
     }
     public double getHitRate(){
         if ( aimCount == 0 ) {
@@ -36,23 +36,23 @@ public class MoveType extends Score implements Comparable<MoveType> , Serializab
         }
         return (double)hitCount/(double)aimCount;
     }
-    public void updateAim(double time){
-        double sumAim = aimCount * aimTime + time;
+    public void updateAim(){
+        double sumAim = aimCount * aimAvg + 1;
         aimCount++;
-        aimTime = sumAim/(double)aimCount;
+        aimAvg = sumAim/(double)aimCount;
     }
-    public void updateHit(double time){
-        double sumHit = hitCount * hitTime + time;
+    public void updateHit(){
+        double sumHit = hitCount * hitAvg + 1;
         hitCount++;
-        hitTime = sumHit/(double)hitCount;
+        hitAvg = sumHit/(double)hitCount;
     }
-    public void revartAim(double time){
-        double sumAim = aimCount * aimTime - time;
+    public void revartAim(){
+        double sumAim = aimCount * aimAvg - 1;
         aimCount--;
         if ( aimCount == 0 ) {
-            aimTime = 0;
+            aimAvg = 0;
         }else{
-            aimTime = sumAim /(double)aimCount;
+            aimAvg = sumAim /(double)aimCount;
         }
     }
 
@@ -70,15 +70,15 @@ public class MoveType extends Score implements Comparable<MoveType> , Serializab
 //    static public final int TYPE_UNKNOWN   = 0xF000;
     static public final int TYPE_PINPOINT          = 0x0010;
     static private final int TYPE_INERTIA          = 0x0020;
-    static private final int TYPE_ACCURATE         = 0x0040;
+    static private final int TYPE_ACCELERATION         = 0x0040;
     static private final int TYPE_SIMPLE_PATTERN   = 0x0100;
     static private final int TYPE_REACT_PATTERN    = 0x0200;
     static private final int TYPE_FIRST            = 0x0001;
     static private final int TYPE_CENTER           = 0x0002;
     static public final int TYPE_INERTIA_FIRST  = TYPE_INERTIA | TYPE_FIRST;
     static public final int TYPE_INERTIA_CENTER = TYPE_INERTIA | TYPE_CENTER;
-    static public final int TYPE_ACCURATE_FIRST = TYPE_ACCURATE | TYPE_FIRST;
-    static public final int TYPE_ACCURATE_CENTER = TYPE_ACCURATE | TYPE_CENTER;
+    static public final int TYPE_ACCELERATION_FIRST = TYPE_ACCELERATION | TYPE_FIRST;
+    static public final int TYPE_ACCELERATION_CENTER = TYPE_ACCELERATION | TYPE_CENTER;
     static public final int TYPE_SIMPLE_PATTERN_FIRST = TYPE_SIMPLE_PATTERN | TYPE_FIRST;
     static public final int TYPE_SIMPLE_PATTERN_CENTER = TYPE_SIMPLE_PATTERN | TYPE_CENTER;
     static public final int TYPE_REACT_PATTERN_FIRST = TYPE_REACT_PATTERN | TYPE_FIRST;
@@ -93,8 +93,8 @@ public class MoveType extends Score implements Comparable<MoveType> , Serializab
     public boolean isTypeInertia(){
         return (type & TYPE_INERTIA) != 0;
     }
-    public boolean isTypeAccurate(){
-        return (type & TYPE_ACCURATE) != 0;
+    public boolean isTypeAcceleration(){
+        return (type & TYPE_ACCELERATION) != 0;
     }
     public boolean isTypeSimplePattern(){
         return (type & TYPE_SIMPLE_PATTERN) != 0;
