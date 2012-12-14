@@ -26,14 +26,13 @@ public class Score implements Serializable{
         this.scoreCount   = in.scoreCount;
         this.score   = in.score;
     }
-    public void updateScore(double s,double limit){
+    public void updateScore(double s,double limit,double min){
         double count = scoreCount;
         if ( scoreCount > limit ) {
             count = limit;
         }
-        // TODO: For reducing initial errors
-        if ( scoreCount < limit ) {
-            count = limit;
+        if ( count < min ) {
+            count = min;
         }
         double sumScore = count * score + s;
         scoreCount++;
@@ -41,7 +40,7 @@ public class Score implements Serializable{
         score = sumScore/(double)count;
     }
     public void updateScore(double s){
-        updateScore(s,Double.POSITIVE_INFINITY);
+        updateScore(s,Double.POSITIVE_INFINITY,0);
     }
 
     public static <T extends Score> T getByScore(Collection<T> list) {

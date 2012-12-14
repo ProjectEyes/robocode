@@ -46,9 +46,12 @@ abstract public class PatternRobot<T extends PatternContext> extends CrumbRobot<
     protected static final long SIMPLE_PATTERN_TERM_MAX =1000;
     protected static final long SIMPLE_PATTERN_TERM_MIN = 15;
 
-    protected static final double SIMPLE_PATTERN_SCORE_ESTIMATE_LIMIT = 20;
-    protected static final double SHOT_SCORE_ESTIMATE_LIMIT = 7;
-    protected static final double AIM_SCORE_ESTIMATE_LIMIT = 5;
+    protected static final double SIMPLE_PATTERN_SCORE_ESTIMATE_LIMIT = 50;
+    protected static final double SIMPLE_PATTERN_SCORE_ESTIMATE_MIN = 50;
+    protected static final double SHOT_SCORE_ESTIMATE_LIMIT = 5;
+    protected static final double SHOT_SCORE_ESTIMATE_MIN = 5;
+    protected static final double AIM_SCORE_ESTIMATE_LIMIT = 7;
+    protected static final double AIM_SCORE_ESTIMATE_MIN = 7;
 //    protected static final double PATTERN_SCORE_ESTIMATE_LIMIT = 10;
 //    protected static final double SHOT_SCORE_ESTIMATE_LIMIT = 10;
 //    protected static final double AIM_SCORE_ESTIMATE_LIMIT = 10;
@@ -163,7 +166,7 @@ abstract public class PatternRobot<T extends PatternContext> extends CrumbRobot<
     }
 
     @Override
-    protected boolean prospectNextRobotSimplePattern(RobotPoint robot,long term){
+    protected boolean prospectNextRobotSimplePattern(RobotPoint robot,long term,Object context){
         Map<Long,Score> scores = simplePatternScoreMap.get(robot.name);
         if ( scores == null || scores.size() <= term) {
             return robot.prospectNext(term);
@@ -190,7 +193,7 @@ abstract public class PatternRobot<T extends PatternContext> extends CrumbRobot<
         for ( long i = SIMPLE_PATTERN_TERM_MIN ; i <= SIMPLE_PATTERN_TERM_MAX; i++) {
             long absTime = constEnemy.time - i;
             RobotPoint logEnemy = logEnemy(constEnemy.name, absTime);
-            if ( logEnemy == null ) {
+            if ( logEnemy == null || logEnemy.delta == null) {
                 continue;
             }
             RobotPoint prospectEnemy = new RobotPoint(prevEnemy);
@@ -198,7 +201,7 @@ abstract public class PatternRobot<T extends PatternContext> extends CrumbRobot<
             prospectEnemy.prospectNext(deltaTime);
             double d = prospectEnemy.calcDistance(constEnemy);
             Score s = scores.get(i);
-            s.updateScore(Util.fieldFullDistance-d,SIMPLE_PATTERN_SCORE_ESTIMATE_LIMIT);
+            s.updateScore(Util.fieldFullDistance-d,SIMPLE_PATTERN_SCORE_ESTIMATE_LIMIT,SIMPLE_PATTERN_TERM_MIN);
             logger.prospect4("SIMPLE(%02d):%2.2f => %2.2f = %2.2f",i,d,d,s.score);
             //logger.log("SIMPLE(%02d):%2.2f => %2.2f = %2.2f",i,d,d,s.score);
         }
@@ -263,11 +266,12 @@ abstract public class PatternRobot<T extends PatternContext> extends CrumbRobot<
             double closestDistance = Util.fieldFullDistance;
             double bulletDistance = 0;
             RobotPoint prevTarget = target;
+
             for (long i = info.src.timeStamp + 1; i <= ctx.my.time; i++) {
                 target = logEnemy(info.targetName, i);
                 if (target == null) {
                     // No data
-                    prospectNextRobot(prevTarget, moveType, 1);
+                    prospectNextRobot(new RobotPoint(prevTarget), moveType, 1);
                     target = prevTarget;
                 }
                 prevTarget = target;
@@ -289,7 +293,7 @@ abstract public class PatternRobot<T extends PatternContext> extends CrumbRobot<
             // Closest will nearly equals right angle with the bullet line.
             double diffRadians = closest / closestDistance; // So use sin
             diffRadians = (Math.abs(diffRadians) < BULLET_DIFF_THRESHOLD) ? diffRadians : BULLET_DIFF_THRESHOLD;
-            moveType.updateScore(Math.PI / 2 - diffRadians,AIM_SCORE_ESTIMATE_LIMIT);
+            moveType.updateScore(Math.PI / 2 - diffRadians,AIM_SCORE_ESTIMATE_LIMIT,AIM_SCORE_ESTIMATE_MIN);
             logger.prospect1("AIMTYPE(x%02x)  degree: %2.2f => %2.2f = %2.2f", moveType.type, closest, Math.toDegrees(diffRadians), Math.toDegrees(moveType.score));
         }
         broadcastMessage(new AimTypeEvent(info.targetName, aimTypeList));
@@ -362,7 +366,7 @@ abstract public class PatternRobot<T extends PatternContext> extends CrumbRobot<
                 double correctedRadians = Math.abs(diffRadians) - Math.abs(tankWidthRadians);
                 correctedRadians = (correctedRadians<0)?0:correctedRadians;
 
-                moveType.updateScore(Math.PI/2-correctedRadians,SHOT_SCORE_ESTIMATE_LIMIT);
+                moveType.updateScore(Math.PI/2-correctedRadians,SHOT_SCORE_ESTIMATE_LIMIT,SHOT_SCORE_ESTIMATE_MIN);
                 logger.prospect1("SHOTTYPE(x%02x)  degree: %2.2f(%2.2f) => %2.2f = %2.2f",moveType.type,Math.toDegrees(shotRadians),Math.toDegrees(diffRadians), Math.toDegrees(correctedRadians),Math.toDegrees(moveType.score));
             }
             broadcastMessage(new ShotTypeEvent(enemyName, shotTypeList));

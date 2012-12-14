@@ -15,6 +15,7 @@ import jp.crumb.utils.MovingPoint;
 import jp.crumb.utils.Pair;
 import jp.crumb.utils.Point;
 import jp.crumb.utils.RobotPoint;
+import jp.crumb.utils.Score;
 import jp.crumb.utils.TimedPoint;
 import jp.crumb.utils.Util;
 import robocode.Droid;
@@ -104,33 +105,36 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
     }
 
     // Should be factory...
-    protected boolean prospectNextRobotPinPoint(RobotPoint robot,long term){
+    protected boolean prospectNextRobotPinPoint(RobotPoint robot,long term,Object context){
         return true;
     }
-    protected boolean prospectNextRobotInertia(RobotPoint robot,long term){
+    protected boolean prospectNextRobotInertia(RobotPoint robot,long term,Object context){
         return robot.inertia(term);
     }
-    protected boolean prospectNextRobotAccurate(RobotPoint robot,long term){
+    protected boolean prospectNextRobotAccurate(RobotPoint robot,long term,Object context){
         return robot.prospectNext(term);
     }
-    protected boolean prospectNextRobotSimplePattern(RobotPoint robot,long term){
+    protected boolean prospectNextRobotSimplePattern(RobotPoint robot,long term,Object context){
         throw new UnsupportedOperationException("[SimplePattern] Not supported yet");
     }
-    protected boolean prospectNextRobotReactPattern(RobotPoint robot,long term){
+    protected boolean prospectNextRobotReactPattern(RobotPoint robot,long term,Object context){
         throw new UnsupportedOperationException("[SimplePattern] Not supported yet");
     }
 
     protected boolean prospectNextRobot(RobotPoint robot,MoveType moveType,long term) {
+        return prospectNextRobot(robot, moveType, term ,null);
+    }
+    protected boolean prospectNextRobot(RobotPoint robot,MoveType moveType,long term,Object context) {
         if ( moveType.isTypePinPoint() || robot.energy == 0.0 ) {
-            return prospectNextRobotPinPoint(robot,term);
+            return prospectNextRobotPinPoint(robot,term,context);
         }else if ( moveType.isTypeInertia() ) {
-            return prospectNextRobotInertia(robot,term);
+            return prospectNextRobotInertia(robot,term,context);
         }else if ( moveType.isTypeAccurate() ) {
-            return prospectNextRobotAccurate(robot,term);
+            return prospectNextRobotAccurate(robot,term,context);
         }else if ( moveType.isTypeSimplePattern()) {
-            return prospectNextRobotSimplePattern(robot,term);
+            return prospectNextRobotSimplePattern(robot,term,context);
         }else if ( moveType.isTypeReactPattern()) {
-            return prospectNextRobotReactPattern(robot,term);
+            return prospectNextRobotReactPattern(robot,term,context);
         }else {
             throw new UnsupportedOperationException("Unknown MoveType : " + moveType.type);
         }
@@ -201,7 +205,7 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
         double maxPower = 0.0;
         double aimDistance = Util.fieldFullDistance;
         Enemy prospectTarget = new Enemy(target);
-
+        Object prospectContext = new Score("");
         for ( int i = 1; i <= MAX_HIT_TIME; i++ ) {
             double d = Util.calcPointToLineRange(ctx.my,prospectTarget,ctx.curGunHeadingRadians);
             if ( d < (Util.tankWidth/2) ) { // crossing shot line
@@ -215,7 +219,7 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
                 }
             }
             // TODO: calcFire() CHECK : using aimType
-            prospectNextRobot(prospectTarget,aimType,1);
+            prospectNextRobot(prospectTarget,aimType,1,prospectContext);
         }
         return new Pair<>(maxPower,aimDistance);
     }
@@ -269,6 +273,7 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
             //  - Calc only fixed time ( hitted )
             //  - for prospecting time ( shoting ) =>  with updating distance each ticks.
             RobotPoint cpTarget = new RobotPoint(target);
+            Object prospectContext = new Score("");
             double hitArea;
             if ( moveType.isTypeFirst() ) {
                 hitArea = 0;
@@ -278,7 +283,7 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
                 throw new UnsupportedOperationException("Unknown type : " + moveType.type);
             }
             for ( retTime = 1 ; retTime <= ((deltaTime>0)?deltaTime:(long)Math.ceil(Math.abs(distance/bulletVelocity))) ; retTime++ ) {
-                prospectNextRobot(cpTarget,moveType,1);
+                prospectNextRobot(cpTarget,moveType,1,prospectContext);
                 distance = src.calcDistance(cpTarget);
                 retRadians = src.calcRadians(cpTarget);
                 if ( distance - Math.abs(bulletVelocity*retTime) < hitArea ) { // hit ?
