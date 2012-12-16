@@ -36,7 +36,7 @@ public class Inertia extends AdvCrumbRobot<AdbCrumbContext> {
 
     @Override
     protected List<MoveType> initialAimTypeList() {
-        List<MoveType> moveTypeList = new ArrayList<>();
+        List<MoveType> moveTypeList = new ArrayList<>(2);
         MoveType moveType = new MoveType(MoveType.TYPE_INERTIA_CENTER);
         moveType.score = 0.001; // Initial type (will be overrided by first hit!!)
         moveTypeList.add(moveType);
@@ -45,7 +45,7 @@ public class Inertia extends AdvCrumbRobot<AdbCrumbContext> {
 
     @Override
     protected List<MoveType> initialShotTypeList() {
-       List<MoveType> moveTypeList = new ArrayList<>();
+       List<MoveType> moveTypeList = new ArrayList<>(2);
        MoveType moveType = new MoveType(MoveType.TYPE_INERTIA_CENTER);
        moveTypeList.add(moveType);
        return moveTypeList;

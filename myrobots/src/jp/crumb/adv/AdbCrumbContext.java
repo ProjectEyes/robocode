@@ -16,7 +16,7 @@ import jp.crumb.utils.Util;
  * @author crumb
  */
 public class AdbCrumbContext extends CrumbContext{
-    public Map<String,BulletInfo> nextEnemyBulletList = new HashMap<>();
+    public Map<String,BulletInfo> nextEnemyBulletList = new HashMap<>(15,0.3f);
 
 
     public AdbCrumbContext() {

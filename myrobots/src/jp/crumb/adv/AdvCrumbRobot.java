@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import jp.crumb.CrumbRobot;
+import jp.crumb.ProspectContext;
 import jp.crumb.base.BulletInfo;
 import jp.crumb.utils.Enemy;
 import jp.crumb.utils.Logger;
@@ -45,19 +46,20 @@ abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobo
         this.setBulletColor(new Color(200,255,100));
     }
 
-    protected static final long REACT_PATTERN_TERM = 20;
-    protected static final double REACT_PATTERN_SCORE_ESTIMATE_LIMIT = 50;
-    protected static final double REACT_PATTERN_SCORE_ESTIMATE_MIN = 20;
+    protected static final long REACT_PATTERN_TERM = 25;
+    protected static final double REACT_PATTERN_SCORE_ESTIMATE_LIMIT = 5;
+    protected static final double REACT_PATTERN_SCORE_ESTIMATE_MIN = 5;
 
     protected static final long SIMPLE_PATTERN_TERM_MAX =1000;
     protected static final long SIMPLE_PATTERN_TERM_MIN = 15;
 
-    protected static final double SIMPLE_PATTERN_SCORE_ESTIMATE_LIMIT = 50;
-    protected static final double SIMPLE_PATTERN_SCORE_ESTIMATE_MIN = 50;
+    protected static final double SIMPLE_PATTERN_SCORE_ESTIMATE_LIMIT = 5;
+    protected static final double SIMPLE_PATTERN_SCORE_ESTIMATE_MIN = 1;
     protected static final double SHOT_SCORE_ESTIMATE_LIMIT = 5;
     protected static final double SHOT_SCORE_ESTIMATE_MIN = 5;
     protected static final double AIM_SCORE_ESTIMATE_LIMIT = 7;
     protected static final double AIM_SCORE_ESTIMATE_MIN = 7;
+
 //    protected static final double PATTERN_SCORE_ESTIMATE_LIMIT = 10;
 //    protected static final double SHOT_SCORE_ESTIMATE_LIMIT = 10;
 //    protected static final double AIM_SCORE_ESTIMATE_LIMIT = 10;
@@ -79,17 +81,25 @@ abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobo
     protected  double ENEMY_BULLET_DISTANCE        = DEFAULT_ENEMY_BULLET_DISTANCE;
 
 
-    private Map<String,BulletInfo> enemyBulletList = new HashMap<>();
-    protected static Map<String,List<MoveType>> shotTypeMap = new HashMap<>();
-    protected static Map<String,List<MoveType>> aimTypeMap = new HashMap();
+    private Map<String,BulletInfo> enemyBulletList = new HashMap<>(15,0.3f);
+    protected static Map<String,List<MoveType>> shotTypeMap = new HashMap<>(15,0.3f);
+    protected static Map<String,List<MoveType>> aimTypeMap = new HashMap(15,0.3f);
 
-    protected Map<Long,RobotPoint> myLog = new HashMap<>();
-    protected static Map<String, Map<Long,Enemy> > enemyLog = new HashMap<>();
-    protected Map<String,Map<Long,Score>> simplePatternScoreMap = new HashMap<>();
-    protected Map<String,TreeMap<Long,Pair<Score,TimedPoint>>> reactPatternScoreMap = new HashMap<>();
+    protected Map<Long,RobotPoint> myLog = new HashMap<>(2500);
+    protected static Map<String, Map<Long,Enemy> > enemyLog = new HashMap<>(15,0.3f);
+    protected Map<String,Map<Long,Score>> simplePatternScoreMap = new HashMap<>(15,0.3f);
+
+    protected static final double REACT_LOG_VALID_DISTANCE = 100;
+    static class DistancePoint extends Point {
+        public double distance;
+        public boolean isNearly(DistancePoint in ) {
+            return calcDistance(in) < 3.0 && Math.abs(distance - in.distance) < REACT_LOG_VALID_DISTANCE ;
+        }
+    }
+    protected Map<String,TreeMap<Long,Pair<Score,DistancePoint>>> reactPatternScoreMap = new HashMap<>(15,0.3f);
 
     protected List<MoveType> initialShotTypeList(){
-        List<MoveType> moveTypeList = new ArrayList<>();
+        List<MoveType> moveTypeList = new ArrayList<>(10);
         MoveType moveType = new MoveType(MoveType.TYPE_PINPOINT);
         moveType.score = 0.001; // Initial type (will be overrided by first hit!!)
         moveTypeList.add(moveType);
@@ -104,26 +114,26 @@ abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobo
         return moveTypeList;
     }
     protected List<MoveType> initialAimTypeList(){
-        List<MoveType> moveTypeList = new ArrayList<>();
+        List<MoveType> moveTypeList = new ArrayList<>(10);
         MoveType moveType = new MoveType(MoveType.TYPE_PINPOINT);
         moveTypeList.add(moveType);
-        moveType = new MoveType(MoveType.TYPE_INERTIA_FIRST);
-        moveTypeList.add(moveType);
+//        moveType = new MoveType(MoveType.TYPE_INERTIA_FIRST);
+//        moveTypeList.add(moveType);
         moveType = new MoveType(MoveType.TYPE_INERTIA_CENTER);
-        moveTypeList.add(moveType);
-        moveType = new MoveType(MoveType.TYPE_ACCELERATION_FIRST);
         moveType.score = 0.001; // Initial type (will be overrided by first hit!!)
         moveTypeList.add(moveType);
+//        moveType = new MoveType(MoveType.TYPE_ACCELERATION_FIRST);
+//        moveTypeList.add(moveType);
         moveType = new MoveType(MoveType.TYPE_ACCELERATION_CENTER);
         moveTypeList.add(moveType);
-        moveType = new MoveType(MoveType.TYPE_SIMPLE_PATTERN_FIRST);
-        moveTypeList.add(moveType);
+//        moveType = new MoveType(MoveType.TYPE_SIMPLE_PATTERN_FIRST);
+//        moveTypeList.add(moveType);
         moveType = new MoveType(MoveType.TYPE_SIMPLE_PATTERN_CENTER);
         moveTypeList.add(moveType);
-        moveType = new MoveType(MoveType.TYPE_REACT_PATTERN_FIRST);
-        moveTypeList.add(moveType);
-        moveType = new MoveType(MoveType.TYPE_REACT_PATTERN_CENTER);
-        moveTypeList.add(moveType);
+//        moveType = new MoveType(MoveType.TYPE_REACT_PATTERN_FIRST);
+//        moveTypeList.add(moveType);
+//        moveType = new MoveType(MoveType.TYPE_REACT_PATTERN_CENTER);
+//        moveTypeList.add(moveType);
         return moveTypeList;
     }
     @Override
@@ -184,65 +194,77 @@ abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobo
         }
         return dst;
     }
-    protected Point calcDiffHeadingVecter(RobotPoint enemy){
+    protected DistancePoint calcDiffHeadingVecter(RobotPoint enemy){
         double enemyHeadingRadians = (enemy.velocity>0)?enemy.headingRadians:(enemy.headingRadians-Math.PI);
         double enemyDiffHeadingRadians = Util.calcTurnRadians(ctx.my.calcRadians(enemy),enemyHeadingRadians);
-        return Util.calcPoint(enemyDiffHeadingRadians,enemy.velocity);
+        DistancePoint ret = new DistancePoint();
+        ret.set(Util.calcPoint(enemyDiffHeadingRadians,enemy.velocity));
+        ret.distance = ctx.my.calcDistance(enemy);
+        return ret;
     }
 
     @Override
-    protected boolean prospectNextRobotReactPattern(RobotPoint robot,long term,Object context){
-        if ( context == null ) { // Not firing
+    protected boolean prospectNextRobotReactPattern(RobotPoint robot,long term,ProspectContext context){
+        if ( context == null ) { // Not firing time
             return robot.prospectNext(term);
         }
-        Score s = (Score)context;
-        if ( s.name.isEmpty() ) {
-            TreeMap<Long,Pair<Score,TimedPoint>> reacts = reactPatternScoreMap.get(robot.name);
-            if ( reacts == null ) {
+        if ( context.shotTarget == null ) {
+            context.shotTarget = robot.name; // proced
+            context.shotTime = 0; // invalid
+            TreeMap<Long,Pair<Score,DistancePoint>> reacts = reactPatternScoreMap.get(robot.name);
+            if ( reacts == null ) { // No reaction log
                 return robot.prospectNext(term);
             }
-            Point v = calcDiffHeadingVecter(robot);
+            DistancePoint v = calcDiffHeadingVecter(robot);
             double vecR = new Point(0, 0).calcDegree(v);
             List<Score> scores = new ArrayList<>();
             for (Long shotTime : reacts.keySet()) {
-                Pair<Score, TimedPoint> pair = reacts.get(shotTime);
-                TimedPoint vecter = pair.second;
-                if (v.calcDistance(vecter) < 3.0) {
+                Pair<Score, DistancePoint> pair = reacts.get(shotTime);
+                DistancePoint vecter = pair.second;
+                if (vecter.isNearly(v) ){
                     scores.add(pair.first);
                 }
             }
             Score vest = Score.getByScore(scores);
-            if ( vest == null ) {
-                s.score = 0.0;
-            }else{
-                s.name = vest.name;
-                s.score = vest.score;
-                s.scoreCount = vest.scoreCount;
+            if ( vest != null ) {
+                context.shotTime = Long.parseLong(vest.name);
+                context.time = context.shotTime;
+                context.baseTarget = robot;
             }
         }
-        if ( s.score == 0.0 ) {
+        if ( context.shotTime == 0 ) {
             return robot.prospectNext(term);
         }
 //logger.log("(%d/%d) %s: %2.2f => %d",robot.time,robot.timeStamp,s.name,s.score,robot.time-Integer.valueOf(s.name));
 
-
+        boolean first = true;
+        Graphics2D g = getGraphics();
         for ( long l = 1; l <= term; l++) {
-            long absLogTime = l+Integer.valueOf(s.name);
+            long absLogTime = l+context.time;
             RobotPoint logEnemy = logEnemy(robot.name,absLogTime);
             if ( logEnemy != null && logEnemy.delta != null) {
-                robot.setDelta(logEnemy.delta);
+                if ( context.baseLog == null ) {
+                    context.baseLog = logEnemy;
+                }
+                MovingPoint delta = logEnemy.delta;
+                if ( context.baseTarget.velocity * context.baseLog.velocity < 0 ) {
+                    delta = new MovingPoint(delta).prod(-1);
+                    delta.time *= -1;
+                }
+                robot.setDelta(delta);
                 robot.prospectNext(1);
                 if ( isPaint ) {
-                    getGraphics().setColor(Color.BLACK);
-                    drawRound(getGraphics(),logEnemy.x,logEnemy.y,10);
-                    getGraphics().setColor(Color.WHITE);
-                    drawRound(getGraphics(),robot.x,robot.y,10);
+                    g.setStroke(new BasicStroke(1.0f));
+                    g.setColor(Color.BLACK);
+                    drawRound(g,logEnemy.x,logEnemy.y,10);
+                    g.setColor(Color.WHITE);
+                    drawRound(g,robot.x,robot.y,10);
                 }
-                logger.prospect4("%d: %s(%d) : %s",l,s.name,absLogTime,logEnemy.delta);
+                logger.prospect4("%d: %s(%d/%d) : %s",l,context.time/context.shotTime,absLogTime,logEnemy.delta);
             }else{
                 robot.prospectNext(1);
             }
-            s.name = String.valueOf(Integer.valueOf(s.name) + 1);
+            context.time += 1;
         }
 ////                logger.log("%d: %s(%d) : %s",l,s.name,absLogTime,logEnemy.delta);
 //        }
@@ -250,7 +272,7 @@ abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobo
     }    
     
     @Override
-    protected boolean prospectNextRobotSimplePattern(RobotPoint robot,long term,Object context){
+    protected boolean prospectNextRobotSimplePattern(RobotPoint robot,long term,ProspectContext context){
         Map<Long,Score> scores = simplePatternScoreMap.get(robot.name);
         if ( scores == null || scores.size() <= term) {
             return robot.prospectNext(term);
@@ -278,21 +300,21 @@ abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobo
     }
     
     protected void evalReactPattern(Enemy prevEnemy,Enemy constEnemy){
-        TreeMap<Long,Pair<Score,TimedPoint>> reacts = reactPatternScoreMap.get(constEnemy.name);
+        TreeMap<Long,Pair<Score,DistancePoint>> reacts = reactPatternScoreMap.get(constEnemy.name);
         if ( reacts == null ) {
             return;
         }
 
         long deltaTime = constEnemy.time - prevEnemy.time;
         for ( Long shotTime : reacts.keySet() ) {
-            Pair<Score,TimedPoint> pair = reacts.get(shotTime);
+            Pair<Score,DistancePoint> pair = reacts.get(shotTime);
             Score s = pair.first;
-            TimedPoint vecter = pair.second;
+            DistancePoint vecter = pair.second;
 
-            for ( Map.Entry<Long,Pair<Score,TimedPoint>> p : reacts.tailMap(shotTime,false).entrySet() ) {
+            for ( Map.Entry<Long,Pair<Score,DistancePoint>> p : reacts.tailMap(shotTime,false).entrySet() ) {
                 long pastShotTime = p.getKey();
                 long fromShotTime = constEnemy.time - pastShotTime;
-                if ( fromShotTime <= REACT_PATTERN_TERM && vecter.calcDistance(p.getValue().second) < 3.0 ) {
+                if ( fromShotTime <= REACT_PATTERN_TERM && vecter.isNearly(p.getValue().second) ) {
                     long absTime = shotTime+fromShotTime + 1;
                     RobotPoint logEnemy = logEnemy(constEnemy.name, absTime);
                     if ( logEnemy == null || logEnemy.delta == null) {
@@ -345,7 +367,7 @@ abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobo
         }
         if ( ! isTeammate(constEnemy.name)) {
             if ( ! enemyLog.containsKey(constEnemy.name)) {
-                enemyLog.put(constEnemy.name,new HashMap<Long,Enemy>());
+                enemyLog.put(constEnemy.name,new HashMap<Long,Enemy>(2000));
             }
             enemyLog.get(constEnemy.name).put(enemy.time,new Enemy(constEnemy));
         }
@@ -356,12 +378,15 @@ abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobo
         if ( ! aimTypeMap.containsKey(constEnemy.name) ) {
             aimTypeMap.put(constEnemy.name,initialAimTypeList());
         }
-        if ( ! simplePatternScoreMap.containsKey(enemy.name)) {
-            Map<Long,Score> scores = new HashMap<>();
-            for ( long i = SIMPLE_PATTERN_TERM_MIN ; i <= SIMPLE_PATTERN_TERM_MAX; i++) {
-                scores.put(i,new Score(String.valueOf(i)));
+        if ( getAimType(enemy.name,MoveType.TYPE_SIMPLE_PATTERN_CENTER) != null ||
+                getAimType(enemy.name,MoveType.TYPE_SIMPLE_PATTERN_FIRST) != null ) {
+            if ( ! simplePatternScoreMap.containsKey(enemy.name)) {
+                Map<Long,Score> scores = new HashMap<>((int)SIMPLE_PATTERN_TERM_MAX);
+                for ( long i = SIMPLE_PATTERN_TERM_MIN ; i <= SIMPLE_PATTERN_TERM_MAX; i++) {
+                    scores.put(i,new Score(String.valueOf(i)));
+                }
+                simplePatternScoreMap.put(enemy.name,scores);
             }
-            simplePatternScoreMap.put(enemy.name,scores);
         }
 
         if ( prevEnemy != null ) {
@@ -369,8 +394,14 @@ abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobo
             if ( (prevEnemy.energy - enemy.energy) >= 0.1 && (prevEnemy.energy - enemy.energy) <= 3 ) {
                 enemyBullet(prevEnemy,enemy);
             }
-            evalSimplePattern(prevEnemy, constEnemy);
-            evalReactPattern(prevEnemy, constEnemy);
+            if ( getAimType(enemy.name,MoveType.TYPE_SIMPLE_PATTERN_CENTER) != null ||
+                 getAimType(enemy.name,MoveType.TYPE_SIMPLE_PATTERN_FIRST) != null ) {
+                evalSimplePattern(prevEnemy, constEnemy);
+            }
+            if ( getAimType(enemy.name,MoveType.TYPE_REACT_PATTERN_CENTER) != null ||
+                 getAimType(enemy.name,MoveType.TYPE_REACT_PATTERN_FIRST) != null ) {
+                evalReactPattern(prevEnemy, constEnemy);
+            }
         }
         return constEnemy;
     }
@@ -424,26 +455,25 @@ abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobo
             // ndouble diffRadians = closest / closestDistance; // So use sin
             // diffRadians = (Math.abs(diffRadians) < BULLET_DIFF_THRESHOLD) ? diffRadians : BULLET_DIFF_THRESHOLD;
             //moveType.updateScore(Math.PI / 2 - diffRadians,AIM_SCORE_ESTIMATE_LIMIT,AIM_SCORE_ESTIMATE_MIN);a
-            moveType.updateScore(PERFECT_SCORE-closest);
+            moveType.updateScore(PERFECT_SCORE-closest,AIM_SCORE_ESTIMATE_LIMIT,AIM_SCORE_ESTIMATE_MIN);
             logger.prospect1("AIMTYPE(x%02x)  %2.2f(%2.2f)", moveType.type,moveType.score,closest );
         }
         broadcastMessage(new AimTypeEvent(info.targetName, aimTypeList));
     }
     @Override
     protected void doFire(double power, double distance, String targetName,int type) {
-        if ( ! reactPatternScoreMap.containsKey(targetName)) {
-            TreeMap<Long,Pair<Score,TimedPoint>> scores = new TreeMap<>();
-            reactPatternScoreMap.put(targetName,scores);
+        if ( getAimType(targetName,MoveType.TYPE_REACT_PATTERN_CENTER) != null ||
+                getAimType(targetName,MoveType.TYPE_REACT_PATTERN_FIRST) != null ) {
+            if ( ! reactPatternScoreMap.containsKey(targetName)) {
+                TreeMap<Long,Pair<Score,DistancePoint>> scores = new TreeMap<>();
+                reactPatternScoreMap.put(targetName,scores);
+            }
+            Map<Long,Pair<Score,DistancePoint>> scores = reactPatternScoreMap.get(targetName);
+            Enemy enemy = enemyMap.get(targetName);
+            // Create enemy vecter
+            DistancePoint vecter = calcDiffHeadingVecter(enemy);
+            scores.put(enemy.time,new Pair<>(new Score(String.valueOf(enemy.time)),vecter));
         }
-        Map<Long,Pair<Score,TimedPoint>> scores = reactPatternScoreMap.get(targetName);
-        Enemy enemy = enemyMap.get(targetName);
-        // Create enemy vecter
-        Point v = calcDiffHeadingVecter(enemy);
-        TimedPoint vecter = new TimedPoint();
-        vecter.set(v);
-        vecter.time = enemy.time;
-        vecter.timeStamp = enemy.timeStamp;
-        scores.put(enemy.time,new Pair<>(new Score(String.valueOf(enemy.time)),vecter));
         super.doFire(power, distance, targetName,type);
     }
     @Override
@@ -485,7 +515,8 @@ abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobo
         Map.Entry<String,BulletInfo> eEntry = Util.calcBulletSrc(ctx.my.time,bullet,enemyBulletList);
         if ( eEntry == null ) {
             logger.fire1("Unknown bullet hit: ");
-        }else{
+        }
+        if ( entry != null) {
             BulletInfo info = entry.getValue();
             getAimType(info.targetName, info.type).revartAim();
             impactEnemyBulletInfo(entry.getKey());
@@ -514,7 +545,7 @@ abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobo
             for ( MoveType moveType : shotTypeList ) {
                 double tankWidthRadians = Math.asin((Util.tankWidth/2)/distance);
                 Pair<Long,Double> shot = calcShot(moveType,prevMy,info.src,bulletVelocity,deltaTime);
-                Point bulletPoint = Util.calcPoint(shot.second, shot.first*bulletVelocity);
+                Point bulletPoint = Util.calcPoint(shot.second, shot.first*bulletVelocity).add(info.src);
                 double d = bulletPoint.calcDistance(ctx.my);
                 moveType.updateScore(PERFECT_SCORE-d,SHOT_SCORE_ESTIMATE_LIMIT,SHOT_SCORE_ESTIMATE_MIN);
 //                double shotRadians = 
@@ -665,20 +696,20 @@ abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobo
     protected void dumpLog(){
         // g.drawString(String.format("hit: %d / %d  : %2.2f / %2.2f", r.getAimType().hitCount, r.getAimType().aimCount, r.getAimType().hitTime, r.getAimType().aimTime), (int) r.x - 20, (int) r.y - 40);
         // TODO: merge to AIMING
-        for ( Map.Entry<String,List<MoveType>> e : aimTypeMap.entrySet() ) {
-            String enemyName = e.getKey();
-            Logger.log("=== %s ===",enemyName);
-            long hitCount = 0;
-            long aimCount = 0;
-            for ( MoveType aimType : e.getValue() ) {
-                hitCount+= aimType.hitCount;
-                aimCount+= aimType.aimCount;
-            }
-            Logger.log("ALL : %2.2f %% (%d/%d)",(double)hitCount/(double)aimCount*100.0,hitCount,aimCount);
-            for ( MoveType aimType : e.getValue() ) {            
-                Logger.log("x%02x : %2.2f %% (%d/%d) : %2.2f",aimType.type,aimType.avrage()*100.0,aimType.hitCount,aimType.aimCount,aimType.score);
-            }
-        }
+//        for ( Map.Entry<String,List<MoveType>> e : aimTypeMap.entrySet() ) {
+//            String enemyName = e.getKey();
+//            Logger.log("=== %s ===",enemyName);
+//            long hitCount = 0;
+//            long aimCount = 0;
+//            for ( MoveType aimType : e.getValue() ) {
+//                hitCount+= aimType.hitCount;
+//                aimCount+= aimType.aimCount;
+//            }
+//            Logger.log("ALL : %2.2f %% (%d/%d)",(double)hitCount/(double)aimCount*100.0,hitCount,aimCount);
+//            for ( MoveType aimType : e.getValue() ) {
+//                Logger.log("x%02x : %2.2f %% (%d/%d) : %2.2f",aimType.type,aimType.avrage()*100.0,aimType.hitCount,aimType.aimCount,aimType.score);
+//            }
+//        }
         
     }
 }

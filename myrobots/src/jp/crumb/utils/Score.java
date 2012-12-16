@@ -27,6 +27,7 @@ public class Score implements Serializable{
         this.score   = in.score;
     }
     public void updateScore(double s,double limit,double min){
+        s = (s<0)?0:s;
         double count = scoreCount;
         if ( scoreCount > limit ) {
             count = limit;

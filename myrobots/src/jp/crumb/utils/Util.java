@@ -175,7 +175,7 @@ public class Util {
     }
 
     public static <K,V> HashMap<K,V> deepCopyHashMap(Map<K,V> in , Copy<V> copy){
-        HashMap<K,V> ret = new HashMap<>();
+        HashMap<K,V> ret = new HashMap<>(50,0.3f);
         for ( Map.Entry<K,V> e : in.entrySet() ) {
             ret.put(e.getKey(), copy.copy(e.getValue()) );
         }

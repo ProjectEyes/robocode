@@ -4,8 +4,6 @@
  */
 package jp.crumb.utils;
 
-import java.util.HashMap;
-import java.util.Map;
 import robocode.ScannedRobotEvent;
 
 

@@ -10,9 +10,11 @@ import java.awt.Graphics2D;
 import java.awt.Polygon;
 import java.io.IOException;
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import jp.crumb.utils.AimType;
@@ -48,7 +50,7 @@ import robocode.WinEvent;
  * @author crumb
  */
 abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
-    protected static final boolean isPaint = true;
+    protected static final boolean isPaint = false;
     protected Logger logger = new Logger(0);
 
     protected static final double MOVE_COMPLETE_THRESHOLD = 1.0;
@@ -59,14 +61,14 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
     protected T ctx = createContext(null);
     
    
-    protected static Set<String> teammate = new HashSet<>();
+    protected static List<String> teammate = new ArrayList<>(5);
     protected static boolean isLeader = false;
     protected static String leader = null;
     protected static String name;
 
     // Current informations
-    protected Map<String, Enemy> enemyMap = new HashMap<>();
-    private Map<String,BulletInfo> bulletList = new HashMap<>();
+    protected Map<String, Enemy> enemyMap = new HashMap<>(20,0.3f);
+    private Map<String,BulletInfo> bulletList = new HashMap<>(50,0.3f);
     
 
     private Condition eachTickTimer = new Condition("eachTickTimer",10) {
@@ -78,7 +80,18 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
     private Condition firstTickTimer = new Condition("firstTickTimer",90) {
         @Override
         public boolean test() {
-            return true;
+            if ( getTime() == 1 ) {
+                return true;
+            }
+            if ( getTime() - lastScanTick  > 20 ) {
+                lastScanTick = ctx.my.time - 10;
+                logger.log("SKIP BUG !! %d", ctx.my.time);
+                return true;
+            }
+            return false;
+//                return true;
+//            }
+//            return false;
         }
     };
     private void initEventPriority(){
@@ -254,7 +267,10 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
         doAhead(go.first);
         doTurnRight(go.second);
     }
+
+    long lastScanTick = 20;
     private void preScannedRobot(ScannedRobotEvent e) {
+        lastScanTick = e.getTime();
         Enemy enemy = createEnemy(e);
         if ( ! isTeammate(enemy.name)) {
             // Message will reach to teammate at next turn !!
@@ -438,30 +454,7 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
     }    
 
 
-    
-    
-    
   
-
-
-    private void forSystemBug(){
-//        if ( enemyMap.isEmpty() ) {
-//            return;
-//        }
-//        boolean allStale = true;
-//        for (Map.Entry<String, Enemy> e : enemyMap.entrySet()) {
-//            Enemy r = e.getValue();
-//            if ( ctx.my.time - r.time < SYSTEM_BUG_TICKS) {
-//                allStale = false;
-//                break;
-//            }
-//        }
-//        if ( allStale ){
-//            logger.log("ALL STALE !!!!!!!!!!! : ");
-//            execute();
-//        }
-    }
-    
     @Override
     public void run() {
         Util.init(
@@ -552,19 +545,22 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
     public void onBattleEnded(BattleEndedEvent event) {
         dumpLog();
     }
-    
+
+    boolean first = true;
     @Override
     public void onCustomEvent(CustomEvent event) {
-        forSystemBug();
         this.setInterruptible(true);
-        updateCurrent();
         if (event.getCondition().equals(this.firstTickTimer) ) {
-            this.removeCustomEvent(firstTickTimer);
-            cbFirst();
+            //this.removeCustomEvent(firstTickTimer);
+            if ( first ) {
+                first = false;
+                cbFirst();
+            }
             execute();
             return;
         }
         if (event.getCondition().equals(this.eachTickTimer) ) {
+            updateCurrent();
             sendMyInfo();
             
             for ( ScannedRobotEvent e: this.getScannedRobotEvents() ) {
@@ -620,6 +616,8 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
     protected static final float PAINT_OPACITY=0.5f;
     protected void paint(Graphics2D g) {
         if (isPaint) {
+            g.setColor(new Color(0, 0.7f, 0, PAINT_OPACITY));
+            g.setStroke(new BasicStroke(1.0f));
             drawRound(g, ctx.my.x, ctx.my.y, 400 * 2);
             drawRound(g, ctx.my.x, ctx.my.y, 600 * 2);
             float[] dash = new float[2];
