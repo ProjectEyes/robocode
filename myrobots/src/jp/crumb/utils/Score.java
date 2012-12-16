@@ -7,6 +7,7 @@ package jp.crumb.utils;
 import java.io.Serializable;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 /**
  *
@@ -43,7 +44,6 @@ public class Score implements Serializable{
     public void updateScore(double s){
         updateScore((s<0)?0:s,Double.POSITIVE_INFINITY,0);
     }
-
     public static <T extends Score> T getByScore(Collection<T> list) {
         T ret = null;
         double score = Double.NEGATIVE_INFINITY;

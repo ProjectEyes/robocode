@@ -68,6 +68,8 @@ abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobo
 //    protected static final double ENEMY_BULLET_DIFF_THRESHOLD = Math.PI/6; // more than 30 degrees
 //    protected static final double BULLET_DIFF_THRESHOLD = Math.PI/6; // more than 30 degrees
 
+    protected static final double DEFAULT_CORNER_WEIGHT = -10;
+    protected static final double DEFAULT_CORNER_DIM = 1;
     protected static final long   DEFAULT_ENEMY_BULLET_PROSPECT_TIME = 20;
     protected static final double DEFAULT_ENEMY_BULLET_WEIGHT = 1000;
     protected static final double DEFAULT_ENEMY_BULLET_DIM = 4;
@@ -75,6 +77,8 @@ abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobo
 
 
     // For move
+    protected  double CORNER_WEIGHT          = DEFAULT_CORNER_WEIGHT;
+    protected  double CORNER_DIM             = DEFAULT_CORNER_DIM;
     protected  long   ENEMY_BULLET_PROSPECT_TIME   = DEFAULT_ENEMY_BULLET_PROSPECT_TIME;
     protected  double ENEMY_BULLET_WEIGHT          = DEFAULT_ENEMY_BULLET_WEIGHT;
     protected  double ENEMY_BULLET_DIM             = DEFAULT_ENEMY_BULLET_DIM;
@@ -132,16 +136,52 @@ abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobo
         moveTypeList.add(moveType);
 //        moveType = new MoveType(MoveType.TYPE_REACT_PATTERN_FIRST);
 //        moveTypeList.add(moveType);
-//        moveType = new MoveType(MoveType.TYPE_REACT_PATTERN_CENTER);
-//        moveTypeList.add(moveType);
+        moveType = new MoveType(MoveType.TYPE_REACT_PATTERN_CENTER);
+        moveTypeList.add(moveType);
         return moveTypeList;
     }
+
     @Override
-    protected MoveType getAimType(String name) {
-        if ( aimTypeMap.get(name) == null ) {
+    protected MoveType getBestAimType(RobotPoint target) {
+        if ( aimTypeMap.get(target.name) == null ) {
             return new MoveType(MoveType.TYPE_ACCELERATION_FIRST);
         }
-        return MoveType.getByScore(aimTypeMap.get(name));
+//        return MoveType.getByScore(aimTypeMap.get(name));
+
+        boolean simplePattern = true;
+        {
+            Map<Long,Score> simple = simplePatternScoreMap.get(target.name);
+            if ( simple == null ) {
+                simplePattern = false; // Data not found
+            }
+        }
+        boolean reactPattern = false;
+        {
+            TreeMap<Long,Pair<Score,DistancePoint>> reacts = reactPatternScoreMap.get(target.name);
+            if ( reacts != null ) {
+                DistancePoint v = calcDiffHeadingVecter(target);
+                List<Score> scores = new ArrayList<>();
+                for (Long shotTime : reacts.keySet()) {
+                    Pair<Score, DistancePoint> pair = reacts.get(shotTime);
+                    DistancePoint vecter = pair.second;
+                    if (vecter.isNearly(v) ){
+                        reactPattern = true; // Valid data found
+                    }
+                }
+            }
+        }
+        List<MoveType> scores = new ArrayList(10);
+        for (MoveType m : aimTypeMap.get(target.name) ) {
+            if ( m.isTypeSimplePattern() && ! simplePattern ) {
+                continue;
+            }
+            if ( m.isTypeReactPattern() && ! reactPattern ) {
+                continue;
+            }
+            scores.add(m);
+        }
+
+        return MoveType.getByScore(scores);
     }
     protected MoveType getAimType(String targetName,int type){
         for ( MoveType aimType : aimTypeMap.get(targetName) ){
@@ -179,6 +219,13 @@ abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobo
     @Override
     protected Point movingBase() {
         Point dst = super.movingBase();
+        // corner
+        if ( ctx.enemies > 1 ) { // Melee mode
+            dst.diff(Util.getGrabity(ctx.my, new Point(Util.runnableMinX,Util.runnableMinY), CORNER_WEIGHT,CORNER_DIM));
+            dst.diff(Util.getGrabity(ctx.my, new Point(Util.runnableMinX,Util.runnableMaxY), CORNER_WEIGHT,CORNER_DIM));
+            dst.diff(Util.getGrabity(ctx.my, new Point(Util.runnableMaxX,Util.runnableMinY), CORNER_WEIGHT,CORNER_DIM));
+            dst.diff(Util.getGrabity(ctx.my, new Point(Util.runnableMaxX,Util.runnableMaxY), CORNER_WEIGHT,CORNER_DIM));
+        }
         // Enemy Bullet
         for (Map.Entry<String, BulletInfo> e : ctx.nextEnemyBulletList.entrySet()) {
             BulletInfo info = e.getValue();
@@ -216,7 +263,6 @@ abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobo
                 return robot.prospectNext(term);
             }
             DistancePoint v = calcDiffHeadingVecter(robot);
-            double vecR = new Point(0, 0).calcDegree(v);
             List<Score> scores = new ArrayList<>();
             for (Long shotTime : reacts.keySet()) {
                 Pair<Score, DistancePoint> pair = reacts.get(shotTime);
@@ -225,9 +271,9 @@ abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobo
                     scores.add(pair.first);
                 }
             }
-            Score vest = Score.getByScore(scores);
-            if ( vest != null ) {
-                context.shotTime = Long.parseLong(vest.name);
+            Score best = Score.getByScore(scores);
+            if ( best != null ) {
+                context.shotTime = Long.parseLong(best.name);
                 context.time = context.shotTime;
                 context.baseTarget = robot;
             }
@@ -456,7 +502,7 @@ abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobo
             // diffRadians = (Math.abs(diffRadians) < BULLET_DIFF_THRESHOLD) ? diffRadians : BULLET_DIFF_THRESHOLD;
             //moveType.updateScore(Math.PI / 2 - diffRadians,AIM_SCORE_ESTIMATE_LIMIT,AIM_SCORE_ESTIMATE_MIN);a
             moveType.updateScore(PERFECT_SCORE-closest,AIM_SCORE_ESTIMATE_LIMIT,AIM_SCORE_ESTIMATE_MIN);
-            logger.prospect1("AIMTYPE(x%02x)  %2.2f(%2.2f)", moveType.type,moveType.score,closest );
+            logger.prospect1("AIMTYPE(x%03x)  s:%2.2f d:%03.1f %2.2f %% (%d/%d)", moveType.type,moveType.score,closest,moveType.avrage()*100.0,moveType.hitCount,moveType.aimCount);
         }
         broadcastMessage(new AimTypeEvent(info.targetName, aimTypeList));
     }
@@ -693,23 +739,35 @@ abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobo
     }
 
     @Override
+    protected double powerLimit(double enemyEnergy, MoveType aimType) {
+        double limit = ctx.my.energy / 10;
+        limit = limit*aimType.score/PERFECT_SCORE;
+        double need = Util.powerByDamage(enemyEnergy);
+        if ( need < limit ) {
+            limit = need;
+        }
+        return limit;
+    }
+
+
+    @Override
     protected void dumpLog(){
         // g.drawString(String.format("hit: %d / %d  : %2.2f / %2.2f", r.getAimType().hitCount, r.getAimType().aimCount, r.getAimType().hitTime, r.getAimType().aimTime), (int) r.x - 20, (int) r.y - 40);
         // TODO: merge to AIMING
-//        for ( Map.Entry<String,List<MoveType>> e : aimTypeMap.entrySet() ) {
-//            String enemyName = e.getKey();
-//            Logger.log("=== %s ===",enemyName);
-//            long hitCount = 0;
-//            long aimCount = 0;
-//            for ( MoveType aimType : e.getValue() ) {
-//                hitCount+= aimType.hitCount;
-//                aimCount+= aimType.aimCount;
-//            }
-//            Logger.log("ALL : %2.2f %% (%d/%d)",(double)hitCount/(double)aimCount*100.0,hitCount,aimCount);
-//            for ( MoveType aimType : e.getValue() ) {
-//                Logger.log("x%02x : %2.2f %% (%d/%d) : %2.2f",aimType.type,aimType.avrage()*100.0,aimType.hitCount,aimType.aimCount,aimType.score);
-//            }
-//        }
+        for ( Map.Entry<String,List<MoveType>> e : aimTypeMap.entrySet() ) {
+            String enemyName = e.getKey();
+            Logger.log("=== %s ===",enemyName);
+            long hitCount = 0;
+            long aimCount = 0;
+            for ( MoveType aimType : e.getValue() ) {
+                hitCount+= aimType.hitCount;
+                aimCount+= aimType.aimCount;
+            }
+            Logger.log("ALL : %2.2f %% (%d/%d)",(double)hitCount/(double)aimCount*100.0,hitCount,aimCount);
+            for ( MoveType aimType : e.getValue() ) {
+                Logger.log("x%02x : %2.2f %% (%d/%d) : %2.2f",aimType.type,aimType.avrage()*100.0,aimType.hitCount,aimType.aimCount,aimType.score);
+            }
+        }
         
     }
 }

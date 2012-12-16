@@ -25,7 +25,7 @@ public class Normal extends AdvCrumbRobot<AdbCrumbContext> {
     public void run() {
         super.run();
         setColors(new Color(100,100,100), new Color(100,100,100), new Color(255, 255, 150)); // body,gun,radar
-        this.setBulletColor(new Color(100,100,100));
+        this.setBulletColor(new Color(255,255,200));
     }
     
 

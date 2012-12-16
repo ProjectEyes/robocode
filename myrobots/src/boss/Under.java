@@ -7,9 +7,15 @@ package boss;
 
 
 import java.awt.Color;
+import java.io.Serializable;
 import jp.crumb.CrumbContext;
 import jp.crumb.CrumbRobot;
+import jp.crumb.sample.InvaderEvent;
+import jp.crumb.utils.Enemy;
+import jp.crumb.utils.Point;
+import jp.crumb.utils.Util;
 import robocode.Droid;
+import robocode.MessageEvent;
 
 
 
@@ -28,10 +34,12 @@ public abstract class Under extends CrumbRobot<CrumbContext> implements Droid{
     @Override
     protected void cbFirst() {
         super.cbFirst();
-//        GT_DIM = 0.4;
-//        GT_WEIGHT = 400;
+        setFireMode(ctx.MODE_FIRE_MANUAL);
+        int round = getRoundNum();
+        if ( round%3 == 2 ) {
+            setFireMode(ctx.MODE_FIRE_AUTO);
+        }
     }
-
     @Override
     protected void cbThinking() {
         if ( ! ctx.isGunMode(ctx.MODE_GUN_MANUAL )) {
@@ -41,11 +49,38 @@ public abstract class Under extends CrumbRobot<CrumbContext> implements Droid{
             super.cbThinking();
         }
     }
+
+    @Override
+    protected Point movingBase() {
+        Point dst = super.movingBase();
+        if ( ctx.isFireMode(ctx.MODE_FIRE_AUTO) ) {
+            return dst;
+        }
+        Enemy boss = enemyMap.get(leader);
+        if ( boss != null ) {
+            System.out.println(boss.name+ " : " );
+            dst.diff(Util.getGrabity(ctx.my,boss, -5,0));
+        }
+        return dst;
+    }
+
+    @Override
+    protected void cbExtMessage(MessageEvent e) {
+        Serializable event = e.getMessage();
+        if ( event instanceof BossEvent ) {
+            BossEvent ev = (BossEvent)event;
+            setFireMode(ctx.MODE_FIRE_AUTO);
+            GT_DIM = 0.4;
+            GT_WEIGHT = 400;
+        }else{
+            super.cbExtMessage(e);
+        }
+    }
+
     @Override
     protected void cbFiring() {
         if ( ctx.isFireMode(ctx.MODE_FIRE_AUTO) ) {
             firing(3,1);
         }
     }
-  
 }

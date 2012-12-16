@@ -53,8 +53,6 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
     protected static final double DEFAULT_WALL_DIM = 1.8;
     protected static final double DEFAULT_ENEMY_WEIGHT = 400;
     protected static final double DEFAULT_ENEMY_DIM = 1.8;
-    protected static final double DEFAULT_CORNER_WEIGHT = 2;
-    protected static final double DEFAULT_CORNER_DIM = 0;
     protected static final double DEFAULT_G_WEIGHT = 50;
     protected static final double DEFAULT_G_DIM = 1.1;
     protected static final double DEFAULT_GT_WEIGHT = 400;
@@ -70,8 +68,6 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
     protected  double WALL_DIM               = DEFAULT_WALL_DIM;
     protected  double ENEMY_WEIGHT           = DEFAULT_ENEMY_WEIGHT;
     protected  double ENEMY_DIM              = DEFAULT_ENEMY_DIM;
-    protected  double CORNER_WEIGHT          = DEFAULT_CORNER_WEIGHT;
-    protected  double CORNER_DIM             = DEFAULT_CORNER_DIM;
     protected  double G_WEIGHT               = DEFAULT_G_WEIGHT;
     protected  double G_DIM                  = DEFAULT_G_DIM;
     protected  double GT_WEIGHT              = DEFAULT_GT_WEIGHT;
@@ -92,7 +88,7 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
         return new CrumbContext(in);
     }
 
-    protected MoveType getAimType(String name) {
+    protected MoveType getBestAimType(RobotPoint target) {
         return new MoveType(MoveType.TYPE_ACCELERATION_FIRST);
     }
     
@@ -104,7 +100,7 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
 
     @Override
     protected boolean prospectNextEnemy(Enemy enemy) {
-        MoveType aimType = getAimType(enemy.name);
+        MoveType aimType = getBestAimType(enemy);
         return prospectNextRobot(enemy,aimType,1);
     }
 
@@ -160,12 +156,6 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
         dst.diff(Util.getGrabity(ctx.my, new Point(0,ctx.my.y), WALL_WEIGHT,WALL_DIM));
         dst.diff(Util.getGrabity(ctx.my, new Point(ctx.my.x,Util.battleFieldHeight), WALL_WEIGHT,WALL_DIM));
         dst.diff(Util.getGrabity(ctx.my, new Point(ctx.my.x,0), WALL_WEIGHT,WALL_DIM));
-        if ( ctx.enemies > 1 ) { // Melee mode
-            dst.diff(Util.getGrabity(ctx.my, new Point(Util.runnableMinX,Util.runnableMinY), CORNER_WEIGHT,CORNER_DIM));
-            dst.diff(Util.getGrabity(ctx.my, new Point(Util.runnableMinX,Util.runnableMaxY), CORNER_WEIGHT,CORNER_DIM));
-            dst.diff(Util.getGrabity(ctx.my, new Point(Util.runnableMaxX,Util.runnableMinY), CORNER_WEIGHT,CORNER_DIM));
-            dst.diff(Util.getGrabity(ctx.my, new Point(Util.runnableMaxX,Util.runnableMaxY), CORNER_WEIGHT,CORNER_DIM));
-        }
         // Enemy
         for (Map.Entry<String, Enemy> e : ctx.nextEnemyMap.entrySet()) {
             if ( ! isStale(e.getValue() ) ) {
@@ -202,11 +192,11 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
         if ( need < limit ) {
             limit = need;
         }
-        // TODO: Should adjust by score  to power or limit (limit is better but ... becoming no hsot?)
-//        limit = limit*aimType.score/PERFECT_SCORE;
         return limit;
     }
-    
+
+    protected static double POWER_LIMIT_ERROR = 0.5;
+    protected static double POWER_LIMIT_ERROR_MIN = 0.3;
     protected Pair<Double,Double> calcFire(Enemy target,MoveType aimType,long deltaThreshold,long recentThreshold){
         if ( target.delta == null || target.delta.time > deltaThreshold || (ctx.my.timeStamp - target.timeStamp) > recentThreshold ) {
             return new Pair<>(0.0,Util.fieldFullDistance);
@@ -216,6 +206,8 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
         Enemy prospectTarget = new Enemy(target);
         ProspectContext prospectContext = new ProspectContext();
         double limit = powerLimit(target.energy,aimType);
+        double limitError = limit*POWER_LIMIT_ERROR;
+        limitError = (limitError>POWER_LIMIT_ERROR_MIN)?limitError:POWER_LIMIT_ERROR_MIN;
         for ( int i = 1; i <= MAX_HIT_TIME; i++ ) {
             double d = Util.calcPointToLineRange(ctx.my,prospectTarget,ctx.curGunHeadingRadians);
             if ( d < (Util.tankWidth/2) ) { // crossing shot line
@@ -223,11 +215,20 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
                 double power = decideBulletPowerFromDistance(bultDistance,i);
                 if ( maxPower < power ) { // hit ? : power more than 0.0
                     logger.fire3("POWER(%s): (%2.2f) => (%2.2f)", target.name,maxPower,power);
-                    maxPower = power;
-                    aimDistance = bultDistance;
-                    if ( maxPower > limit ) {
+                    if ( power > limit ) {
+                        if ( power - limit > limitError ) {
+                            maxPower = 0.0;
+                            aimDistance = Util.fieldFullDistance;
+                            logger.fire3("exceeded limit error %2.2f(%2.2f) => %2.2f", limit,limitError, power );
+                            break;
+                        }
+                        logger.fire3("limit errors %2.2f(%2.2f) => %2.2f", limit,limitError, power );
+                        maxPower = power;
+                        aimDistance = bultDistance;
                         break;
                     }
+                    maxPower = power;
+                    aimDistance = bultDistance;
                 }
             }
             prospectNextRobot(prospectTarget,aimType,1,prospectContext);
@@ -245,7 +246,7 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
         for (Map.Entry<String, Enemy> e : ctx.nextEnemyMap.entrySet()) {
             Enemy target = e.getValue();
             if ( ! isStale(target) && ! isTeammate(e.getKey()) ) {
-                MoveType aimtype = getAimType(target.name);
+                MoveType aimtype = getBestAimType(target);
                 Pair<Double,Double> result = calcFire(target,aimtype,deltaThreshold,recentThreshold);
                 if ( aimDistance > result.second ) {
                     maxPower = result.first;
@@ -313,7 +314,7 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
         if ( lockOnTarget == null ) {
             return;
         }
-        MoveType aimType = getAimType(lockonTarget);
+        MoveType aimType = getBestAimType(lockOnTarget);
 
         double gunTurn = 0;
         long gunTurnTime = 1;
@@ -414,9 +415,9 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
     @Override
     protected void cbProspectNextTurn(){
         for (Map.Entry<String, Enemy> e : ctx.nextEnemyMap.entrySet()) {
-            MoveType aimType = getAimType(e.getKey());
-            Enemy r = e.getValue();
-            prospectNextRobot(r, aimType, 1);
+            Enemy enemy = e.getValue();
+            MoveType aimType = getBestAimType(enemy);
+            prospectNextRobot(enemy, aimType, 1);
         }
 
         for (Map.Entry<String, BulletInfo> e : ctx.nextBulletList.entrySet()) {
@@ -735,7 +736,7 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
 
                 g.setColor(new Color(0.3f, 0.5f, 1.0f,PAINT_OPACITY));
                 Enemy next = new Enemy(enemy);
-                MoveType aimType = getAimType(next.name);
+                MoveType aimType = getBestAimType(next);
                 for (int i = 1; i < 20; i++) {
                     prospectNextRobot(next, aimType,1);
                     drawRound(g, next.x, next.y, 2);

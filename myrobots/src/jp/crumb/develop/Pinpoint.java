@@ -11,6 +11,7 @@ import jp.crumb.CrumbContext;
 import jp.crumb.CrumbRobot;
 import jp.crumb.utils.Enemy;
 import jp.crumb.utils.MoveType;
+import jp.crumb.utils.RobotPoint;
 import robocode.ScannedRobotEvent;
 
 
@@ -33,7 +34,7 @@ public class Pinpoint extends CrumbRobot<CrumbContext> {
     }
 
     @Override
-    protected MoveType getAimType(String name) {
+    protected MoveType getBestAimType(RobotPoint name) {
         return new MoveType(MoveType.TYPE_PINPOINT);
     }
 

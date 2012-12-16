@@ -69,8 +69,9 @@ abstract public class Invader extends CrumbRobot<CrumbContext> {
             }else if ( ev.kind == 3) {
                 openFire();
             }
+        }else{
+            super.cbExtMessage(e);
         }
-        super.cbExtMessage(e);
     }
     @Override
     protected void cbMoving() {
