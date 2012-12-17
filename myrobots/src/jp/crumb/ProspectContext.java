@@ -14,6 +14,7 @@ public class ProspectContext {
     public long   time   = 0;
     public long   shotTime   = 0;
     public String shotTarget = null;
+    public double diff = 0;
     public int    towards    = 0;
     public RobotPoint  baseTarget = null;
     public RobotPoint  baseLog    = null;

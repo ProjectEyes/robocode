@@ -281,7 +281,7 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
         long   retTime = 0;
         if ( moveType.isTypePinPoint() ) {
             retRadians = src.calcRadians(target);
-            retTime    = (long)Math.ceil(src.calcDistance(target));
+            retTime    = (long)Math.ceil(Math.abs(distance/bulletVelocity));
         }else {
             // ((deltaTime>0)?deltaTime:(long)Math.ceil(Math.abs(distance/velocity)))
             //  - Calc only fixed time ( hitted )

@@ -268,20 +268,19 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
         doTurnRight(go.second);
     }
 
-    long lastScanTick = 20;
     private void preScannedRobot(ScannedRobotEvent e) {
-        lastScanTick = e.getTime();
         Enemy enemy = createEnemy(e);
+        cbScannedRobot(enemy);
+        // Message will reach to teammate at next turn !!
         if ( ! isTeammate(enemy.name)) {
-            // Message will reach to teammate at next turn !!
             Enemy next = new Enemy(enemy);
             prospectNextEnemy(next);
             this.broadcastMessage(new ScanEnemyEvent(next));
         }
-        cbScannedRobot(enemy);
     }
-
+    long lastScanTick = 20;
     protected Enemy cbScannedRobot(Enemy enemy) {
+        lastScanTick = enemy.time;
         logger.scan("%15s : %s : %d",enemy.name,enemy,enemy.time);
         Enemy prevEnemy = enemyMap.get(enemy.name);
         if ( prevEnemy == null )  { // The first time
