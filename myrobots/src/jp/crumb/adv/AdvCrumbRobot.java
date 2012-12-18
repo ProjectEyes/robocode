@@ -50,7 +50,7 @@ abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobo
     protected static final double REACT_PATTERN_SCORE_ESTIMATE_LIMIT = 3;
     protected static final double REACT_PATTERN_SCORE_ESTIMATE_MIN = 1;
 
-    protected static final long SIMPLE_PATTERN_TERM_MAX =2000;
+    protected static final long SIMPLE_PATTERN_TERM_MAX =1500;
     protected static final long SIMPLE_PATTERN_TERM_MIN = 15;
 
     protected static final double SIMPLE_PATTERN_SCORE_ESTIMATE_LIMIT = 7;

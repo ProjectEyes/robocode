@@ -436,7 +436,6 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
 //        Enemy lockOnTarget = getNextEnemy(ctx.lockonTarget);
         Enemy lockOnTarget = null;
         if (isLeader || teammate.isEmpty() || ctx.nextEnemyMap.get(leader) == null ) {
-            ctx.lockonTarget = null;
             for (Map.Entry<String, Enemy> e : ctx.nextEnemyMap.entrySet()) {
                 Enemy r = e.getValue();
                 if (teammate.contains(r.name)) {
@@ -453,14 +452,16 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
                     lockOnTarget = r;
                 }
             }
+            String lockonTarget = null;
             if (lockOnTarget != null) {
                 if ( ! ctx.isMoveMode(ctx.MODE_MOVE_MANUAL )) {
                     this.setMoveMode(ctx.MODE_MOVE_LOCKON1);
                 }
-                ctx.setLockonTarget(lockOnTarget.name);
-                if (isLeader) {
-                    broadcastMessage(new LockonEvent(ctx.lockonTarget));
-                }
+                lockonTarget = lockOnTarget.name;
+            }
+            ctx.setLockonTarget(lockonTarget);
+            if (isLeader) {
+                broadcastMessage(new LockonEvent(lockonTarget));
             }
         }else{
             lockOnTarget = ctx.nextEnemyMap.get(ctx.lockonTarget);
