@@ -14,18 +14,29 @@ import java.util.Map;
  * @author crumb
  */
 public class Score implements Serializable{
-    public String name="";
+    public long time=0;
     public int scoreCount;
     public double score;
-    public Score(String name){
-        this.name = name;
+    public int round;
+    public Score(long time,int round){
+        this(time);
+        this.round = round;
+    }
+    public Score(long time){
+        this.time = time;
         scoreCount = 0;
         score = 0;
+        round = 0;
     }
     public Score(Score in){
-        this.name   = in.name;        
+        this.time   = in.time;
         this.scoreCount   = in.scoreCount;
         this.score   = in.score;
+        this.round   = in.round;
+    }
+    public void reset (){
+        scoreCount = 0;
+        score = 0;
     }
     public void updateScore(double s,double limit,double min){
         s = (s<0)?0:s;

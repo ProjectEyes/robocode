@@ -50,7 +50,7 @@ import robocode.WinEvent;
  * @author crumb
  */
 abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
-    protected static final boolean isPaint = false;
+    protected static final boolean isPaint = true;
     protected Logger logger = new Logger(0);
 
     protected static final double MOVE_COMPLETE_THRESHOLD = 1.0;

@@ -16,7 +16,7 @@ public class MoveType extends Score implements Comparable<MoveType> , Serializab
     public int aimCount;
     public int hitCount;
     public MoveType(int type){
-        super(String.valueOf(type));
+        super(type);
         this.type = type;
     }
     public MoveType(MoveType in){
