@@ -1,4 +1,8 @@
-package boss;
+package jp.crumb.develop;
+
+import boss.*;
+import jp.crumb.utils.MoveType;
+import jp.crumb.utils.Util;
 
 /*
  * To change this template, choose Tools | Templates
@@ -13,10 +17,12 @@ package boss;
  *
  * @author crumb
  */
-public class 夜なべ２号 extends Under {
+public class CloseFire extends Boss {
+
     @Override
     protected void cbFirst() {
         super.cbFirst();
-        setFireMode(ctx.MODE_FIRE_AUTO);
+        setFireMode(ctx.MODE_FIRE_MANUAL);
     }
+
 }

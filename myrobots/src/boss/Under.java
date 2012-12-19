@@ -8,9 +8,8 @@ package boss;
 
 import java.awt.Color;
 import java.io.Serializable;
-import jp.crumb.CrumbContext;
-import jp.crumb.CrumbRobot;
-import jp.crumb.sample.InvaderEvent;
+import jp.crumb.adv.AdbCrumbContext;
+import jp.crumb.adv.AdvCrumbRobot;
 import jp.crumb.utils.Enemy;
 import jp.crumb.utils.Point;
 import jp.crumb.utils.Util;
@@ -23,7 +22,7 @@ import robocode.MessageEvent;
  *
  * @author crumb
  */
-public abstract class Under extends CrumbRobot<CrumbContext> implements Droid{
+public abstract class Under extends AdvCrumbRobot<AdbCrumbContext> implements Droid {
     @Override
     public void run() {
         super.run();

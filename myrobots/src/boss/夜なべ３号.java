@@ -14,5 +14,10 @@ package boss;
  * @author crumb
  */
 public class 夜なべ３号 extends Under {
+    @Override
+    protected void cbFirst() {
+        super.cbFirst();
+        setFireMode(ctx.MODE_FIRE_AUTO);
+    }
         
 }

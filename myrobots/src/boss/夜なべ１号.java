@@ -18,4 +18,10 @@ import jp.crumb.utils.Util;
  */
 public class 夜なべ１号 extends Boss {
 
+    @Override
+    protected void cbFirst() {
+        super.cbFirst();
+        setFireMode(ctx.MODE_FIRE_AUTO);
+    }
+
 }

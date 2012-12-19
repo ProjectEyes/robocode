@@ -30,6 +30,7 @@ public class CrumbContext extends BaseContext {
     public static final int MODE_GUN_LOCKON   = 2;
     public static final int MODE_GUN_AUTO     = 80;
     public static final int MODE_FIRE_MANUAL  = 0;
+    public static final int MODE_FIRE_CLOSE   = 1;
     public static final int MODE_FIRE_AUTO    = 80;
 
     public int modeMove  = MODE_MOVE_MANUAL;

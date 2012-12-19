@@ -232,6 +232,21 @@ abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobo
     }
 
     @Override
+    protected void cbMoving() {
+        super.cbMoving();
+        if ( ctx.enemies == 1 && ctx.lockonTarget != null && ctx.my.energy > 0.6 )  {
+            if ( ! ctx.isFireMode(ctx.MODE_FIRE_MANUAL) ) {
+                setFireMode(ctx.MODE_FIRE_AUTO);
+                Enemy lockOnTarget = ctx.nextEnemyMap.get(ctx.lockonTarget);
+                if ( lockOnTarget != null && lockOnTarget.energy < 0.1 ) {
+                    setFireMode(ctx.MODE_FIRE_CLOSE);
+                    setDestination(lockOnTarget);
+                }
+            }
+        }
+    }
+
+    @Override
     protected Point movingBase() {
         Point dst = super.movingBase();
         // corner
@@ -798,6 +813,9 @@ if ( isPaint ) {
         double need = Util.powerByDamage(enemyEnergy);
         if ( need < limit ) {
             limit = need;
+        }
+        if ( limit < 0.02 && ctx.my.energy < 0.2 && enemyEnergy != 0.0 ) { // last 1 shot limitter
+            return 0.0;
         }
         return limit;
     }

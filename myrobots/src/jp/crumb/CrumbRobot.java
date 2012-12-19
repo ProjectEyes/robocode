@@ -206,6 +206,12 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
         Enemy prospectTarget = new Enemy(target);
         ProspectContext prospectContext = new ProspectContext();
         double limit = powerLimit(target.energy,aimType);
+        if ( limit == 0.0 ) {
+            if ( ctx.my.calcDistance(target) > 90 ) { // Prevent ram bonus
+                return new Pair<>(0.0,Util.fieldFullDistance);
+            }
+            limit = 3.0;
+        }
         double limitError = limit*POWER_LIMIT_ERROR;
         limitError = (limitError>POWER_LIMIT_ERROR_MIN)?limitError:POWER_LIMIT_ERROR_MIN;
         for ( int i = 1; i <= MAX_HIT_TIME; i++ ) {
