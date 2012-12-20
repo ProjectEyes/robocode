@@ -24,7 +24,6 @@ import jp.crumb.utils.Pair;
 import jp.crumb.utils.Point;
 import jp.crumb.utils.RobotPoint;
 import jp.crumb.utils.Score;
-import jp.crumb.utils.TimedPoint;
 import jp.crumb.utils.Util;
 import robocode.Bullet;
 import robocode.BulletHitBulletEvent;
@@ -47,8 +46,8 @@ abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobo
     }
 
     protected static final long REACT_PATTERN_TERM = 16;
-    protected static final double REACT_PATTERN_SCORE_ESTIMATE_LIMIT = 3;
-    protected static final double REACT_PATTERN_SCORE_ESTIMATE_MIN = 1;
+//    protected static final double REACT_PATTERN_SCORE_ESTIMATE_LIMIT = 3;
+//    protected static final double REACT_PATTERN_SCORE_ESTIMATE_MIN = 1;
 
 //    protected static final long SIMPLE_PATTERN_TERM_MAX =1500;
     protected static final long SIMPLE_PATTERN_TERM_MIN = 15;
@@ -90,7 +89,7 @@ abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobo
     protected static Map<String,List<MoveType>> aimTypeMap = new HashMap(15,0.3f);
 
 
-    protected static final int  LOG_ROUND = 3;
+    protected static final int  LOG_ROUND = 10;
     protected int logRound = 0;
 //    protected Map<Long,RobotPoint> myLog = new HashMap<>(2000);
 //    protected Map<String, Map<Long,Enemy> > enemyLog = new HashMap<>(15,0.3f);
@@ -104,20 +103,23 @@ abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobo
     protected static class DistancePoint extends Point {
         public double distance;
         public boolean isNearly(DistancePoint in ) {
-            return calcDdiff(in) < 400.0;// TODO: @@@
+            return calcDdiff(in) < 34.0;// TODO: @@@
         }
         public double calcDdiff(DistancePoint in){
-            return new Point(this).prod(distance).calcDistance(new Point(in).prod(in.distance));
+            return this.calcDistance(in)*50 + Math.abs(distance - in.distance);
         }
     }
     protected DistancePoint calcDiffHeadingVecter(RobotPoint enemy){
         double enemyHeadingRadians = (enemy.velocity>0)?enemy.headingRadians:(enemy.headingRadians-Math.PI);
         double enemyDiffHeadingRadians = Util.calcTurnRadians(ctx.my.calcRadians(enemy),enemyHeadingRadians);
         DistancePoint ret = new DistancePoint();
-        double vectorVelocity = enemy.velocity * 8 + ((enemy.velocity>0)?8:-8); // v * 2 + 2 (correct towards)
-        ret.set(Util.calcPoint(enemyDiffHeadingRadians,vectorVelocity));
+        double vectorVelocity = 0.0;
+        if ( enemy.velocity != 0 ) {
+            vectorVelocity = (Math.abs(enemy.velocity)+1)*10;
+        }
+        ret.x = enemyDiffHeadingRadians;
+        ret.y = vectorVelocity;
         ret.distance = ctx.my.calcDistance(enemy);
-        put verocity more emphasis !!
         
         return ret;
     }
@@ -365,9 +367,23 @@ abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobo
 //            Score best = Score.getByScore(scores);
                     Pair<Score, DistancePoint> pair = reacts.get(shotTime);
                     DistancePoint vecter = pair.second;
+                    Score s = pair.first;
                     double diff = vecter.calcDdiff(v);
+                    if ( logRound == round) {
+                        if ( ctx.my.time <= s.time + REACT_PATTERN_TERM ){
+                            continue;
+                        }
+                    }else {
+                        Map.Entry<Long,Enemy> lastLog = enemyLog.get(round).get(robot.name).lastEntry();
+                        if ( lastLog.getKey() <= s.time + REACT_PATTERN_TERM ) {
+                            continue;
+                        }
+                    }
                     if ( bestDiff > diff && vecter.isNearly(v) ) {
-System.out.println("d:"+diff+" "+robot + " ** " + logEnemy(round,robot.name,pair.first.time));
+                        logger.prospect4("D:%2.2f (%2.2f)%s D:%2.2f || (%2.2f)%s D:%2.2f", 
+                                diff,
+                                Math.toDegrees(v.x),robot,v.distance,
+                                Math.toDegrees(vecter.x),logEnemy(round,robot.name,pair.first.time),vecter.distance);
                         bestDiff = diff;
                         best = pair.first;
                     }
@@ -399,7 +415,7 @@ System.out.println("d:"+diff+" "+robot + " ** " + logEnemy(round,robot.name,pair
                 }
                 robot.setDelta(delta);
                 robot.prospectNext(1);
-logger.log("%2.2f : %s => %s  ** %s => %s",context.diff,logEnemy,logEnemy.delta,robot,robot.delta);
+//logger.log("%2.2f : %s => %s  ** %s => %s",context.diff,logEnemy,logEnemy.delta,robot,robot.delta);
                 if ( isPaint ) {
                     getGraphics().setStroke(new BasicStroke(1.0f));
                     getGraphics().setColor(Color.BLACK);

@@ -240,7 +240,7 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
                     }
                     maxPower = power;
                     aimDistance = bultDistance;
-System.out.println("p:" + maxPower + " a:" + aimDistance + " i:" + i);
+//TODO:System.out.println("p:" + maxPower + " a:" + aimDistance + " i:" + i);
                 }
             }
             prospectNextRobot(prospectTarget,aimType,1,prospectContext);
