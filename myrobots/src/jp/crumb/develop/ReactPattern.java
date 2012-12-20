@@ -35,6 +35,7 @@ public class ReactPattern extends AdvCrumbRobot<AdbCrumbContext> {
 //        MoveType moveType = new MoveType(MoveType.TYPE_REACT_PATTERN_FIRST);
 //        moveTypeList.add(moveType);
         moveType = new MoveType(MoveType.TYPE_PINPOINT);
+        moveType.score = 0.001;
         moveTypeList.add(moveType);
         moveType = new MoveType(MoveType.TYPE_REACT_PATTERN_CENTER);
         moveType.score = 1000000000000000000000000000.0;

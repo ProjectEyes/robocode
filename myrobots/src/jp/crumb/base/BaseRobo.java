@@ -401,7 +401,7 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
         if ( ctx.gunHeat != 0 ) {
             return;
         }
-        logger.fire1("FIRE(x%02x): ( %2.2f ) => %2.2f",type,power,ctx.curGunHeading);
+        logger.fire1("FIRE(x%02x): ( %2.2f ) => %2.2f d : %2.2f",type,power,ctx.curGunHeading,distance);
         this.paint(getGraphics());
         double bulletVelocity = Util.bultSpeed(power);
         MovingPoint src = new MovingPoint(

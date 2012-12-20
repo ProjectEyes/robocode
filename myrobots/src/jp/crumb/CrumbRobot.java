@@ -212,6 +212,11 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
             }
             limit = 3.0;
         }
+        if ( isPaint ) {
+            getGraphics().setStroke(new BasicStroke(4.0f));
+            getGraphics().setColor(new Color(0,0,255));
+            drawRound(getGraphics(),prospectTarget.x,prospectTarget.y,10);
+        }
         double limitError = limit*POWER_LIMIT_ERROR;
         limitError = (limitError>POWER_LIMIT_ERROR_MIN)?limitError:POWER_LIMIT_ERROR_MIN;
         for ( int i = 1; i <= MAX_HIT_TIME; i++ ) {
@@ -235,9 +240,15 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
                     }
                     maxPower = power;
                     aimDistance = bultDistance;
+System.out.println("p:" + maxPower + " a:" + aimDistance + " i:" + i);
                 }
             }
             prospectNextRobot(prospectTarget,aimType,1,prospectContext);
+            if ( isPaint ) {
+                getGraphics().setStroke(new BasicStroke(1.0f));
+                getGraphics().setColor(new Color(0,0,255));
+                drawRound(getGraphics(),prospectTarget.x,prospectTarget.y,10);
+            }
         }
         return new Pair<>(maxPower,aimDistance);
     }
@@ -262,6 +273,7 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
                 }
             }
         }
+
         if ( aimType != null && ! isTeammate(targetName) && maxPower > 0 ) {
             if ( ctx.enemies > 1 ) {
                 normalMode();

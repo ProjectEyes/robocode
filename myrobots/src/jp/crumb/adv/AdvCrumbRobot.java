@@ -50,7 +50,7 @@ abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobo
     protected static final double REACT_PATTERN_SCORE_ESTIMATE_LIMIT = 3;
     protected static final double REACT_PATTERN_SCORE_ESTIMATE_MIN = 1;
 
-    protected static final long SIMPLE_PATTERN_TERM_MAX =1500;
+//    protected static final long SIMPLE_PATTERN_TERM_MAX =1500;
     protected static final long SIMPLE_PATTERN_TERM_MIN = 15;
 
     protected static final double SIMPLE_PATTERN_SCORE_ESTIMATE_LIMIT = 7;
@@ -97,26 +97,28 @@ abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobo
     protected static Map<Integer,Map<Long,RobotPoint>> myLog = new HashMap<>(LOG_ROUND);
     protected static Map<Integer,Map<String, TreeMap<Long,Enemy>>> enemyLog = new HashMap<>(LOG_ROUND);
 //    protected Map<String,Map<Long,Score>> simplePatternScoreMap = new HashMap<>(15,0.3f);
+//    protected Map<String,TreeMap<Long,Pair<Score,DistancePoint>>> reactPatternScoreMap = new HashMap<>(15,0.3f);
     protected Map<String,Map<Integer,TreeMap<Long,Score>>> simplePatternScoreMap = new HashMap<>(15,0.3f);
-    protected Map<String,TreeMap<Long,Pair<Score,DistancePoint>>> reactPatternScoreMap = new HashMap<>(15,0.3f);
+    protected static Map<String,Map<Integer,TreeMap<Long,Pair<Score,DistancePoint>>>> reactPatternScoreMap = new HashMap<>(15,0.3f);
 
-    protected static final double REACT_LOG_VALID_DISTANCE =100;
     protected static class DistancePoint extends Point {
         public double distance;
         public boolean isNearly(DistancePoint in ) {
-            return calcDdiff(in) < 30.0;
+            return calcDdiff(in) < 400.0;// TODO: @@@
         }
         public double calcDdiff(DistancePoint in){
-            return calcDistance(in) * Math.abs(distance - in.distance);
+            return new Point(this).prod(distance).calcDistance(new Point(in).prod(in.distance));
         }
     }
     protected DistancePoint calcDiffHeadingVecter(RobotPoint enemy){
         double enemyHeadingRadians = (enemy.velocity>0)?enemy.headingRadians:(enemy.headingRadians-Math.PI);
         double enemyDiffHeadingRadians = Util.calcTurnRadians(ctx.my.calcRadians(enemy),enemyHeadingRadians);
         DistancePoint ret = new DistancePoint();
-        double vectorVelocity = enemy.velocity * 2 + ((enemy.velocity>0)?2:-2); // v * 2 + 2 (correct towards)
+        double vectorVelocity = enemy.velocity * 8 + ((enemy.velocity>0)?8:-8); // v * 2 + 2 (correct towards)
         ret.set(Util.calcPoint(enemyDiffHeadingRadians,vectorVelocity));
         ret.distance = ctx.my.calcDistance(enemy);
+        put verocity more emphasis !!
+        
         return ret;
     }
 
@@ -126,6 +128,9 @@ abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobo
         logRound = getRoundNum() % LOG_ROUND;
         myLog.put(logRound,new HashMap<Long,RobotPoint>(2000));
         enemyLog.put(logRound,new HashMap<String,TreeMap<Long,Enemy>>(15,0.3f));
+        for ( Map.Entry<String,Map<Integer,TreeMap<Long,Pair<Score,DistancePoint>>>> e : reactPatternScoreMap.entrySet() ){
+            e.getValue().put(logRound,new TreeMap<Long,Pair<Score,DistancePoint>>());
+        }
     }
 
     protected List<MoveType> initialShotTypeList(){
@@ -168,12 +173,13 @@ abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobo
     }
 
     boolean isValidSimplePattern(RobotPoint target){
-        for ( Map.Entry<Integer,TreeMap<Long,Score>> e : getSimplePattern(target.name).entrySet() ) {
-            if ( e.getValue().size() > SIMPLE_PATTERN_TERM_MIN ) {
-                return true;
-            }
-        }
-        return false;
+//        for ( Map.Entry<Integer,TreeMap<Long,Score>> e : getSimplePattern(target.name).entrySet() ) {
+//            if ( e.getValue().size() > SIMPLE_PATTERN_TERM_MIN ) {
+//                return true;
+//            }
+//        }
+//        return false;
+        return true;
     }
     void initSimplePattern(String enemyName){
         if ( ! simplePatternScoreMap.containsKey(enemyName) ) {
@@ -187,21 +193,33 @@ abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobo
         return simplePatternScoreMap.get(enemyName);
     }
 
+    Map<Long,Pair<Score,DistancePoint>> initReactPattern(String enemyName){
+        if ( ! reactPatternScoreMap.containsKey(enemyName)) {
+            reactPatternScoreMap.put(enemyName,new HashMap<Integer,TreeMap<Long,Pair<Score,DistancePoint>>>(LOG_ROUND));
+            reactPatternScoreMap.get(enemyName).put(logRound,new TreeMap<Long,Pair<Score,DistancePoint>>());
+        }
+        return reactPatternScoreMap.get(enemyName).get(logRound);
+    }
 
-    boolean isValidReactPattern(RobotPoint target){
-        boolean ret = false;
-        TreeMap<Long, Pair<Score, DistancePoint>> reacts = reactPatternScoreMap.get(target.name);
-        if (reacts != null) {
-            DistancePoint v = calcDiffHeadingVecter(target);
-            for (Long shotTime : reacts.keySet()) {
+
+    boolean isValidReactPattern(RobotPoint constEnemy){
+        Map<Integer,TreeMap<Long,Pair<Score,DistancePoint>>> reactPatternScore = reactPatternScoreMap.get(constEnemy.name);
+        if ( reactPatternScore == null ) {
+            return false;
+        }
+        DistancePoint v = calcDiffHeadingVecter(constEnemy);
+        for (Map.Entry<Integer,TreeMap<Long,Pair<Score,DistancePoint>>> e : reactPatternScore.entrySet() ) {
+            int round = e.getKey();
+            TreeMap<Long,Pair<Score,DistancePoint>> reacts = e.getValue();
+            for ( Long shotTime : reacts.keySet() ) {
                 Pair<Score, DistancePoint> pair = reacts.get(shotTime);
                 DistancePoint vecter = pair.second;
                 if (vecter.isNearly(v)) {
-                    ret = true; // Valid data found
+                    return true;
                 }
             }
         }
-        return ret;
+        return false;
     }
 
     @Override
@@ -324,12 +342,19 @@ abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobo
         if ( context.shotTarget == null ) {
             context.shotTarget = robot.name; // proced
             context.shotTime = 0; // invalid
-            TreeMap<Long,Pair<Score,DistancePoint>> reacts = reactPatternScoreMap.get(robot.name);
-            if ( reacts == null ) { // No reaction log
+
+            Map<Integer,TreeMap<Long,Pair<Score,DistancePoint>>> reactPatternScore = reactPatternScoreMap.get(robot.name);
+            if ( reactPatternScore == null ) {// No reaction log
                 return robot.prospectNext(term);
             }
             DistancePoint v = calcDiffHeadingVecter(robot);
-            List<Score> scores = new ArrayList<>();
+            double bestDiff = Util.fieldFullDistance;
+            Score best = null;
+            for (Map.Entry<Integer,TreeMap<Long,Pair<Score,DistancePoint>>> e : reactPatternScore.entrySet() ) {
+                int round = e.getKey();
+                TreeMap<Long,Pair<Score,DistancePoint>> reacts = e.getValue();
+                for ( Long shotTime : reacts.keySet() ) {
+//            List<Score> scores = new ArrayList<>();
 //            for (Long shotTime : reacts.keySet()) {
 //                Pair<Score, DistancePoint> pair = reacts.get(shotTime);
 //                DistancePoint vecter = pair.second;
@@ -338,18 +363,18 @@ abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobo
 //                }
 //            }
 //            Score best = Score.getByScore(scores);
-            double bestDiff = Util.fieldFullDistance;
-            Score best = null;
-            for (Long shotTime : reacts.keySet()) {
-                Pair<Score, DistancePoint> pair = reacts.get(shotTime);
-                DistancePoint vecter = pair.second;
-                double diff = vecter.calcDdiff(v);
-                if ( bestDiff > diff && vecter.isNearly(v) ) {
-                    bestDiff = diff;
-                    best = pair.first;
+                    Pair<Score, DistancePoint> pair = reacts.get(shotTime);
+                    DistancePoint vecter = pair.second;
+                    double diff = vecter.calcDdiff(v);
+                    if ( bestDiff > diff && vecter.isNearly(v) ) {
+System.out.println("d:"+diff+" "+robot + " ** " + logEnemy(round,robot.name,pair.first.time));
+                        bestDiff = diff;
+                        best = pair.first;
+                    }
                 }
             }
             if ( best != null ) {
+                context.round = best.round;
                 context.shotTime = best.time;
                 context.time = context.shotTime;
                 context.baseTarget = robot;
@@ -359,12 +384,10 @@ abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobo
         if ( context.shotTime == 0 ) {
             return robot.prospectNext(term);
         }
-//logger.log("(%d/%d) %s: %2.2f => %d",robot.time,robot.timeStamp,s.name,s.score,robot.time-Integer.valueOf(s.name));
-
-        boolean first = true;
+//logger.log("BEST: %d:(%d/%d) %d = %2.2f",context.round,context.shotTime,context.baseTarget.time,robot.time-context.time,context.diff);
         for ( long l = 1; l <= term; l++) {
             long absLogTime = l+context.time;
-            RobotPoint logEnemy = logEnemy(robot.name,absLogTime);
+            RobotPoint logEnemy = logEnemy(context.round,robot.name,absLogTime);
             if ( logEnemy != null && logEnemy.delta != null) {
                 if ( context.baseLog == null ) {
                     context.baseLog = logEnemy;
@@ -376,6 +399,7 @@ abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobo
                 }
                 robot.setDelta(delta);
                 robot.prospectNext(1);
+logger.log("%2.2f : %s => %s  ** %s => %s",context.diff,logEnemy,logEnemy.delta,robot,robot.delta);
                 if ( isPaint ) {
                     getGraphics().setStroke(new BasicStroke(1.0f));
                     getGraphics().setColor(Color.BLACK);
@@ -436,43 +460,45 @@ abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobo
     }
     
     protected void evalReactPattern(Enemy prevEnemy,Enemy constEnemy){
-        TreeMap<Long,Pair<Score,DistancePoint>> reacts = reactPatternScoreMap.get(constEnemy.name);
-        if ( reacts == null ) {
-            return;
-        }
-
-        long deltaTime = constEnemy.time - prevEnemy.time;
-        for ( Long shotTime : reacts.keySet() ) {
-            Pair<Score,DistancePoint> pair = reacts.get(shotTime);
-            Score s = pair.first;
-            DistancePoint vecter = pair.second;
-
-            for ( Map.Entry<Long,Pair<Score,DistancePoint>> p : reacts.tailMap(shotTime,false).entrySet() ) {
-                long pastShotTime = p.getKey();
-                long fromShotTime = constEnemy.time - pastShotTime;
-                if ( fromShotTime <= REACT_PATTERN_TERM && vecter.isNearly(p.getValue().second) ) {
-                    long absTime = shotTime+fromShotTime + 1;
-                    RobotPoint logEnemy = logEnemy(constEnemy.name, absTime);
-                    if ( logEnemy == null || logEnemy.delta == null) {
-                        continue;
-                    }
-                    RobotPoint prospectEnemy = new RobotPoint(prevEnemy);
-                    prospectEnemy.setDelta(logEnemy.delta);
-                    prospectEnemy.prospectNext(deltaTime);
-                    double d = prospectEnemy.calcDistance(constEnemy);
-                    s.updateScore(PERFECT_SCORE-d,REACT_PATTERN_SCORE_ESTIMATE_LIMIT,REACT_PATTERN_SCORE_ESTIMATE_MIN);
-                   logger.prospect4("REACT(%02d/%02d/%02d): %2.2f(%2.2f)",fromShotTime,shotTime,pastShotTime,s.score,d);
-
-                    //double pastR = new Point(0,0).calcDegree(p.getValue().second);
-                    //double vecR = new Point(0,0).calcDegree(vecter);
-                    // logger.log("REACT: %2.2f => %2.2f = %d/%d(%d):(%2.2f/%2.2f):%2.2f",d,s.score,shotTime,pastShotTime,fromShotTime,vecR,pastR,vecter.calcDistance(p.getValue().second));
-                }
-
-
-                //  logger.log("REACT(%02d):%2.2f => %2.2f = %2.2f",i,d,d,s.score);
-                
-            }
-        }
+//        long deltaTime = constEnemy.time - prevEnemy.time;
+//        Map<Integer,TreeMap<Long,Pair<Score,DistancePoint>>> reactPatternScore = reactPatternScoreMap.get(constEnemy.name);
+//        if ( reactPatternScore == null ) {
+//            return;
+//        }
+//        for (Map.Entry<Integer,TreeMap<Long,Pair<Score,DistancePoint>>> e : reactPatternScore.entrySet() ) {
+//            int round = e.getKey();
+//            TreeMap<Long,Pair<Score,DistancePoint>> reacts = e.getValue();
+//            for ( Long shotTime : reacts.keySet() ) {
+//                Pair<Score,DistancePoint> pair = reacts.get(shotTime);
+//                Score reactScore = pair.first;
+//                DistancePoint vecter = pair.second;
+//
+//                aaa
+//                for ( Map.Entry<Long,Pair<Score,DistancePoint>> p : reacts.tailMap(shotTime,false).entrySet() ) {
+//                    long pastShotTime = p.getKey();
+//                    long fromShotTime = constEnemy.time - pastShotTime;
+//                    if ( fromShotTime <= REACT_PATTERN_TERM && vecter.isNearly(p.getValue().second) ) {
+//                        long absTime = shotTime+fromShotTime + 1;
+//                        RobotPoint logEnemy = logEnemy(reactScore.round,constEnemy.name, absTime);
+//                        if ( logEnemy == null || logEnemy.delta == null) {
+//                            continue;
+//                        }
+//                        RobotPoint prospectEnemy = new RobotPoint(prevEnemy);
+//                        prospectEnemy.setDelta(logEnemy.delta);
+//                        prospectEnemy.prospectNext(deltaTime);
+//                        double d = prospectEnemy.calcDistance(constEnemy);
+//                        reactScore.updateScore(PERFECT_SCORE-d,REACT_PATTERN_SCORE_ESTIMATE_LIMIT,REACT_PATTERN_SCORE_ESTIMATE_MIN);
+//                        //logger.prospect4("REACT %d:(%02d/%02d/%02d): %2.2f(%2.2f)",reactScore.round,fromShotTime,shotTime,pastShotTime,reactScore.score,d);
+//                        logger.log("REACT %d:(%02d/%02d/%02d): %2.2f(%2.2f)",reactScore.round,fromShotTime,shotTime,pastShotTime,reactScore.score,d);
+//
+//                        //double pastR = new Point(0,0).calcDegree(p.getValue().second);
+//                        //double vecR = new Point(0,0).calcDegree(vecter);
+//                        // logger.log("REACT: %2.2f => %2.2f = %d/%d(%d):(%2.2f/%2.2f):%2.2f",d,s.score,shotTime,pastShotTime,fromShotTime,vecR,pastR,vecter.calcDistance(p.getValue().second));
+//                    }
+//                    //  logger.log("REACT(%02d):%2.2f => %2.2f = %2.2f",i,d,d,s.score);
+//                }
+//            }
+//        }
     }
     
     protected void evalSimplePattern(Enemy prevEnemy,Enemy constEnemy){
@@ -678,15 +704,11 @@ abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobo
     protected void doFire(double power, double distance, String targetName,int type) {
         if ( getAimType(targetName,MoveType.TYPE_REACT_PATTERN_CENTER) != null ||
                 getAimType(targetName,MoveType.TYPE_REACT_PATTERN_FIRST) != null ) {
-            if ( ! reactPatternScoreMap.containsKey(targetName)) {
-                TreeMap<Long,Pair<Score,DistancePoint>> scores = new TreeMap<>();
-                reactPatternScoreMap.put(targetName,scores);
-            }
-            Map<Long,Pair<Score,DistancePoint>> scores = reactPatternScoreMap.get(targetName);
+            Map<Long,Pair<Score,DistancePoint>> reactScores = initReactPattern(targetName);
             Enemy enemy = enemyMap.get(targetName);
             // Create enemy vecter
             DistancePoint vecter = calcDiffHeadingVecter(enemy);
-            scores.put(enemy.time,new Pair<>(new Score(enemy.time),vecter));
+            reactScores.put(enemy.time,new Pair<>(new Score(enemy.time,logRound),vecter));
         }
         super.doFire(power, distance, targetName,type);
     }

@@ -11,6 +11,7 @@ import jp.crumb.utils.RobotPoint;
  * @author crumb
  */
 public class ProspectContext {
+    public int round = 0;
     public long   time   = 0;
     public long   shotTime   = 0;
     public String shotTarget = null;
