@@ -66,7 +66,7 @@ abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobo
     
 //    protected static final double ENEMY_BULLET_DIFF_THRESHOLD = Math.PI/6; // more than 30 degrees
 //    protected static final double BULLET_DIFF_THRESHOLD = Math.PI/6; // more than 30 degrees
-
+    
     protected static final double DEFAULT_CORNER_WEIGHT = -10;
     protected static final double DEFAULT_CORNER_DIM = 1;
     protected static final long   DEFAULT_ENEMY_BULLET_PROSPECT_TIME = 20;
@@ -100,10 +100,47 @@ abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobo
     protected Map<String,Map<Integer,TreeMap<Long,Score>>> simplePatternScoreMap = new HashMap<>(15,0.3f);
     protected static Map<String,Map<Integer,TreeMap<Long,Pair<Score,DistancePoint>>>> reactPatternScoreMap = new HashMap<>(15,0.3f);
 
+//20
+//289 : === jp.crumb.develop.Inertia* ===
+//289 : ALL : 24.07 % (5754/23903)
+//289 : x10 : 22.00 % (4403/20012) : 51.89
+//289 : x202 : 34.72 % (1351/3891) : 55.73
+//
+//25
+//282 : === jp.crumb.develop.Inertia* ===
+//282 : ALL : 24.32 % (5734/23581)
+//282 : x10 : 21.76 % (4021/18478) : 43.39
+//282 : x202 : 33.57 % (1713/5103) : 60.81
+//
+//30
+//381 : === jp.crumb.develop.Inertia* ===
+//381 : ALL : 24.41 % (5755/23575)
+//381 : x10 : 21.43 % (3733/17417) : 58.07
+//381 : x202 : 32.84 % (2022/6158) : 55.67
+//
+//34
+//401 : === jp.crumb.develop.Inertia* ===
+//401 : ALL : 24.05 % (5764/23971)
+//401 : x10 : 21.39 % (3662/17117) : 46.36
+//401 : x202 : 30.67 % (2102/6854) : 56.15
+//
+//40
+//246 : === jp.crumb.develop.Inertia* ===
+//246 : ALL : 24.24 % (5782/23853)
+//246 : x10 : 21.21 % (3396/16008) : 64.19
+//246 : x202 : 30.41 % (2386/7845) : 47.92
+//
+//50
+//382 : === jp.crumb.develop.Inertia* ===
+//382 : ALL : 23.78 % (5778/24297)
+//382 : x10 : 20.45 % (3111/15214) : 56.29
+//382 : x202 : 29.36 % (2667/9083) : 63.42
+
+    protected static final double REACT_DIFF_THRESHOLD = 30.0;
     protected static class DistancePoint extends Point {
         public double distance;
         public boolean isNearly(DistancePoint in ) {
-            return calcDdiff(in) < 34.0;// TODO: @@@
+            return calcDdiff(in) < REACT_DIFF_THRESHOLD;
         }
         public double calcDdiff(DistancePoint in){
             return this.calcDistance(in)*50 + Math.abs(distance - in.distance);
