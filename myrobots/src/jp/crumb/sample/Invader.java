@@ -39,16 +39,16 @@ abstract public class Invader extends CrumbRobot<CrumbContext> {
         MAX_HIT_TIME = (int)(Util.fieldFullDistance/Util.bultSpeed(0.1));
         setFireMode(ctx.MODE_FIRE_MANUAL);
         setCustomMode(MODE_CUSTOM_NOT_READY);
-        firstPoint = new TimedPoint(new Point(Util.battleFieldWidth/2 ,Util.runnableMinY+Util.tankWidth+1),ctx.my.time);
+        firstPoint = new TimedPoint(new Point(Util.battleFieldWidth/2 ,Util.runnableMaxY-Util.tankWidth-1),ctx.my.time);
         if ( isLeader ) {
             int i = 2;
             for(String mate: teammate ) {
                 if ( mate != name ) {
                     if ( i > 0 ) {
-                        sendMessage(mate,new InvaderEvent(1,new Point(Util.runnableMinX + Util.tankWidth*i ,Util.runnableMinY+Util.tankWidth+1)) );
+                        sendMessage(mate,new InvaderEvent(1,new Point(Util.runnableMinX + Util.tankWidth*i ,Util.runnableMaxY-Util.tankWidth-1)) );
                         i *= -1;
                     }else {
-                        sendMessage(mate,new InvaderEvent(1,new Point(Util.runnableMaxX + Util.tankWidth*i,Util.runnableMinY+Util.tankWidth+1)) );
+                        sendMessage(mate,new InvaderEvent(1,new Point(Util.runnableMaxX + Util.tankWidth*i,Util.runnableMaxY-Util.tankWidth-1)) );
                         i *= -2;
                     }
                 }
