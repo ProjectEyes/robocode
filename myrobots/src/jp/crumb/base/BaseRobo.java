@@ -13,11 +13,8 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import jp.crumb.utils.AimType;
 import jp.crumb.utils.Enemy;
 import jp.crumb.utils.Logger;
 import jp.crumb.utils.MovingPoint;
@@ -50,8 +47,12 @@ import robocode.WinEvent;
  * @author crumb
  */
 abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
-    protected static final boolean isPaint = true;
+    protected static final boolean isPaint = false;
     protected Logger logger = new Logger(0);
+//    protected Logger logger = new Logger(
+//            Logger.LOGLV_PROSPECT1 | Logger.LOGLV_FIRE1
+//            );
+
 
     protected static final double MOVE_COMPLETE_THRESHOLD = 1.0;
 
@@ -67,8 +68,8 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
     protected static String name;
 
     // Current informations
-    protected Map<String, Enemy> enemyMap = new HashMap<>(20,0.3f);
-    private Map<String,BulletInfo> bulletList = new HashMap<>(50,0.3f);
+    protected Map<String, Enemy> enemyMap = new HashMap<>(20,0.95f);
+    protected Map<String,BulletInfo> bulletList = new HashMap<>(50,0.95f);
     
 
     private Condition eachTickTimer = new Condition("eachTickTimer",10) {
@@ -95,9 +96,6 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
         }
     };
     private void initEventPriority(){
-        // TODO : loglv
-//        logger.LOGLV= Logger.LOGLV_PROSPECT1 | Logger.LOGLV_FIRE1 | Logger.LOGLV_SCAN;
-        logger.LOGLV= Logger.LOGLV_PROSPECT1 | Logger.LOGLV_FIRE1;
 
 	this.setEventPriority("ScannedRobotEvent",10);
 	this.setEventPriority("HitRobotEvent",10);
@@ -428,7 +426,7 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
     abstract protected T createContext(T in);
     protected void cbThinking() {}
     protected void cbMoving() {}
-    protected void cbUnprospectiveMoving() {}
+//    protected void cbUnprospectiveMoving() {}
     protected void cbGun() {}
     protected void cbRadar() {}
     protected void cbFiring() {}
@@ -545,9 +543,19 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
         dumpLog();
     }
 
+    static long past = 0;
+    private static void timeLog(String message) {
+        long t = System.currentTimeMillis();
+        if ( t-past > 5 ) {
+            Logger.log("%s : %d",message,(t-past));
+        }
+        past = t;
+    }
+
     boolean first = true;
     @Override
     public void onCustomEvent(CustomEvent event) {
+        long startTime = System.currentTimeMillis();
         this.setInterruptible(true);
         if (event.getCondition().equals(this.firstTickTimer) ) {
             //this.removeCustomEvent(firstTickTimer);
@@ -562,21 +570,32 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
             updateCurrent();
             sendMyInfo();
             
+            timeLog("");
             for ( ScannedRobotEvent e: this.getScannedRobotEvents() ) {
                 this.preScannedRobot(e);
             }
+            timeLog("SCAN");
             for ( MessageEvent e : this.getMessageEvents() ) {
                 this.dispatchMessage(e);
             }
+            timeLog("MESSAGE");
             for ( BulletHitBulletEvent e: this.getBulletHitBulletEvents() ) {
                 this.cbBulletHitBullet(e);
             }
+            timeLog("HIT BULLET");
             for ( BulletHitEvent e: this.getBulletHitEvents() ) {
                 this.cbBulletHit(e);
             }
+            timeLog("HIT");
             for ( BulletMissedEvent e: this.getBulletMissedEvents() ) {
                 this.cbBulletMissed(e);
             }
+            timeLog("MISS");
+            for ( HitByBulletEvent e: this.getHitByBulletEvents() ) {
+                this.cbHitByBullet(e);
+            }
+            timeLog("BY BULLET");
+
             for ( RobotDeathEvent e: this.getRobotDeathEvents() ) {
                 this.cbRobotDeath(e);
             }
@@ -586,23 +605,33 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
             for ( HitWallEvent e: this.getHitWallEvents() ) {
                 this.cbHitWall(e);
             }
-            for ( HitByBulletEvent e: this.getHitByBulletEvents() ) {
-                this.cbHitByBullet(e);
-            }
             for ( StatusEvent e: this.getStatusEvents() ) {
                 this.cbStatus(e);
             }
+            timeLog("EVENTS");
             this.cbProspectNextTurn();
+            timeLog("PNEXT");
             this.cbUnprospectiveNextTurn();
+            timeLog("UNEXT");
             this.cbThinking();
+            timeLog("THINK");
             this.cbMoving();
+            timeLog("MOVE");
             this.goPoint();
-            this.cbUnprospectiveMoving();
+            timeLog("GO");
+            // this.cbUnprospectiveMoving();
             this.cbGun();
+            timeLog("GUN");
             this.cbRadar();
+            timeLog("RADAR");
             this.cbFiring();
+            timeLog("FIRE");
         }
         this.paint(getGraphics());
+        long endTime = System.currentTimeMillis();
+        if ( endTime-startTime > 10 ) {
+            logger.log("E : %d",(endTime-startTime));
+        }
         execute();
     }
     

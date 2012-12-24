@@ -70,10 +70,11 @@ public class MovingPoint extends TimedPoint {
         this.velocity = in.velocity;
     }
     
-    public void inertia(double interval) {
+    public MovingPoint inertia(double interval) {
         double dist = velocity * interval;
         this.add(Util.calcPoint(headingRadians, dist));
         time += Math.ceil(interval);
+        return this;
     }
     public boolean isLimit() {
         if (    x < Util.runnableMinX ||

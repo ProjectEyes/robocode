@@ -175,7 +175,7 @@ public class Util {
     }
 
     public static <K,V> HashMap<K,V> deepCopyHashMap(Map<K,V> in , Copy<V> copy){
-        HashMap<K,V> ret = new HashMap<>(50,0.3f);
+        HashMap<K,V> ret = new HashMap<>(50,0.95f);
         for ( Map.Entry<K,V> e : in.entrySet() ) {
             ret.put(e.getKey(), copy.copy(e.getValue()) );
         }
@@ -208,5 +208,17 @@ public class Util {
         }
         return null;
     }
-    
+    public static double calcCollisionDistance(MovingPoint p1 , MovingPoint p2) {
+        double s1 =Math.sin(p1.headingRadians);
+        double c1 =Math.cos(p1.headingRadians);
+        double s2 =Math.sin(p2.headingRadians);
+        double c2 =Math.cos(p2.headingRadians);
+        double d1 = (p2.y * s1 - p1.y * s1 + p1.x * c1 - p2.x * c1) / (s2 * c1 - c2 * s1) ;
+        if ( d1 < 0 ) {
+            return Double.POSITIVE_INFINITY;
+        }
+        double t1 = d1 / p1.velocity + p1.time;
+//System.out.println("D1:" + d1 + " T1:" + t1 + " dt:" + (p1.velocity + p1.time) + " DT:" + (t1 - p2.time) );
+        return Util.calcPoint(p1.headingRadians, d1).add(p1).calcDistance(new MovingPoint(p2).inertia(t1 - p2.time));
+    }
 }

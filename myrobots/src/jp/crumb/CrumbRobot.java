@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import jp.crumb.base.BaseRobo;
 import jp.crumb.base.BulletInfo;
+import jp.crumb.utils.Copy;
 import jp.crumb.utils.Enemy;
 import jp.crumb.utils.MoveType;
 import jp.crumb.utils.MovingPoint;
@@ -195,6 +196,30 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
         return limit;
     }
 
+    public Pair<Double,Double> calcCollisionDistance(MovingPoint p1 , MovingPoint p2) {
+        double s1 =Math.sin(p1.headingRadians);
+        double c1 =Math.cos(p1.headingRadians);
+        double s2 =Math.sin(p2.headingRadians);
+        double c2 =Math.cos(p2.headingRadians);
+        double d2 = (p2.y * s1 - p1.y * s1 + p1.x * c1 - p2.x * c1) / (s2 * c1 - c2 * s1) ;
+        if ( d2 < 0 ) {
+            return new Pair<>(Double.POSITIVE_INFINITY,0.0);
+        }
+        double t2 = d2 / p2.velocity + p2.time;
+        Point xPoint = Util.calcPoint(p2.headingRadians, d2).add(p2);
+        double distance1 = xPoint.calcDistance(new MovingPoint(p1).inertia(t2 - p1.time));
+        double d1 = p1.calcDistance(xPoint);
+        if ( d1 < 0 ) {
+            return new Pair<>(Double.POSITIVE_INFINITY,0.0);
+        }
+        double t1 = d1 / p1.velocity + p1.time;
+        double distance2 = xPoint.calcDistance(new MovingPoint(p2).inertia(t1 - p2.time));
+        if ( distance2 < distance1) {
+            return new Pair<>(distance2,t1);
+        }
+        return new Pair<>(distance1,t2);
+    }
+
     protected static double POWER_LIMIT_ERROR = 0.5;
     protected static double POWER_LIMIT_ERROR_MIN = 0.3;
     protected Pair<Double,Double> calcFire(Enemy target,MoveType aimType,long deltaThreshold,long recentThreshold){
@@ -219,6 +244,7 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
         }
         double limitError = limit*POWER_LIMIT_ERROR;
         limitError = (limitError>POWER_LIMIT_ERROR_MIN)?limitError:POWER_LIMIT_ERROR_MIN;
+
         for ( int i = 1; i <= MAX_HIT_TIME; i++ ) {
             double d = Util.calcPointToLineRange(ctx.my,prospectTarget,ctx.curGunHeadingRadians);
             if ( d < (Util.tankWidth/2) ) { // crossing shot line
@@ -226,6 +252,31 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
                 double power = decideBulletPowerFromDistance(bultDistance,i);
                 if ( maxPower < power ) { // hit ? : power more than 0.0
                     logger.fire3("POWER(%s): (%2.2f) => (%2.2f)", target.name,maxPower,power);
+                        // Check collision
+                    MovingPoint bullet = new MovingPoint(
+                            ctx.my.x, ctx.my.y,
+                            ctx.my.time,
+                            ctx.curGunHeading,  ctx.curGunHeadingRadians,
+                            Util.bultSpeed(power)
+                            );
+                    boolean collision = false;
+                    for ( Map.Entry<String,BulletInfo> be : ctx.nextBulletList.entrySet() ) {
+//                        double distance = Util.calcCollisionDistance(bullet,be.getValue().src);
+                        Pair<Double,Double> pair = calcCollisionDistance(bullet,be.getValue().src);
+                        double distance = pair.first;
+                        double xtime = pair.second;
+                        MovingPoint xpoint = bullet.inertia(xtime - ctx.my.time);
+                        if ( distance < 25 && ! xpoint.isLimit() ) {
+                            logger.log("D: [%2.2f] %2.2f (%2.2f) OWN:%s X:%s" ,power , pair.first , pair.second , be.getKey(),xpoint);
+                            collision = true;
+                            break;
+                        }
+                    }
+                    if ( collision ) {
+                        continue;
+                    }
+                    maxPower = power;
+                    aimDistance = bultDistance;
                     if ( power > limit ) {
                         if ( power - limit > limitError ) {
                             maxPower = 0.0;
@@ -234,12 +285,8 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
                             break;
                         }
                         logger.fire3("limit errors %2.2f(%2.2f) => %2.2f", limit,limitError, power );
-                        maxPower = power;
-                        aimDistance = bultDistance;
                         break;
                     }
-                    maxPower = power;
-                    aimDistance = bultDistance;
 //TODO:System.out.println("p:" + maxPower + " a:" + aimDistance + " i:" + i);
                 }
             }
@@ -328,6 +375,7 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
     }    
  
     protected void lockOn(String lockonTarget) {
+
         Enemy lockOnTarget = getNextEnemy(lockonTarget);
         if ( lockOnTarget == null ) {
             return;
@@ -361,6 +409,7 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
             gunTurnTime = nextGunTurnTime;
         }
         doTurnGunRight(gunTurn);
+
     }
     protected void radarLockOn(String lockonTarget) {
         Enemy lockOnTarget = getNextEnemy(lockonTarget);

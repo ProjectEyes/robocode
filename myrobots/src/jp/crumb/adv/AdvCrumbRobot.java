@@ -12,7 +12,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.TreeMap;
 import jp.crumb.CrumbRobot;
 import jp.crumb.ProspectContext;
 import jp.crumb.base.BulletInfo;
@@ -84,21 +83,24 @@ abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobo
     protected  double ENEMY_BULLET_DISTANCE        = DEFAULT_ENEMY_BULLET_DISTANCE;
 
 
-    private Map<String,BulletInfo> enemyBulletList = new HashMap<>(15,0.3f);
-    protected static Map<String,List<MoveType>> shotTypeMap = new HashMap<>(15,0.3f);
-    protected static Map<String,List<MoveType>> aimTypeMap = new HashMap(15,0.3f);
+    private Map<String,BulletInfo> enemyBulletList = new HashMap<>(15,0.95f);
+    protected static Map<String,List<MoveType>> shotTypeMap = new HashMap<>(15,0.95f);
+    protected static Map<String,List<MoveType>> aimTypeMap = new HashMap(15,0.95f);
 
 
     protected static final int  LOG_ROUND = 10;
     protected int logRound = 0;
 //    protected Map<Long,RobotPoint> myLog = new HashMap<>(2000);
-//    protected Map<String, Map<Long,Enemy> > enemyLog = new HashMap<>(15,0.3f);
-    protected static Map<Integer,Map<Long,RobotPoint>> myLog = new HashMap<>(LOG_ROUND);
-    protected static Map<Integer,Map<String, TreeMap<Long,Enemy>>> enemyLog = new HashMap<>(LOG_ROUND);
-//    protected Map<String,Map<Long,Score>> simplePatternScoreMap = new HashMap<>(15,0.3f);
-//    protected Map<String,TreeMap<Long,Pair<Score,DistancePoint>>> reactPatternScoreMap = new HashMap<>(15,0.3f);
-    protected Map<String,Map<Integer,TreeMap<Long,Score>>> simplePatternScoreMap = new HashMap<>(15,0.3f);
-    protected static Map<String,Map<Integer,TreeMap<Long,Pair<Score,DistancePoint>>>> reactPatternScoreMap = new HashMap<>(15,0.3f);
+//    protected Map<String, Map<Long,Enemy> > enemyLog = new HashMap<>(15,0.95f);
+    protected static Map<Integer,Map<Long,RobotPoint>> myLog = new HashMap<>(LOG_ROUND,0.95f);
+    protected static Map<Integer,Map<String, Map<Long,Enemy>>> enemyLog  = new HashMap<>(LOG_ROUND,0.95f);
+    protected static Map<Integer,Map<String, Long>> lastEnemy = new HashMap<>(LOG_ROUND,0.95f);
+
+//    protected Map<String,Map<Long,Score>> simplePatternScoreMap = new HashMap<>(15,0.95f);
+//    protected Map<String,TreeMap<Long,Pair<Score,DistancePoint>>> reactPatternScoreMap = new HashMap<>(15,0.95f);
+    protected Map<String,Map<Integer,Map<Long,Score>>> simplePatternScoreMap = new HashMap<>(15,0.95f);
+    protected Map<String,Score> simplePatternBestScoreMap = new HashMap<>(15,0.95f);
+    protected static Map<String,Map<Integer,Map<Long,Pair<Score,DistancePoint>>>> reactPatternScoreMap = new HashMap<>(15,0.95f);
 
 //20
 //289 : === jp.crumb.develop.Inertia* ===
@@ -165,10 +167,11 @@ abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobo
     protected void cbFirst() {
         super.cbFirst();
         logRound = getRoundNum() % LOG_ROUND;
-        myLog.put(logRound,new HashMap<Long,RobotPoint>(2000));
-        enemyLog.put(logRound,new HashMap<String,TreeMap<Long,Enemy>>(15,0.3f));
-        for ( Map.Entry<String,Map<Integer,TreeMap<Long,Pair<Score,DistancePoint>>>> e : reactPatternScoreMap.entrySet() ){
-            e.getValue().put(logRound,new TreeMap<Long,Pair<Score,DistancePoint>>());
+        myLog.put(logRound,new HashMap<Long,RobotPoint>(2000,0.95f));
+        enemyLog.put(logRound,new HashMap<String,Map<Long,Enemy>>(15,0.95f));
+        lastEnemy.put(logRound,new HashMap<String,Long>(15,0.95f));
+        for ( Map.Entry<String,Map<Integer,Map<Long,Pair<Score,DistancePoint>>>> e : reactPatternScoreMap.entrySet() ){
+            e.getValue().put(logRound,new HashMap<Long,Pair<Score,DistancePoint>>(2000,0.95f));
         }
     }
 
@@ -222,34 +225,34 @@ abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobo
     }
     void initSimplePattern(String enemyName){
         if ( ! simplePatternScoreMap.containsKey(enemyName) ) {
-            simplePatternScoreMap.put(enemyName,new HashMap<Integer,TreeMap<Long,Score>>(LOG_ROUND));
+            simplePatternScoreMap.put(enemyName,new HashMap<Integer,Map<Long,Score>>(LOG_ROUND,0.95f));
             for ( int r = 0 ; r < LOG_ROUND; r++ ) {
-                simplePatternScoreMap.get(enemyName).put(r,new TreeMap<Long,Score>());
+                simplePatternScoreMap.get(enemyName).put(r,new HashMap<Long,Score>(2000,0.95f));
             }
         }
     }
-    Map<Integer,TreeMap<Long,Score>> getSimplePattern(String enemyName) {
+    Map<Integer,Map<Long,Score>> getSimplePattern(String enemyName) {
         return simplePatternScoreMap.get(enemyName);
     }
 
     Map<Long,Pair<Score,DistancePoint>> initReactPattern(String enemyName){
         if ( ! reactPatternScoreMap.containsKey(enemyName)) {
-            reactPatternScoreMap.put(enemyName,new HashMap<Integer,TreeMap<Long,Pair<Score,DistancePoint>>>(LOG_ROUND));
-            reactPatternScoreMap.get(enemyName).put(logRound,new TreeMap<Long,Pair<Score,DistancePoint>>());
+            reactPatternScoreMap.put(enemyName,new HashMap<Integer,Map<Long,Pair<Score,DistancePoint>>>(LOG_ROUND,0.95f));
+            reactPatternScoreMap.get(enemyName).put(logRound,new HashMap<Long,Pair<Score,DistancePoint>>(100,0.95f));
         }
         return reactPatternScoreMap.get(enemyName).get(logRound);
     }
 
 
     boolean isValidReactPattern(RobotPoint constEnemy){
-        Map<Integer,TreeMap<Long,Pair<Score,DistancePoint>>> reactPatternScore = reactPatternScoreMap.get(constEnemy.name);
+        Map<Integer,Map<Long,Pair<Score,DistancePoint>>> reactPatternScore = reactPatternScoreMap.get(constEnemy.name);
         if ( reactPatternScore == null ) {
             return false;
         }
         DistancePoint v = calcDiffHeadingVecter(constEnemy);
-        for (Map.Entry<Integer,TreeMap<Long,Pair<Score,DistancePoint>>> e : reactPatternScore.entrySet() ) {
+        for (Map.Entry<Integer,Map<Long,Pair<Score,DistancePoint>>> e : reactPatternScore.entrySet() ) {
             int round = e.getKey();
-            TreeMap<Long,Pair<Score,DistancePoint>> reacts = e.getValue();
+            Map<Long,Pair<Score,DistancePoint>> reacts = e.getValue();
             for ( Long shotTime : reacts.keySet() ) {
                 Pair<Score, DistancePoint> pair = reacts.get(shotTime);
                 DistancePoint vecter = pair.second;
@@ -311,9 +314,10 @@ abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobo
     }
     protected void updateLogEnemy(Enemy enemy){
         if ( ! enemyLog.get(logRound).containsKey(enemy.name)) {
-            enemyLog.get(logRound).put(enemy.name,new TreeMap<Long,Enemy>());
+            enemyLog.get(logRound).put(enemy.name,new HashMap<Long,Enemy>(2000,0.95f));
         }
         enemyLog.get(logRound).get(enemy.name).put(enemy.time,new Enemy(enemy));
+        lastEnemy.get(logRound).put(enemy.name,enemy.time);
     }
     protected RobotPoint logEnemy(int round, String enemyName,long absTime) {
         Map<Long,Enemy> log = enemyLog.get(round).get(enemyName);
@@ -338,9 +342,11 @@ abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobo
                     setDestination(lockOnTarget);
                     return;
                 }
-                double diffEnergy = (ctx.my.energy-lockOnTarget.energy) / (ctx.my.energy+lockOnTarget.energy)* 800;
-                if ( diffEnergy > 0 ) {
-                    GT_WEIGHT = DEFAULT_GT_WEIGHT + diffEnergy;
+                if ( lockOnTarget != null ) {
+                    double diffEnergy = (ctx.my.energy-lockOnTarget.energy) / (ctx.my.energy+lockOnTarget.energy)* 800;
+                    if ( diffEnergy > 0 ) {
+                        GT_WEIGHT = DEFAULT_GT_WEIGHT + diffEnergy;
+                    }
                 }
             }
         }
@@ -382,26 +388,17 @@ abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobo
             context.shotTarget = robot.name; // proced
             context.shotTime = 0; // invalid
 
-            Map<Integer,TreeMap<Long,Pair<Score,DistancePoint>>> reactPatternScore = reactPatternScoreMap.get(robot.name);
+            Map<Integer,Map<Long,Pair<Score,DistancePoint>>> reactPatternScore = reactPatternScoreMap.get(robot.name);
             if ( reactPatternScore == null ) {// No reaction log
                 return robot.prospectNext(term);
             }
             DistancePoint v = calcDiffHeadingVecter(robot);
             double bestDiff = Util.fieldFullDistance;
             Score best = null;
-            for (Map.Entry<Integer,TreeMap<Long,Pair<Score,DistancePoint>>> e : reactPatternScore.entrySet() ) {
+            for (Map.Entry<Integer,Map<Long,Pair<Score,DistancePoint>>> e : reactPatternScore.entrySet() ) {
                 int round = e.getKey();
-                TreeMap<Long,Pair<Score,DistancePoint>> reacts = e.getValue();
+                Map<Long,Pair<Score,DistancePoint>> reacts = e.getValue();
                 for ( Long shotTime : reacts.keySet() ) {
-//            List<Score> scores = new ArrayList<>();
-//            for (Long shotTime : reacts.keySet()) {
-//                Pair<Score, DistancePoint> pair = reacts.get(shotTime);
-//                DistancePoint vecter = pair.second;
-//                if (vecter.isNearly(v) ){
-//                    scores.add(pair.first);
-//                }
-//            }
-//            Score best = Score.getByScore(scores);
                     Pair<Score, DistancePoint> pair = reacts.get(shotTime);
                     DistancePoint vecter = pair.second;
                     Score s = pair.first;
@@ -411,8 +408,8 @@ abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobo
                             continue;
                         }
                     }else {
-                        Map.Entry<Long,Enemy> lastLog = enemyLog.get(round).get(robot.name).lastEntry();
-                        if ( lastLog.getKey() <= s.time + REACT_PATTERN_TERM ) {
+                        long lastLog = lastEnemy.get(round).get(robot.name);
+                        if ( lastLog <= s.time + REACT_PATTERN_TERM ) {
                             continue;
                         }
                     }
@@ -473,25 +470,17 @@ abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobo
     
     @Override
     protected boolean prospectNextRobotSimplePattern(RobotPoint robot,long term,ProspectContext context){
-        Score best = null;
-        for( Map.Entry<Integer,TreeMap<Long,Score>> e : getSimplePattern(robot.name).entrySet() ) {
-            Map<Long,Score> simpleScores = e.getValue();
-            Score s = Score.getByScore(simpleScores.values());
-            if ( best == null || s != null && best.score < s.score) {
-                best = s;
-            }
-        }
+        Score best = simplePatternBestScoreMap.get(robot.name);
         if ( best == null ) {
             return robot.prospectNext(term);
         }
-//System.out.println("BEST : " + best.round + " : " + best.time + " : " + best.score);
         for ( long l = 1; l <= term; l++) {
             long absLogTime;
             if ( best.round == logRound ) {
                 absLogTime = robot.time - best.time + l;
             }else{
-                Map.Entry<Long,Enemy> lastLog = enemyLog.get(best.round).get(robot.name).lastEntry();
-                absLogTime = robot.time - best.time + lastLog.getKey() + l;
+                long lastLog = lastEnemy.get(best.round).get(robot.name);
+                absLogTime = robot.time - best.time + lastLog + l;
             }
             RobotPoint logEnemy = logEnemy(best.round,robot.name,absLogTime);
             if ( logEnemy != null && logEnemy.delta != null) {
@@ -555,29 +544,30 @@ abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobo
     }
     
     protected void evalSimplePattern(Enemy prevEnemy,Enemy constEnemy){
+        Score bestScore = null;
         long deltaTime = constEnemy.time - prevEnemy.time;
-        for( Map.Entry<Integer,Map<String,TreeMap<Long,Enemy>>> e : enemyLog.entrySet() ) {
+        for( Map.Entry<Integer,Map<String,Map<Long,Enemy>>> e : enemyLog.entrySet() ) {
             int round = e.getKey();
-            TreeMap<Long,Enemy> patterns = e.getValue().get(constEnemy.name);
-            if ( patterns == null ) {
+            Map<Long,Enemy> logs = e.getValue().get(constEnemy.name);
+            if ( logs == null ) {
                 continue;
             }
-            for ( Map.Entry<Long,Enemy> te : patterns.entrySet() ) {
+            for ( Map.Entry<Long,Enemy> te : logs.entrySet() ) {
                 long absTime = te.getKey();
                 Enemy logEnemy = te.getValue();
                 if ( logEnemy.delta == null ) {
                     continue;
                 }
                 long scoreTime;
-                TreeMap<Long,Score> scores = getSimplePattern(constEnemy.name).get(round);
+                Map<Long,Score> scores = getSimplePattern(constEnemy.name).get(round);
                 if ( round == logRound ) {
                     scoreTime = constEnemy.time - absTime;
                     if ( scoreTime <= SIMPLE_PATTERN_TERM_MIN) {
                         continue;
                     }
                 }else{
-                    Map.Entry<Long,Enemy> lastLog = patterns.lastEntry();
-                    scoreTime = constEnemy.time - absTime + lastLog.getKey();
+                    long lastLog = lastEnemy.get(round).get(constEnemy.name);
+                    scoreTime = constEnemy.time - absTime + lastLog;
                     if ( scoreTime <= SIMPLE_PATTERN_TERM_MIN + constEnemy.time ) {
                         scores.remove(scoreTime);
                         continue;// TODO: remove
@@ -594,37 +584,18 @@ abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobo
                 double d = prospectEnemy.calcDistance(constEnemy);
 
                 score.updateScore(PERFECT_SCORE-d,SIMPLE_PATTERN_SCORE_ESTIMATE_LIMIT,SIMPLE_PATTERN_SCORE_ESTIMATE_LIMIT);
-
+                if ( bestScore == null || bestScore.score < score.score) {
+                    bestScore = score;
+                }
                 logger.prospect4("REACT %d/%03d(%03d): %2.2f(%2.2f)",score.round,score.time,absTime,score.score,d);
 //                logger.log("REACT %d:%03d(%03d): %2.2f(%2.2f)",score.round,score.time,absTime,score.score,d);
-
             }
         }
+        // Update best
+        simplePatternBestScoreMap.put(constEnemy.name, bestScore);
+//System.out.println("BEST : " + best.round + " : " + best.time + " : " + best.score);
 
-//        for( Map.Entry<Integer,TreeMap<Long,Score>> e : getSimplePattern(constEnemy.name).entrySet() ) {
-//            TreeMap<Long,Score> simpleScores = e.getValue();
-//            long deltaTime = constEnemy.time - prevEnemy.time;
-//            for ( long l = SIMPLE_PATTERN_TERM_MIN ; l <= SIMPLE_PATTERN_TERM_MAX; l++) {
-//                Score s = simpleScores.get(l);
-//                if ( s.round == logRound && ctx.my.time - s.time < SIMPLE_PATTERN_TERM_MIN ) {
-//                    continue;
-//                }
-//
-//                long absTime = constEnemy.time - s.time;
-//                RobotPoint logEnemy = logEnemy(s.round,constEnemy.name, absTime);
-//                if ( logEnemy == null || logEnemy.delta == null) {
-//                    continue;
-//                }
-//                RobotPoint prospectEnemy = new RobotPoint(prevEnemy);
-//                prospectEnemy.setDelta(logEnemy.delta);
-//                prospectEnemy.prospectNext(deltaTime);
-//                double d = prospectEnemy.calcDistance(constEnemy);
-//
-//                s.updateScore(PERFECT_SCORE-d,SIMPLE_PATTERN_SCORE_ESTIMATE_LIMIT,SIMPLE_PATTERN_TERM_MIN);
-//                //logger.prospect4("REACT(%02d): %2.2f(%2.2f)",absTime,s.score,d);
-//                logger.log("REACT(%02d): %2.2f(%2.2f)",absTime,s.score,d);
-//            }
-//        }
+
     }
     @Override
     protected Enemy cbScannedRobot(Enemy enemy) {
@@ -633,6 +604,7 @@ abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobo
         if ( constEnemy == null ) {
             return null;
         }
+long start = System.currentTimeMillis();
         if ( ! isTeammate(constEnemy.name)) {
             updateLogEnemy(constEnemy);
         }
@@ -648,20 +620,29 @@ abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobo
             initSimplePattern(enemy.name);
         }
 
+long istart = 0;
+long iend = 0;
         if ( prevEnemy != null ) {
             // Aimed
             if ( (prevEnemy.energy - enemy.energy) >= 0.1 && (prevEnemy.energy - enemy.energy) <= 3 ) {
                 enemyBullet(prevEnemy,enemy);
             }
+istart = System.currentTimeMillis();
             if ( getAimType(enemy.name,MoveType.TYPE_SIMPLE_PATTERN_CENTER) != null ||
                  getAimType(enemy.name,MoveType.TYPE_SIMPLE_PATTERN_FIRST) != null ) {
                 evalSimplePattern(prevEnemy, constEnemy);
             }
+iend = System.currentTimeMillis();
             if ( getAimType(enemy.name,MoveType.TYPE_REACT_PATTERN_CENTER) != null ||
                  getAimType(enemy.name,MoveType.TYPE_REACT_PATTERN_FIRST) != null ) {
                 evalReactPattern(prevEnemy, constEnemy);
             }
         }
+long end = System.currentTimeMillis();
+if ( end-start > 5 ) {
+    logger.log("SCAN ADV : %d %d",(end-start),(iend-istart));
+}
+
         return constEnemy;
     }
 
@@ -804,6 +785,11 @@ abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobo
         Bullet bullet = e.getHitBullet();
         Map.Entry<String,BulletInfo> eEntry = Util.calcBulletSrc(ctx.my.time,bullet,enemyBulletList);
         if ( eEntry == null ) {
+            Map.Entry<String,BulletInfo> tEntry = Util.calcBulletSrc(ctx.my.time,bullet,bulletList);
+            if ( tEntry != null ) {
+                double distance = new Point(e.getBullet().getX(),e.getBullet().getY()).calcDistance(new Point(bullet.getX(),bullet.getY()));
+                logger.log("Unknown bullet hit: (probably teammate or my bullet) : %s : %s [%2.2f] %2.2f" , entry.getKey() , tEntry.getKey() , e.getBullet().getPower(),distance);
+            }
             logger.fire1("Unknown bullet hit: (probably teammate or my bullet) ");
         }
         if ( entry != null) {
