@@ -46,7 +46,7 @@ public class CrumbContext extends BaseContext {
     public String lockonTarget;
 //  public Enemy lockOnTarget;
     
-    public Map<String, Enemy> nextEnemyMap = new HashMap<>(20,0.95f);
+    public Map<String, Enemy> nextEnemyMap = new HashMap<>(15,0.95f);
     public Map<String,BulletInfo> nextBulletList = new HashMap<>(50,0.95f);
     
     

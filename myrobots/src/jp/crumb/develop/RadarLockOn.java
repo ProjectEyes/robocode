@@ -22,9 +22,7 @@ public class RadarLockOn extends CrumbRobot<CrumbContext> {
     protected void cbThinking() {
         setFireMode(ctx.MODE_FIRE_MANUAL);
         for ( Map.Entry<String,Enemy> e : ctx.nextEnemyMap.entrySet() ) {
-            if ( ! isTeammate(e.getValue().name) ) {
-                ctx.setLockonTarget(e.getValue().name);
-            }
+            ctx.setLockonTarget(e.getValue().name);
         }
         setRadarMode(ctx.MODE_RADAR_LOCKON);
         setMoveMode(ctx.MODE_MOVE_LOCKON1);

@@ -41,7 +41,7 @@ public class カンダタ extends Boss {
                 if ( mname.equals(name) ) {
                     continue;
                 }
-                Enemy mate = ctx.nextEnemyMap.get(mname);
+                Enemy mate = ctx.nextMateMap.get(mname);
                 if ( mate == null ) {
                     continue;
                 }

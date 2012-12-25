@@ -5,6 +5,10 @@
 package jp.crumb.base;
 
 import java.io.Serializable;
+import java.util.HashMap;
+import java.util.Map;
+import jp.crumb.utils.Copy;
+import jp.crumb.utils.Enemy;
 import jp.crumb.utils.Pair;
 import jp.crumb.utils.Point;
 import jp.crumb.utils.RobotPoint;
@@ -16,7 +20,6 @@ import jp.crumb.utils.Util;
  */
 public class BaseContext implements Serializable{
     public RobotPoint my = new RobotPoint();
-    public RobotPoint nextMy = new RobotPoint();
     
     public double curTurnRemainingRadians;       
     public double curGunTurnRemainingRadians;            
@@ -33,6 +36,7 @@ public class BaseContext implements Serializable{
     public double prevRadarHeadingRadians;
     // For auto move
     public Point destination;
+    public Map<String, Enemy> nextMateMap = new HashMap<>(6,0.95f);
 
 
     public BaseContext() {
@@ -53,8 +57,13 @@ public class BaseContext implements Serializable{
             this.destination = new Point(in.destination);
         }
         this.my = new RobotPoint(in.my);
-        this.nextMy = new RobotPoint(in.nextMy);
         
+        nextMateMap = Util.deepCopyHashMap(in.nextMateMap , new Copy<Enemy>(){
+            @Override
+            public Enemy copy(Enemy e) {
+                return new Enemy(e);
+            }
+        });
 
     }    
    

@@ -24,9 +24,7 @@ public class Inertia extends AdvCrumbRobot<AdbCrumbContext> {
     @Override
     protected void cbThinking() {
         for ( Map.Entry<String,Enemy> e : ctx.nextEnemyMap.entrySet() ) {
-            if ( ! isTeammate(e.getValue().name) ) {
-                ctx.setLockonTarget(e.getValue().name);
-            }
+            ctx.setLockonTarget(e.getValue().name);
         }
         setRadarMode(ctx.MODE_RADAR_LOCKON);
         setGunMode(ctx.MODE_GUN_LOCKON);

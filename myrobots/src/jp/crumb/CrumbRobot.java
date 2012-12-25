@@ -54,6 +54,8 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobot<T> {
     protected static final double DEFAULT_WALL_DIM = 1.8;
     protected static final double DEFAULT_ENEMY_WEIGHT = 400;
     protected static final double DEFAULT_ENEMY_DIM = 1.8;
+    protected static final double DEFAULT_MATE_WEIGHT = 600;
+    protected static final double DEFAULT_MATE_DIM = 1.6;
     protected static final double DEFAULT_G_WEIGHT = 50;
     protected static final double DEFAULT_G_DIM = 1.1;
     protected static final double DEFAULT_GT_WEIGHT = 400;
@@ -69,6 +71,8 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobot<T> {
     protected  double WALL_DIM               = DEFAULT_WALL_DIM;
     protected  double ENEMY_WEIGHT           = DEFAULT_ENEMY_WEIGHT;
     protected  double ENEMY_DIM              = DEFAULT_ENEMY_DIM;
+    protected  double MATE_WEIGHT            = DEFAULT_MATE_WEIGHT;
+    protected  double MATE_DIM               = DEFAULT_MATE_DIM;
     protected  double G_WEIGHT               = DEFAULT_G_WEIGHT;
     protected  double G_DIM                  = DEFAULT_G_DIM;
     protected  double GT_WEIGHT              = DEFAULT_GT_WEIGHT;
@@ -119,7 +123,10 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobot<T> {
         throw new UnsupportedOperationException("[SimplePattern] Not supported yet");
     }
     protected boolean prospectNextRobotReactPattern(RobotPoint robot,long term,ProspectContext context){
-        throw new UnsupportedOperationException("[SimplePattern] Not supported yet");
+        throw new UnsupportedOperationException("[ReactPattern] Not supported yet");
+    }
+    protected boolean prospectNextRobotRecentPattern(RobotPoint robot,long term,ProspectContext context){
+        throw new UnsupportedOperationException("[RecenttPattern] Not supported yet");
     }
 
     protected boolean prospectNextRobot(RobotPoint robot,MoveType moveType,long term) {
@@ -136,6 +143,8 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobot<T> {
             return prospectNextRobotSimplePattern(robot,term,context);
         }else if ( moveType.isTypeReactPattern()) {
             return prospectNextRobotReactPattern(robot,term,context);
+        }else if ( moveType.isTypeRecentPattern()) {
+            return prospectNextRobotRecentPattern(robot,term,context);
         }else {
             throw new UnsupportedOperationException("Unknown MoveType : " + moveType.type);
         }
@@ -157,6 +166,10 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobot<T> {
         dst.diff(Util.getGrabity(ctx.my, new Point(0,ctx.my.y), WALL_WEIGHT,WALL_DIM));
         dst.diff(Util.getGrabity(ctx.my, new Point(ctx.my.x,Util.battleFieldHeight), WALL_WEIGHT,WALL_DIM));
         dst.diff(Util.getGrabity(ctx.my, new Point(ctx.my.x,0), WALL_WEIGHT,WALL_DIM));
+        // Mate
+        for (Map.Entry<String, Enemy> e : ctx.nextMateMap.entrySet()) {
+            dst.diff(Util.getGrabity(ctx.my,e.getValue(), MATE_WEIGHT,MATE_DIM));
+        }
         // Enemy
         for (Map.Entry<String, Enemy> e : ctx.nextEnemyMap.entrySet()) {
             if ( ! isStale(e.getValue() ) ) {
@@ -168,8 +181,9 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobot<T> {
             BulletInfo info = e.getValue();
             if ( ! info.owner.equals(name) ){
                 MovingPoint bullet = new MovingPoint(info.src);
+                double power = Util.bultPower(bullet.velocity);
                 for ( int i = 0 ; i < BULLET_PROSPECT_TIME;i++) {
-                    dst.diff(Util.getGrabity(ctx.my,bullet, BULLET_WEIGHT,BULLET_DIM));
+                    dst.diff(Util.getGrabity(ctx.my,bullet, BULLET_WEIGHT*power,BULLET_DIM));
                     bullet.inertia(1);
                 }
             }
@@ -309,7 +323,7 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobot<T> {
         String targetName = "";
         for (Map.Entry<String, Enemy> e : ctx.nextEnemyMap.entrySet()) {
             Enemy target = e.getValue();
-            if ( ! isStale(target) && ! isTeammate(e.getKey()) ) {
+            if ( ! isStale(target) ) {
                 MoveType aimtype = getBestAimType(target);
                 Pair<Double,Double> result = calcFire(target,aimtype,deltaThreshold,recentThreshold);
                 if ( aimDistance > result.second ) {
@@ -321,7 +335,7 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobot<T> {
             }
         }
 
-        if ( aimType != null && ! isTeammate(targetName) && maxPower > 0 ) {
+        if ( aimType != null && maxPower > 0 ) {
             if ( ctx.enemies > 1 ) {
                 normalMode();
             }
@@ -467,20 +481,39 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobot<T> {
             removeBulletInfo(n);
         }
 
-        List<String> rmList = new ArrayList<>(20);
-        for (Map.Entry<String, Enemy> e : ctx.nextEnemyMap.entrySet()) {
+        List<String> rmMateList = new ArrayList<>(20);
+        for (Map.Entry<String, Enemy> e : ctx.nextMateMap.entrySet()) {
             Enemy r = e.getValue();
-            if ( r.timeStamp != 0 && ctx.my.time-r.timeStamp > STALE_AS_DEAD) {
-                rmList.add(e.getKey());
+//            if ( r.timeStamp != 0 && ctx.my.time-r.timeStamp > STALE_AS_DEAD) {
+            if ( ctx.my.time-r.timeStamp > STALE_AS_DEAD) {
+                rmMateList.add(e.getKey());
             }
         }
-        for ( String name : rmList ) {
+        for ( String name : rmMateList ) {
+            ctx.nextMateMap.remove(name);
+        }
+
+        List<String> rmEnemyList = new ArrayList<>(20);
+        for (Map.Entry<String, Enemy> e : ctx.nextEnemyMap.entrySet()) {
+            Enemy r = e.getValue();
+//            if ( r.timeStamp != 0 && ctx.my.time-r.timeStamp > STALE_AS_DEAD) {
+            if ( ctx.my.time-r.timeStamp > STALE_AS_DEAD) {
+                rmEnemyList.add(e.getKey());
+            }
+        }
+        for ( String name : rmEnemyList ) {
             ctx.nextEnemyMap.remove(name);
         }
     }
     protected static final long STALE_AS_DEAD = 30;
     @Override
     protected void cbProspectNextTurn(){
+        for (Map.Entry<String, Enemy> e : ctx.nextMateMap.entrySet()) {
+            Enemy enemy = e.getValue();
+            if ( enemy.time - enemy.timeStamp > 2 ) { // Receive data was ( Timestamp + 2 )
+                enemy.prospectNext();
+            }
+        }
         for (Map.Entry<String, Enemy> e : ctx.nextEnemyMap.entrySet()) {
             Enemy enemy = e.getValue();
             MoveType aimType = getBestAimType(enemy);
@@ -502,12 +535,9 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobot<T> {
     protected void cbThinking() {
 //        Enemy lockOnTarget = getNextEnemy(ctx.lockonTarget);
         Enemy lockOnTarget = null;
-        if (isLeader || teammate.isEmpty() || ctx.nextEnemyMap.get(leader) == null ) {
+        if (isLeader || teammate.isEmpty() || ctx.nextMateMap.get(leader) == null ) {
             for (Map.Entry<String, Enemy> e : ctx.nextEnemyMap.entrySet()) {
                 Enemy r = e.getValue();
-                if (teammate.contains(r.name)) {
-                    continue;
-                }
                 if ( isStale(r) ) {
                     continue;
                 }
@@ -532,6 +562,20 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobot<T> {
             }
         }else{
             lockOnTarget = ctx.nextEnemyMap.get(ctx.lockonTarget);
+//            for (Map.Entry<String, Enemy> e : ctx.nextEnemyMap.entrySet()) {
+//                Enemy r = e.getValue();
+//                if ( isStale(r) ) {
+//                    continue;
+//                }
+//                if (lockOnTarget == null) {
+//                    lockOnTarget = r;
+//                    continue;
+//                }
+//                if (calcPriority(lockOnTarget) > calcPriority(r) ) {
+//                    lockOnTarget = r;
+//                }
+//
+//            }
         }
         if ( lockOnTarget != null ) {
             double distance = ctx.my.calcDistance(lockOnTarget);
@@ -562,10 +606,11 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobot<T> {
             ctx.G = new TimedPoint(Util.getRandomPoint(ctx.my,5),ctx.my.time);
         }
         
-        if ( ctx.destination != null && (G_DISTANCE_THRESHIOLD > 80 || ctx.my.time - ctx.G.time > G_EXPIRE) ) { 
+        if ( ctx.destination != null && (G_DISTANCE_THRESHIOLD > 20 || ctx.my.time - ctx.G.time > G_EXPIRE) ) {
             double gr = ctx.my.calcRadians(ctx.destination);
-            Point g = Util.calcPoint(gr,50).prod(-1).add(ctx.my);
-            g = Util.getRandomPoint(g,55);
+            //Point g = Util.calcPoint(gr,50).prod(-1).add(ctx.my);
+            Point g = Util.calcPoint(gr,10).prod(-1).add(ctx.my);
+            g = Util.getRandomPoint(g,12);
             ctx.G = new TimedPoint(g,ctx.my.time);
         }
             Enemy lockOnTarget = getNextEnemy(ctx.lockonTarget);
@@ -621,7 +666,7 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobot<T> {
         }
         if ( ctx.isRadarMode(ctx.MODE_RADAR_SEARCH) && ! (this instanceof Droid) ) {
             boolean isAllScan = false;
-            if ( enemyMap.entrySet().size() >= ctx.others ) {
+            if ( enemyMap.entrySet().size() >= ctx.enemies ) {
                 isAllScan = true;
                 for ( Map.Entry<String,Enemy> e : enemyMap.entrySet() ) {
                     if ( ! e.getValue().scanned && e.getValue().timeStamp != 0 ) { // not scanned &&not dead

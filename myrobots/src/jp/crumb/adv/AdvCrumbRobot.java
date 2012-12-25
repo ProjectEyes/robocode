@@ -52,8 +52,8 @@ abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobo
     protected static final long SIMPLE_PATTERN_TERM_MIN = 15;
 
     protected static final double SIMPLE_PATTERN_SCORE_ESTIMATE_LIMIT = 7;
-    protected static final double SHOT_SCORE_ESTIMATE_LIMIT = 5;
-    protected static final double AIM_SCORE_ESTIMATE_LIMIT = 7;
+    protected static final double SHOT_SCORE_ESTIMATE_LIMIT = 1;
+    protected static final double AIM_SCORE_ESTIMATE_LIMIT = 1;
 
 //    protected static final double PATTERN_SCORE_ESTIMATE_LIMIT = 10;
 //    protected static final double SHOT_SCORE_ESTIMATE_LIMIT = 10;
@@ -209,6 +209,8 @@ abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobo
 //        moveType = new MoveType(MoveType.TYPE_REACT_PATTERN_FIRST);
 //        moveTypeList.add(moveType);
         moveType = new MoveType(MoveType.TYPE_REACT_PATTERN_CENTER);
+        moveTypeList.add(moveType);
+        moveType = new MoveType(MoveType.TYPE_RECENT_PATTERN_CENTER);
         moveTypeList.add(moveType);
         return moveTypeList;
     }
@@ -375,6 +377,26 @@ abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobo
         return dst;
     }
 
+    @Override
+    protected boolean prospectNextRobotRecentPattern(RobotPoint robot,long term,ProspectContext context){
+        if ( context == null ) { // Not firing time
+            return robot.prospectNext(term);
+        }
+        if ( context.shotTarget == null ) {
+            context.shotTarget = robot.name; // proced
+            context.shotTime = 0; // invalid
+
+            Map<Integer,Map<Long,Pair<Score,DistancePoint>>> reactPatternScore = reactPatternScoreMap.get(robot.name);
+            if ( reactPatternScore == null ) {// No reaction log
+                return robot.prospectNext(term);
+            }
+            for (Map.Entry<Integer,Map<Long,Pair<Score,DistancePoint>>> e : reactPatternScore.entrySet() ) {
+                int round = e.getKey();
+                Map<Long,Pair<Score,DistancePoint>> reacts = e.getValue();
+            }
+        }
+        return true;
+    }
     @Override
     protected boolean prospectNextRobotReactPattern(RobotPoint robot,long term,ProspectContext context){
         if ( context == null ) { // Not firing time
@@ -628,7 +650,6 @@ abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobo
             return null;
         }
 long start = System.nanoTime();
-        if ( ! isTeammate(constEnemy.name)) {
             updateLogEnemy(constEnemy);
 
             if ( ! shotTypeMap.containsKey(constEnemy.name) ) {
@@ -656,7 +677,6 @@ long start = System.nanoTime();
                     evalReactPattern(prevEnemy, constEnemy);
                 }
             }
-        }
 long end = System.nanoTime();
 if ( end-start > 8000000 ) {
     logger.log("SCAN ADV : %2.2f",(double)(end-start)/1000000.0);
@@ -747,6 +767,7 @@ if ( end-start > 8000000 ) {
             // ndouble diffRadians = closest / closestDistance; // So use sin
             // diffRadians = (Math.abs(diffRadians) < BULLET_DIFF_THRESHOLD) ? diffRadians : BULLET_DIFF_THRESHOLD;
             //moveType.updateScore(Math.PI / 2 - diffRadians,AIM_SCORE_ESTIMATE_LIMIT,AIM_SCORE_ESTIMATE_MIN);a
+            closest = (closest > Util.tankSize)?PERFECT_SCORE:closest;
             moveType.updateScore(PERFECT_SCORE-closest,AIM_SCORE_ESTIMATE_LIMIT);
             logger.prospect1("AIMTYPE(x%03x)  s:%2.2f d:%03.1f %2.2f %% (%d/%d)", moveType.type,moveType.score,closest,moveType.avrage()*100.0,moveType.hitCount,moveType.aimCount);
         }
@@ -915,11 +936,9 @@ if ( end-start > 8000000 ) {
         prospectNextRobot(cpPrev, aimType,1);
         MovingPoint src = cpPrev;
 
-        if ( ! isTeammate(enemy.name) ) {
-            double power = prev.energy-enemy.energy;
-            BulletInfo bulletInfo = calcEnemyBullet(enemy.name,src,power);
-            addEnemyBulletInfo(bulletInfo);
-        }
+        double power = prev.energy-enemy.energy;
+        BulletInfo bulletInfo = calcEnemyBullet(enemy.name,src,power);
+        addEnemyBulletInfo(bulletInfo);
     }
     BulletInfo calcEnemyBullet(String enemyName,MovingPoint src,double power) {
         RobotPoint prevMy = logMy(src.time-1); // Detect enemy-firing after one turn from actual.
@@ -1027,7 +1046,7 @@ if ( end-start > 8000000 ) {
     @Override
     protected double powerLimit(double enemyEnergy, MoveType aimType) {
         double limit = ctx.my.energy / 10;
-        limit = (limit > 3)?3:limit; // TODO:
+        limit = (limit > 4)?4:limit; // TODO:
         limit = limit*aimType.score/PERFECT_SCORE;
         double need = Util.powerByDamage(enemyEnergy);
         if ( need < limit ) {

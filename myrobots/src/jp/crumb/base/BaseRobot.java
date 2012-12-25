@@ -69,7 +69,7 @@ abstract public class BaseRobot<T extends BaseContext> extends TeamRobot {
 
     protected static int allEnemies = 0;
     // Current informations
-    protected Map<String, Enemy> enemyMap = new HashMap<>(20,0.95f);
+    protected Map<String, Enemy> enemyMap = new HashMap<>(15,0.95f);
     protected Map<String,BulletInfo> bulletList = new HashMap<>(50,0.95f);
     
 
@@ -140,8 +140,6 @@ abstract public class BaseRobot<T extends BaseContext> extends TeamRobot {
         ctx.my.y = getY();
         ctx.my.headingRadians = getHeadingRadians();
         ctx.my.setPrev(prevMy);
-        ctx.nextMy = new RobotPoint(ctx.my);
-        prospectNextMy(ctx.nextMy,null);
     }
 
  
@@ -217,14 +215,17 @@ abstract public class BaseRobot<T extends BaseContext> extends TeamRobot {
     protected void cbHitByBullet(HitByBulletEvent e) {}
 
     private void sendMyInfo(){
+        RobotPoint next2My  = new RobotPoint(ctx.my);
+        prospectNextMy(next2My,2);
+
         Enemy my = new Enemy();
-        my.time = ctx.my.time +1;
+        my.time = ctx.my.time +2;
         my.timeStamp = my.time;
         my.name = name;
-        my.x = ctx.nextMy.x;
-        my.y = ctx.nextMy.y;
-        my.headingRadians = ctx.nextMy.headingRadians;
-        my.velocity = ctx.nextMy.velocity;
+        my.x = next2My.x;
+        my.y = next2My.y;
+        my.headingRadians = next2My.headingRadians;
+        my.velocity = next2My.velocity;
         my.energy = ctx.my.energy;
         broadcastMessage(new TeammateInfoEvent(my,isLeader));
     }
@@ -239,7 +240,7 @@ abstract public class BaseRobot<T extends BaseContext> extends TeamRobot {
             if ( ev.isLeader ) {
                 leader = ev.e.name;
             }
-            cbScannedRobot(ev.e);
+            ctx.nextMateMap.put(ev.e.name, ev.e);
         }else if (event instanceof BulletEvent ) {
             BulletEvent ev = (BulletEvent)event;
             addBulletInfo(ev.bulletInfo);
@@ -261,10 +262,10 @@ abstract public class BaseRobot<T extends BaseContext> extends TeamRobot {
     }
 
     private void preScannedRobot(ScannedRobotEvent e) {
-        Enemy enemy = createEnemy(e);
-        cbScannedRobot(enemy);
         // Message will reach to teammate at next turn !!
-        if ( ! isTeammate(enemy.name)) {
+        if ( ! isTeammate(e.getName())) {
+            Enemy enemy = createEnemy(e);
+            cbScannedRobot(enemy);
             Enemy next = new Enemy(enemy);
             prospectNextEnemy(next);
             this.broadcastMessage(new ScanEnemyEvent(next));
@@ -291,17 +292,16 @@ abstract public class BaseRobot<T extends BaseContext> extends TeamRobot {
                 enemy.setPrev(prevEnemy);
             }
         }
-
-        // TODO: seperate teammateMap
         enemyMap.put(enemy.name, enemy);
         return enemy;
-
     }
     protected void cbRobotDeath(RobotDeathEvent e) {
         Enemy enemy = enemyMap.get(e.getName());
         if ( enemy != null ) {
             enemy.timeStamp = 0;
+            return;
         }
+        ctx.nextMateMap.remove(e.getName());
     }    
         
     protected final void setDestination(Point dst){
@@ -356,7 +356,6 @@ abstract public class BaseRobot<T extends BaseContext> extends TeamRobot {
             curContext =  createContext(ctx);
         }
         ctx = curContext;
-        ctx.nextMy = nextMy;
         this.cbProspectNextTurn();
         this.cbMoving();
 
@@ -464,7 +463,9 @@ abstract public class BaseRobot<T extends BaseContext> extends TeamRobot {
                 leader = name;
             }
         }
-        allEnemies = getOthers() - teammate.size();
+        if ( allEnemies <= 0 ) {
+            allEnemies = getOthers() - teammate.size();
+        }
 
         addCustomEvent(this.firstTickTimer);
         addCustomEvent(this.eachTickTimer);
@@ -680,9 +681,9 @@ abstract public class BaseRobot<T extends BaseContext> extends TeamRobot {
             g.drawString(String.format("( %2.2f , %2.2f )", ctx.my.x, ctx.my.y), (int) ctx.my.x - 20, (int) ctx.my.y - 55);
             g.drawString(String.format("heat: %2.2f", getGunHeat()), (int) ctx.my.x - 20, (int) ctx.my.y - 65);
             g.drawString(String.format("velo: %2.1f", getVelocity()), (int) ctx.my.x - 20, (int) ctx.my.y - 75);
-            RobotPoint mypoint = new RobotPoint(ctx.nextMy);
+            RobotPoint mypoint = new RobotPoint(ctx.my);
             T curCtx = null;
-            for (int i = 0; i < 20; i++) {
+            for (int i = 1; i <= 20; i++) {
                 drawRound(g, mypoint.x, mypoint.y, 2);
                 curCtx = prospectNextMy(mypoint, curCtx);
             }
@@ -693,13 +694,15 @@ abstract public class BaseRobot<T extends BaseContext> extends TeamRobot {
             }
 
             g.setStroke(new BasicStroke(1.0f));
+            for (Map.Entry<String, Enemy> e : ctx.nextMateMap.entrySet()) {
+                Enemy r = e.getValue();
+                g.setColor(new Color(0, 1.0f, 0, PAINT_OPACITY));
+                drawRound(g, r.x, r.y, 35);
+                g.drawString(String.format("%s : %s", r.name, r), (int) r.x - 20, (int) r.y - 30);
+            }
             for (Map.Entry<String, Enemy> e : enemyMap.entrySet()) {
                 Enemy r = e.getValue();
-                if (teammate.contains(r.name)) {
-                    g.setColor(new Color(0, 1.0f, 0, PAINT_OPACITY));
-                } else {
-                    g.setColor(new Color(0, 1.0f, 1.0f, PAINT_OPACITY));
-                }
+                g.setColor(new Color(0, 1.0f, 1.0f, PAINT_OPACITY));
                 drawRound(g, r.x, r.y, 35);
                 g.drawString(String.format("%s : %s", r.name, r), (int) r.x - 20, (int) r.y - 30);
             }

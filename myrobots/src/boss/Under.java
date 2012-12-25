@@ -55,7 +55,7 @@ public abstract class Under extends AdvCrumbRobot<AdbCrumbContext> implements Dr
         if ( ctx.isFireMode(ctx.MODE_FIRE_AUTO) ) {
             return dst;
         }
-        Enemy boss = enemyMap.get(leader);
+        Enemy boss = ctx.nextMateMap.get(leader);
         if ( boss != null ) {
             dst.diff(Util.getGrabity(ctx.my,boss, -5,0));
         }

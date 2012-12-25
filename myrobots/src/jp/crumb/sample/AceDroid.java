@@ -16,13 +16,13 @@ import robocode.Droid;
  */
 public class AceDroid extends Ace implements Droid {
 
-    @Override
-    protected void cbThinking() {
-        this.setGunMode(ctx.MODE_GUN_LOCKON);
-        if ( ctx.lockonTarget == null ) {
-            super.cbThinking();
-        }
-    }
+//    @Override
+//    protected void cbThinking() {
+//        this.setGunMode(ctx.MODE_GUN_LOCKON);
+//        if ( ctx.lockonTarget == null ) {
+//            super.cbThinking();
+//        }
+//    }
 
     @Override
     protected void cbFiring() {
