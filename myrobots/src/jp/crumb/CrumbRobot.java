@@ -267,7 +267,7 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobot<T> {
                         double xtime = pair.second;
                         MovingPoint xpoint = bullet.inertia(xtime - ctx.my.time);
                         if ( distance < 25 && ! xpoint.isLimit() ) {
-                            logger.log("D: [%2.2f] %2.2f (%2.2f) OWN:%s X:%s" ,power , pair.first , pair.second , be.getKey(),xpoint);
+                            logger.fire3("COLLISION: [%2.2f] %2.2f (%2.2f) OWN:%s X:%s" ,power , pair.first , pair.second , be.getKey(),xpoint);
                             collision = true;
                             break;
                         }
@@ -284,7 +284,7 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobot<T> {
                             logger.fire3("exceeded limit error %2.2f(%2.2f) => %2.2f", limit,limitError, power );
                             break;
                         }
-                        logger.fire3("limit errors %2.2f(%2.2f) => %2.2f", limit,limitError, power );
+                        logger.fire1("limit errors %2.2f(%2.2f) => %2.2f", limit,limitError, power );
                         break;
                     }
 //TODO:System.out.println("p:" + maxPower + " a:" + aimDistance + " i:" + i);

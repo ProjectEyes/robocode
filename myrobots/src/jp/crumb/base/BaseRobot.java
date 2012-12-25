@@ -67,6 +67,7 @@ abstract public class BaseRobot<T extends BaseContext> extends TeamRobot {
     protected static String leader = null;
     protected static String name;
 
+    protected static int allEnemies = 0;
     // Current informations
     protected Map<String, Enemy> enemyMap = new HashMap<>(20,0.95f);
     protected Map<String,BulletInfo> bulletList = new HashMap<>(50,0.95f);
@@ -86,7 +87,7 @@ abstract public class BaseRobot<T extends BaseContext> extends TeamRobot {
             }
             if ( getTime() - lastScanTick  > 20 ) {
                 lastScanTick = ctx.my.time - 10;
-                logger.log("SKIP BUG !! %d", ctx.my.time);
+                logger.trace("SKIP BUG !! %d", ctx.my.time);
                 return true;
             }
             return false;
@@ -463,6 +464,8 @@ abstract public class BaseRobot<T extends BaseContext> extends TeamRobot {
                 leader = name;
             }
         }
+        allEnemies = getOthers() - teammate.size();
+
         addCustomEvent(this.firstTickTimer);
         addCustomEvent(this.eachTickTimer);
 //        execute();

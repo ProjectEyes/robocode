@@ -63,7 +63,7 @@ abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobo
 //    protected static final double ENEMY_BULLET_DIFF_THRESHOLD = Math.PI/6; // more than 30 degrees
 //    protected static final double BULLET_DIFF_THRESHOLD = Math.PI/6; // more than 30 degrees
     
-    protected static final double DEFAULT_CORNER_WEIGHT = -10;
+    protected static final double DEFAULT_CORNER_WEIGHT = 200;
     protected static final double DEFAULT_CORNER_DIM = 1;
     protected static final long   DEFAULT_ENEMY_BULLET_PROSPECT_TIME = 20;
     protected static final double DEFAULT_ENEMY_BULLET_WEIGHT = 1000;
@@ -85,7 +85,8 @@ abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobo
     protected static Map<String,List<MoveType>> aimTypeMap = new HashMap(15,0.95f);
 
 
-    protected static final int  LOG_ROUND = 10;
+    protected static final int  DEFAULT_LOG_ROUND = 6;
+    protected static int  LOG_ROUND = DEFAULT_LOG_ROUND;
     protected int logRound = 0;
 //    protected Map<Long,RobotPoint> myLog = new HashMap<>(2000);
 //    protected Map<String, Map<Long,Enemy> > enemyLog = new HashMap<>(15,0.95f);
@@ -163,6 +164,7 @@ abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobo
     @Override
     protected void cbFirst() {
         super.cbFirst();
+        LOG_ROUND = DEFAULT_LOG_ROUND / allEnemies;
         logRound = getRoundNum() % LOG_ROUND;
         myLog.put(logRound,new HashMap<Long,RobotPoint>(2000,0.95f));
         enemyLog.put(logRound,new HashMap<String,Map<Long,Enemy>>(15,0.95f));
@@ -355,10 +357,7 @@ abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobo
         Point dst = super.movingBase();
         // corner
         if ( ctx.enemies > 1 ) { // Melee mode
-            dst.diff(Util.getGrabity(ctx.my, new Point(Util.runnableMinX,Util.runnableMinY), CORNER_WEIGHT,CORNER_DIM));
-            dst.diff(Util.getGrabity(ctx.my, new Point(Util.runnableMinX,Util.runnableMaxY), CORNER_WEIGHT,CORNER_DIM));
-            dst.diff(Util.getGrabity(ctx.my, new Point(Util.runnableMaxX,Util.runnableMinY), CORNER_WEIGHT,CORNER_DIM));
-            dst.diff(Util.getGrabity(ctx.my, new Point(Util.runnableMaxX,Util.runnableMaxY), CORNER_WEIGHT,CORNER_DIM));
+            dst.diff(Util.getGrabity(ctx.my, new Point(Util.runnableMaxX,Util.runnableMaxY).quot(2), CORNER_WEIGHT,CORNER_DIM));
         }
         // Enemy Bullet
         for (Map.Entry<String, BulletInfo> e : ctx.nextEnemyBulletList.entrySet()) {
@@ -659,7 +658,7 @@ long start = System.nanoTime();
             }
         }
 long end = System.nanoTime();
-if ( end-start > 5000000 ) {
+if ( end-start > 8000000 ) {
     logger.log("SCAN ADV : %2.2f",(double)(end-start)/1000000.0);
 }
 
@@ -1028,6 +1027,7 @@ if ( end-start > 5000000 ) {
     @Override
     protected double powerLimit(double enemyEnergy, MoveType aimType) {
         double limit = ctx.my.energy / 10;
+        limit = (limit > 3)?3:limit; // TODO:
         limit = limit*aimType.score/PERFECT_SCORE;
         double need = Util.powerByDamage(enemyEnergy);
         if ( need < limit ) {
