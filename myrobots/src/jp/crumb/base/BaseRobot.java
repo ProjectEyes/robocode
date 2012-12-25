@@ -46,7 +46,7 @@ import robocode.WinEvent;
  *
  * @author crumb
  */
-abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
+abstract public class BaseRobot<T extends BaseContext> extends TeamRobot {
     protected static final boolean isPaint = false;
     protected Logger logger = new Logger(0);
 //    protected Logger logger = new Logger(
@@ -118,19 +118,14 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
         }
         ctx.prevRadarHeadingRadians = ctx.curRadarHeadingRadians;   
         ctx.curGunHeadingRadians = getGunHeadingRadians();
-        ctx.curGunHeading = getGunHeading();
         ctx.curRadarHeadingRadians = getRadarHeadingRadians();
-        ctx.curRadarHeading = getRadarHeading();
         
         ctx.gunHeat = getGunHeat();
         ctx.others = getOthers();
         ctx.enemies = ctx.others; // will be decl by each TeammateInfoEvent
 
-        ctx.curTurnRemaining = getTurnRemaining();
         ctx.curTurnRemainingRadians = getTurnRemainingRadians();
-        ctx.curGunTurnRemaining = getGunTurnRemaining();
         ctx.curGunTurnRemainingRadians = getGunTurnRemainingRadians();
-        ctx.curRadarTurnRemaining = getRadarTurnRemaining();
         ctx.curRadarTurnRemainingRadians = getRadarTurnRemainingRadians();
         ctx.curDistanceRemaining = getDistanceRemaining();
 
@@ -142,7 +137,6 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
         ctx.my.velocity = getVelocity();
         ctx.my.x = getX();
         ctx.my.y = getY();
-        ctx.my.heading = getHeading();
         ctx.my.headingRadians = getHeadingRadians();
         ctx.my.setPrev(prevMy);
         ctx.nextMy = new RobotPoint(ctx.my);
@@ -228,7 +222,6 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
         my.name = name;
         my.x = ctx.nextMy.x;
         my.y = ctx.nextMy.y;
-        my.heading = ctx.nextMy.heading;
         my.headingRadians = ctx.nextMy.headingRadians;
         my.velocity = ctx.nextMy.velocity;
         my.energy = ctx.my.energy;
@@ -263,7 +256,7 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
             return;
         }
         doAhead(go.first);
-        doTurnRight(go.second);
+        doTurnRightRadians(go.second);
     }
 
     private void preScannedRobot(ScannedRobotEvent e) {
@@ -320,23 +313,23 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
         if ( ctx.destination == null ) {
             return null;
         }
-        double bearing = ctx.my.calcDegree(ctx.destination);
+        double bearingRadians = ctx.my.calcRadians(ctx.destination);
         double distance = ctx.my.calcDistance(ctx.destination);
 
         double runTime = Util.calcRoughRunTime(distance,ctx.my.velocity);
 
-        Pair<Double,Integer> turn = ctx.calcAbsTurn(bearing);
-        double turnDegree = turn.first;
+        Pair<Double,Integer> turn = ctx.calcAbsTurnRadians(bearingRadians);
+        double turnRadians = turn.first;
         distance *= turn.second;
         
-        double turnTime = Math.abs(turnDegree/Util.turnSpeed(ctx.my.velocity));
+        double turnTime = Math.abs(turnRadians/Util.turnSpeedRadians(ctx.my.velocity));
         if ( runTime <= turnTime ) {
             distance = 0;
         }
         if ( Math.abs(distance) < MOVE_COMPLETE_THRESHOLD ) { 
             distance = 0.0;
         }
-        return new Pair<>(distance,turnDegree);
+        return new Pair<>(distance,turnRadians);
     }
     
     protected final BaseContext defalutCreateContext(BaseContext in) {
@@ -373,8 +366,7 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
 //        
             MovingPoint delta = new MovingPoint();
             delta.time = 1;
-            delta.heading = go.second;
-            delta.headingRadians = Math.toRadians(go.second);
+            delta.headingRadians = go.second;
             delta.velocity = go.first;
             nextMy.setDelta(delta);
             nextMy.prospectNext();
@@ -399,12 +391,12 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
         if ( ctx.gunHeat != 0 ) {
             return;
         }
-        logger.fire1("FIRE(x%02x): ( %2.2f ) => %2.2f d : %2.2f",type,power,ctx.curGunHeading,distance);
+        logger.fire1("FIRE(x%02x): ( %2.2f ) => %2.2f d : %2.2f",type,power,Math.toDegrees(ctx.curGunHeadingRadians),distance);
         this.paint(getGraphics());
         double bulletVelocity = Util.bultSpeed(power);
         MovingPoint src = new MovingPoint(
                 ctx.my.x , ctx.my.y , ctx.my.time,
-                ctx.curGunHeading , ctx.curGunHeadingRadians,
+                ctx.curGunHeadingRadians,
                 bulletVelocity
         );
         BulletInfo bulletInfo = new BulletInfo(name,targetName,distance,src,type);
@@ -504,23 +496,20 @@ abstract public class BaseRobo<T extends BaseContext> extends TeamRobot {
         super.setAhead(distance);
         ctx.curDistanceRemaining = distance;
     }
-    protected void doTurnRight(double degrees) {
-        super.setTurnRight(degrees);
-        ctx.curTurnRemaining = degrees;
-        ctx.curTurnRemainingRadians = Math.toRadians(degrees);
+    protected void doTurnRightRadians(double radians) {
+        super.setTurnRightRadians(radians);
+        ctx.curTurnRemainingRadians = radians;
     }
-    protected void doTurnGunRight(double degrees) {
-        logger.gun3("TURN: %2.2f : %2.2f => %2.2f",ctx.curGunHeading,ctx.curGunTurnRemaining,degrees);
-        super.setTurnGunRight(degrees);
-        ctx.curGunTurnRemaining = degrees;
-        ctx.curGunTurnRemainingRadians = Math.toRadians(degrees);
+    protected void doTurnGunRightRadians(double radians) {
+        logger.gun3("TURN: %2.2f : %2.2f => %2.2f",Math.toDegrees(ctx.curGunHeadingRadians),Math.toDegrees(ctx.curGunTurnRemainingRadians),Math.toDegrees(radians));
+        super.setTurnGunRightRadians(radians);
+        ctx.curGunTurnRemainingRadians = radians;
     }
 
-    protected void doTurnRadarRight(double degrees) {
-        logger.radar3("TURN: %2.2f : %2.2f => %2.2f",ctx.curRadarHeading,ctx.curRadarTurnRemaining,degrees);
-        super.setTurnRadarRight(degrees);
-        ctx.curRadarTurnRemaining = degrees;
-        ctx.curRadarTurnRemainingRadians = Math.toRadians(degrees);
+    protected void doTurnRadarRightRadians(double radians) {
+        logger.radar3("TURN: %2.2f : %2.2f => %2.2f",Math.toDegrees(ctx.curRadarHeadingRadians),Math.toDegrees(ctx.curRadarTurnRemainingRadians),Math.toDegrees(radians));
+        super.setTurnRadarRightRadians(radians);
+        ctx.curRadarTurnRemainingRadians = radians;
     }
 
     @Override

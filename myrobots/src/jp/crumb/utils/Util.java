@@ -85,16 +85,20 @@ public class Util {
         }
     }
 
-    public static double radarTurnSpeed() {
-        return 45;
-    }
-    public static double gunTurnSpeed() {
-        return 20;
+    static final double RADAR_TURN = Math.toRadians(45.0);
+    public static double radarTurnSpeedRadians() {
+        return RADAR_TURN;
     }
 
-    public static double turnSpeed(double velocity) {
-        return 10 - 0.75 * Math.abs(velocity);
-//        return 10 - 0.95 * Math.abs(velocity);
+    static final double GUN_TURN = Math.toRadians(20.0);
+    public static double gunTurnSpeedRadians() {
+        return GUN_TURN;
+    }
+
+    static final double TURN_BASE = Math.toRadians(10.0);
+    static final double TURN_DELAY = Math.toRadians(0.75);
+    public static double turnSpeedRadians(double velocity) {
+        return TURN_BASE - TURN_DELAY * Math.abs(velocity);
     }
 
     public static double calcRoughRunTime(double distance, double velocity) {
@@ -154,15 +158,6 @@ public class Util {
         double radians  = base.calcRadians(target);
         double force = weight/Math.pow(distance/10,dim)*10;
         return calcPoint(radians, force);
-    }
-    public static double calcTurn(double src,double dst){
-        double diffDegree = (dst - src) % 360;
-        if (diffDegree > 180) {
-            diffDegree = diffDegree - 360;
-        } else if (diffDegree < -180) {
-            diffDegree = diffDegree + 360;
-        }
-        return diffDegree;
     }
     public static double calcTurnRadians(double src,double dst){
         double diffRadians = (dst - src) % (2*Math.PI);

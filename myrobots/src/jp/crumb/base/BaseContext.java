@@ -18,17 +18,12 @@ public class BaseContext implements Serializable{
     public RobotPoint my = new RobotPoint();
     public RobotPoint nextMy = new RobotPoint();
     
-    public double curTurnRemaining;
     public double curTurnRemainingRadians;       
-    public double curGunTurnRemaining;        
     public double curGunTurnRemainingRadians;            
-    public double curRadarTurnRemaining;            
     public double curRadarTurnRemainingRadians;
     
     public double curGunHeadingRadians;
-    public double curGunHeading;
     public double curRadarHeadingRadians;
-    public double curRadarHeading;
     public double curDistanceRemaining;
     public double gunHeat;
     public int others;
@@ -44,16 +39,11 @@ public class BaseContext implements Serializable{
     }
 
     public BaseContext(BaseContext in){
-        this.curTurnRemaining = in.curTurnRemaining;
         this.curTurnRemainingRadians = in.curTurnRemainingRadians;
-        this.curGunTurnRemaining = in.curGunTurnRemaining;
         this.curGunTurnRemainingRadians = in.curGunTurnRemainingRadians;
-        this.curRadarTurnRemaining = in.curRadarTurnRemaining;
         this.curRadarTurnRemainingRadians = in.curRadarTurnRemainingRadians;
         this.curGunHeadingRadians = in.curGunHeadingRadians;
-        this.curGunHeading = in.curGunHeading;
         this.curRadarHeadingRadians = in.curRadarHeadingRadians;
-        this.curRadarHeading = in.curRadarHeading;
         this.curDistanceRemaining = in.curDistanceRemaining;
         this.gunHeat = in.gunHeat;
         this.others = in.others;
@@ -68,135 +58,135 @@ public class BaseContext implements Serializable{
 
     }    
    
-    public double calcAbsGunTurnDiff(double diffDegree){
+    public double calcAbsGunTurnDiffRadians(double diffRadians){
         long time = 0;
-        double turnRemaining = curTurnRemaining;
-        double sumGunTurn = 0.0;
+        double turnRemainingRadians = curTurnRemainingRadians;
+        double sumGunTurnRadians = 0.0;
         
         for (int i = 0 ;i < 100;i++){
-            double nextTurn     = 0;
-            double nextGunTurn  = 0;
+            double nextTurnRadians     = 0;
+            double nextGunTurnRadians  = 0;
             time++;
-            if ( turnRemaining != 0.0 ) {
-                nextTurn = Util.turnSpeed(my.velocity)*(Math.abs(turnRemaining)/turnRemaining);
-                if ( Math.abs(nextTurn) > Math.abs(turnRemaining) ) {
-                    nextTurn = turnRemaining;
+            if ( turnRemainingRadians != 0.0 ) {
+                nextTurnRadians = Util.turnSpeedRadians(my.velocity)*(Math.abs(turnRemainingRadians)/turnRemainingRadians);
+                if ( Math.abs(nextTurnRadians) > Math.abs(turnRemainingRadians) ) {
+                    nextTurnRadians = turnRemainingRadians;
                 }
-                turnRemaining -= nextTurn;
+                turnRemainingRadians -= nextTurnRadians;
             }
 //System.out.println(diffDegree + " t:" + nextTurn + " g:" + nextGunTurn);            
-            diffDegree -= nextTurn;
-            if ( diffDegree != 0.0 ) {
-                nextGunTurn = Util.gunTurnSpeed()*(Math.abs(diffDegree)/diffDegree);
-                if ( Math.abs(nextGunTurn) >  Math.abs(diffDegree) ) {
-                    nextGunTurn = diffDegree;
+            diffRadians -= nextTurnRadians;
+            if ( diffRadians != 0.0 ) {
+                nextGunTurnRadians = Util.gunTurnSpeedRadians()*(Math.abs(diffRadians)/diffRadians);
+                if ( Math.abs(nextGunTurnRadians) >  Math.abs(diffRadians) ) {
+                    nextGunTurnRadians = diffRadians;
                 }
-                diffDegree -= nextGunTurn;
-                sumGunTurn += nextGunTurn;
+                diffRadians -= nextGunTurnRadians;
+                sumGunTurnRadians += nextGunTurnRadians;
             }
-            if ( diffDegree == 0.0 ) {
+            if ( diffRadians == 0.0 ) {
                 break;
             }
         }
-        return sumGunTurn;
+        return sumGunTurnRadians;
     }
-    public double calcAbsRadarTurnDiff(double diffDegree){
+    public double calcAbsRadarTurnDiffRadians(double diffRadians){
         long time = 0;
-        double turnRemaining = curTurnRemaining;
-        double gunTurnRemaining = curGunTurnRemaining;
+        double turnRemainingRadians = curTurnRemainingRadians;
+        double gunTurnRemainingRadians = curGunTurnRemainingRadians;
 
-        double sumRadarTurn = 0.0;
+        double sumRadarTurnRadians = 0.0;
         
         for (int i = 0 ;i < 100;i++){
-            double nextTurn     = 0;
-            double nextGunTurn  = 0;
-            double nextRadarTurn= 0;
+            double nextTurnRadians     = 0;
+            double nextGunTurnRadians  = 0;
+            double nextRadarTurnRadians= 0;
             time++;
-            if ( turnRemaining != 0.0 ) {
-                nextTurn = Util.turnSpeed(my.velocity)*(Math.abs(turnRemaining)/turnRemaining);
-                if ( Math.abs(nextTurn) > Math.abs(turnRemaining) ) {
-                    nextTurn = turnRemaining;
+            if ( turnRemainingRadians != 0.0 ) {
+                nextTurnRadians = Util.turnSpeedRadians(my.velocity)*(Math.abs(turnRemainingRadians)/turnRemainingRadians);
+                if ( Math.abs(nextTurnRadians) > Math.abs(turnRemainingRadians) ) {
+                    nextTurnRadians = turnRemainingRadians;
                 }
-                turnRemaining -= nextTurn;
+                turnRemainingRadians -= nextTurnRadians;
             }
 
-            if ( gunTurnRemaining != 0.0 ) {
-                nextGunTurn = Util.gunTurnSpeed()*(Math.abs(gunTurnRemaining)/gunTurnRemaining);
-                if ( Math.abs(nextGunTurn) >  Math.abs(gunTurnRemaining) ) {
-                    nextGunTurn = gunTurnRemaining;
+            if ( gunTurnRemainingRadians != 0.0 ) {
+                nextGunTurnRadians = Util.gunTurnSpeedRadians()*(Math.abs(gunTurnRemainingRadians)/gunTurnRemainingRadians);
+                if ( Math.abs(nextGunTurnRadians) >  Math.abs(gunTurnRemainingRadians) ) {
+                    nextGunTurnRadians = gunTurnRemainingRadians;
                 }
-                gunTurnRemaining -= nextGunTurn;
-                nextGunTurn += nextTurn;
+                gunTurnRemainingRadians -= nextGunTurnRadians;
+                nextGunTurnRadians += nextTurnRadians;
             }
 //System.out.println(diffDegree + " t:" + nextTurn + " g:" + nextGunTurn);            
-            diffDegree -= nextGunTurn;
-            if ( diffDegree != 0.0 ) {
-                nextRadarTurn = Util.radarTurnSpeed()*(Math.abs(diffDegree)/diffDegree);
-                if ( Math.abs(nextRadarTurn) >  Math.abs(diffDegree) ) {
-                    nextRadarTurn = diffDegree;
+            diffRadians -= nextGunTurnRadians;
+            if ( diffRadians != 0.0 ) {
+                nextRadarTurnRadians = Util.radarTurnSpeedRadians()*(Math.abs(diffRadians)/diffRadians);
+                if ( Math.abs(nextRadarTurnRadians) >  Math.abs(diffRadians) ) {
+                    nextRadarTurnRadians = diffRadians;
                 }
-                diffDegree -= nextRadarTurn;
-                sumRadarTurn += nextRadarTurn;
+                diffRadians -= nextRadarTurnRadians;
+                sumRadarTurnRadians += nextRadarTurnRadians;
             }
-            if ( diffDegree == 0.0 ) {
+            if ( diffRadians == 0.0 ) {
                 break;
             }
         }
-        return sumRadarTurn;
+        return sumRadarTurnRadians;
     }
 
-    public Pair<Double,Integer> calcAbsTurn(double dstDegree) {
-        double aheadTurnDegree = Util.calcTurn(my.heading,dstDegree);
-        double backTurnDegree  = Util.calcTurn(my.heading,dstDegree-180);
-        if ( Math.abs(aheadTurnDegree) < Math.abs(backTurnDegree)) { // ahead
-            return new Pair<>(aheadTurnDegree,1);
+    public Pair<Double,Integer> calcAbsTurnRadians(double dstRadians) {
+        double aheadTurnRadians = Util.calcTurnRadians(my.headingRadians,dstRadians);
+        double backTurnRadians  = Util.calcTurnRadians(my.headingRadians,dstRadians-Math.PI);
+        if ( Math.abs(aheadTurnRadians) < Math.abs(backTurnRadians)) { // ahead
+            return new Pair<>(aheadTurnRadians,1);
         }else { // back
-            return new Pair<>(backTurnDegree,-1);
+            return new Pair<>(backTurnRadians,-1);
         }
     }
     
-    public double calcAbsGunTurn(double absDegree) {
-        double diffDegree1 = (absDegree - curGunHeading) % 360;
-        if (diffDegree1 > 180) {
-            diffDegree1 = diffDegree1 - 360;
-        } else if (diffDegree1 < -180) {
-            diffDegree1 = diffDegree1 + 360;
+    public double calcAbsGunTurnRadians(double absRadians) {
+        double diffRadians1 = (absRadians - curGunHeadingRadians) % (Math.PI*2);
+        if (diffRadians1 > Math.PI) {
+            diffRadians1 = diffRadians1 - (Math.PI*2);
+        } else if (diffRadians1 < -Math.PI) {
+            diffRadians1 = diffRadians1 + (Math.PI*2);
         }
-        double diffDegree2;
-        if ( diffDegree1 < 0 ) {
-            diffDegree2 = 360+diffDegree1;
+        double diffRadians2;
+        if ( diffRadians1 < 0 ) {
+            diffRadians2 = diffRadians1 + (Math.PI*2);
         }else{
-            diffDegree2 = diffDegree1-360;
+            diffRadians2 = diffRadians1 - (Math.PI*2);
         }
-        double realDegree1 = calcAbsGunTurnDiff(diffDegree1);
-        double realDegree2 = calcAbsGunTurnDiff(diffDegree2);
+        double realRadians1 = calcAbsGunTurnDiffRadians(diffRadians1);
+        double realRadians2 = calcAbsGunTurnDiffRadians(diffRadians2);
         // logger.gun4("CALC: %2.2f => %2.2f : 1 = %2.2f(%2.2f) : 2 = %2.2f(%2.2f)",ctx.curGunHeading,absDegree,diffDegree1,realDegree1,diffDegree2,realDegree2);
-        if ( Math.abs(realDegree2) < Math.abs(realDegree1) ) {
-            return realDegree2;
+        if ( Math.abs(realRadians2) < Math.abs(realRadians1) ) {
+            return realRadians2;
         }
-        return realDegree1;
+        return realRadians1;
     }
     
-    public double calcAbsRadarTurn(double absDegree) {
-        double diffDegree1 = (absDegree - curRadarHeading) % 360;
-        if (diffDegree1 > 180) {
-            diffDegree1 = diffDegree1 - 360;
-        } else if (diffDegree1 < -180) {
-            diffDegree1 = diffDegree1 + 360;
+    public double calcAbsRadarTurnRadians(double absDegree) {
+        double diffRadians1 = (absDegree - curRadarHeadingRadians) % (Math.PI*2);
+        if (diffRadians1 > Math.PI) {
+            diffRadians1 = diffRadians1 - (Math.PI*2);
+        } else if (diffRadians1 < -Math.PI) {
+            diffRadians1 = diffRadians1 + (Math.PI*2);
         }
-        double diffDegree2;
-        if ( diffDegree1 < 0 ) {
-            diffDegree2 = 360+diffDegree1;
+        double diffRadians2;
+        if ( diffRadians1 < 0 ) {
+            diffRadians2 = diffRadians1+(Math.PI*2);
         }else{
-            diffDegree2 = diffDegree1-360;
+            diffRadians2 = diffRadians1-(Math.PI*2);
         }
-        double realDegree1 = calcAbsRadarTurnDiff(diffDegree1);
-        double realDegree2 = calcAbsRadarTurnDiff(diffDegree2);
+        double realRadians1 = calcAbsRadarTurnDiffRadians(diffRadians1);
+        double realRadians2 = calcAbsRadarTurnDiffRadians(diffRadians2);
         // logger.radar4("CALC: %2.2f => %2.2f : 1 = %2.2f(%2.2f) : 2 = %2.2f(%2.2f)",ctx.curRadarHeading,absDegree,diffDegree1,realDegree1,diffDegree2,realDegree2);
-        if ( Math.abs(realDegree2) < Math.abs(realDegree1) ) {
-            return realDegree2;
+        if ( Math.abs(realRadians2) < Math.abs(realRadians1) ) {
+            return realRadians2;
         }
-        return realDegree1;
+        return realRadians1;
     }    
     
 

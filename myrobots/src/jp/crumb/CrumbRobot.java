@@ -7,7 +7,7 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import jp.crumb.base.BaseRobo;
+import jp.crumb.base.BaseRobot;
 import jp.crumb.base.BulletInfo;
 import jp.crumb.utils.Copy;
 import jp.crumb.utils.Enemy;
@@ -28,7 +28,7 @@ import robocode.ScannedRobotEvent;
 /**
  * Silver - a robot by (your name here)
  */
-abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
+abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobot<T> {
     @Override
     public void run() {
         super.run();
@@ -256,7 +256,7 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
                     MovingPoint bullet = new MovingPoint(
                             ctx.my.x, ctx.my.y,
                             ctx.my.time,
-                            ctx.curGunHeading,  ctx.curGunHeadingRadians,
+                            ctx.curGunHeadingRadians,
                             Util.bultSpeed(power)
                             );
                     boolean collision = false;
@@ -382,7 +382,7 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
         }
         MoveType aimType = getBestAimType(lockOnTarget);
 
-        double gunTurn = 0;
+        double gunTurnRadians = 0;
         long gunTurnTime = 1;
 
         for (int i = 0 ; i < MAX_CALC ; i++ ) {
@@ -400,15 +400,15 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
             Pair<Long,Double> shot = calcShot(aimType,prospectTarget,prospectMy,bulletVelocity);
             long bulletTime = shot.first;
             double bulletRadians = shot.second;
-            gunTurn = ctx.calcAbsGunTurn(Math.toDegrees(bulletRadians));
-            long nextGunTurnTime = (long) Math.ceil(gunTurn / Util.gunTurnSpeed());
+            gunTurnRadians = ctx.calcAbsGunTurnRadians(bulletRadians);
+            long nextGunTurnTime = (long) Math.ceil(gunTurnRadians / Util.gunTurnSpeedRadians());
             if ( gunTurnTime == nextGunTurnTime) {
                 ctx.lockOnPoint = Util.calcPoint(bulletRadians,bulletTime*bulletVelocity).add(prospectMy);
                 break;
             }
             gunTurnTime = nextGunTurnTime;
         }
-        doTurnGunRight(gunTurn);
+        doTurnGunRightRadians(gunTurnRadians);
 
     }
     protected void radarLockOn(String lockonTarget) {
@@ -417,17 +417,17 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
             normalMode();
             return;
         }
-        double targetBearing = ctx.my.calcDegree(lockOnTarget);
-        double radarTurn = ctx.calcAbsRadarTurn(targetBearing);
-        if ( Math.abs(radarTurn) < Util.radarTurnSpeed() ) {
-            double diffDegree = Util.calcTurn(ctx.curRadarHeading,targetBearing);
-            double swingBearing = targetBearing + (Util.radarTurnSpeed()/2);
-            if ( diffDegree != 0.0 ) {
-                swingBearing = targetBearing + (Util.radarTurnSpeed()/2)*(Math.abs(diffDegree)/diffDegree);
+        double targetBearingRadians = ctx.my.calcRadians(lockOnTarget);
+        double radarTurnRadians = ctx.calcAbsRadarTurnRadians(targetBearingRadians);
+        if ( Math.abs(radarTurnRadians) < Util.radarTurnSpeedRadians() ) {
+            double diffRadians = Util.calcTurnRadians(ctx.curRadarHeadingRadians,targetBearingRadians);
+            double swingBearingRadians = targetBearingRadians + (Util.radarTurnSpeedRadians()/2);
+            if ( diffRadians != 0.0 ) {
+                swingBearingRadians = targetBearingRadians + (Util.radarTurnSpeedRadians()/2)*(Math.abs(diffRadians)/diffRadians);
             }
-            radarTurn = ctx.calcAbsRadarTurn(swingBearing);
+            radarTurnRadians = ctx.calcAbsRadarTurnRadians(swingBearingRadians);
         }
-        this.doTurnRadarRight(radarTurn);
+        this.doTurnRadarRightRadians(radarTurnRadians);
     }
 
     @Override
@@ -451,7 +451,7 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
         setFireMode(ctx.MODE_FIRE_AUTO);
         // Todo: initial move (towards radar scan)
         doAhead(50);
-        doTurnRight(10);
+        doTurnRightRadians(Util.turnSpeedRadians(0));
         super.cbFirst();
     }
     
@@ -630,10 +630,10 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
                     }
                 }
             }
-            if ( ctx.curRadarTurnRemaining == 0.0 || isAllScan ) {
+            if ( ctx.curRadarTurnRemainingRadians == 0.0 || isAllScan ) {
                 ctx.toggleRadarTowards();
-                doTurnRadarRight(6*Util.radarTurnSpeed()*ctx.radarTowards);
-                doTurnGunRight(6*Util.gunTurnSpeed()*ctx.radarTowards);
+                doTurnRadarRightRadians(6*Util.radarTurnSpeedRadians()*ctx.radarTowards);
+                doTurnGunRightRadians(6*Util.gunTurnSpeedRadians()*ctx.radarTowards);
                 for ( Map.Entry<String,Enemy> e : enemyMap.entrySet() ) {
                     e.getValue().scanned = false;
                 }
@@ -727,8 +727,8 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
     }
     protected void changeRadarMode(){
         if ( ctx.isRadarMode(ctx.MODE_RADAR_SEARCH) && ! (this instanceof Droid) ) {
-            doTurnRadarRight(3*Util.radarTurnSpeed()*ctx.radarTowards);
-            doTurnGunRight(3*Util.gunTurnSpeed()*ctx.radarTowards);
+            doTurnRadarRightRadians(3*Util.radarTurnSpeedRadians()*ctx.radarTowards);
+            doTurnGunRightRadians(3*Util.gunTurnSpeedRadians()*ctx.radarTowards);
         }
     }
 
@@ -794,10 +794,10 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobo<T> {
                 Point priority = Util.calcPoint(ctx.my.calcRadians(enemy), calcPriority(enemy)).add(ctx.my);
                 g.drawLine((int) enemy.x, (int) enemy.y, (int) priority.x, (int) priority.y);
                 double enemyDistance = ctx.my.calcDistance(enemy);
-                double enemyBearing  = ctx.my.calcDegree(enemy);
+                double enemyBearingRadians  = ctx.my.calcRadians(enemy);
                 g.drawString(String.format("%s : %s", enemy.name, enemy), (int) base.x - 20, (int) base.y - 40);
-                g.drawString(String.format("dist(degr): %2.2f(%2.2f)", enemyDistance,enemyBearing), (int) base.x - 20, (int) base.y - 50);
-                g.drawString(String.format("head(velo): %2.2f(%2.2f)", enemy.heading, enemy.velocity), (int) base.x - 20, (int) base.y - 60);
+                g.drawString(String.format("dist(degr): %2.2f(%2.2f)", enemyDistance,Math.toDegrees(enemyBearingRadians)), (int) base.x - 20, (int) base.y - 50);
+                g.drawString(String.format("head(velo): %2.2f(%2.2f)", Math.toDegrees(enemy.headingRadians), enemy.velocity), (int) base.x - 20, (int) base.y - 60);
                 g.drawString(String.format("%2.2f", calcPriority(enemy)), (int) base.x - 20, (int) base.y - 70);
                 g.setColor(new Color(0.2f, 1.0f, 0.7f, PAINT_OPACITY));
                 drawRound(g, enemy.x, enemy.y, 35);

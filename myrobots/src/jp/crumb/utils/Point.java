@@ -60,9 +60,6 @@ public class Point implements Serializable{
         return Util.calcRadians((dst.x-this.x),(dst.y-this.y));
     }
 
-    public double calcDegree(Point dst) {
-        return Math.toDegrees(calcRadians(dst));
-    }    
     @Override
     public String toString() {
         return String.format("(%2.2f,%2.2f)", x, y);

@@ -14,7 +14,7 @@ import jp.crumb.utils.Util;
  *
  * @author crumb
  */
-public class Turn extends BaseRobot<BaseContext> {
+public class Move extends BaseRobot<BaseContext> {
 
     @Override
     public void run() {
@@ -31,22 +31,9 @@ public class Turn extends BaseRobot<BaseContext> {
         return defalutCreateContext(in);
     }
 
-    int t = 1;
-    int i = 5;
     @Override
     protected void cbMoving() {
-        doAhead(-100);
-        doTurnRightRadians(Math.toRadians(100));
-        if( i <= 1 || i >= 8 ) {
-            t*=-1;
-        }
-        if ( t > 0 ) {
-            i++;
-        }else {
-            i--;
-        }
-        setMaxVelocity(i);
-        setDestination(null);
+        setDestination(new Point(100,100));
     }
 
     @Override

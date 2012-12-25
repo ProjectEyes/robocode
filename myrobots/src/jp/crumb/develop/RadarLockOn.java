@@ -17,7 +17,7 @@ import jp.crumb.utils.Enemy;
  *
  * @author crumb
  */
-public class RadarLockOn extends AdvCrumbRobot<AdbCrumbContext>{
+public class RadarLockOn extends CrumbRobot<CrumbContext> {
     @Override
     protected void cbThinking() {
         setFireMode(ctx.MODE_FIRE_MANUAL);

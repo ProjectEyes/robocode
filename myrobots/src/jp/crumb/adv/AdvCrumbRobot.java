@@ -413,8 +413,8 @@ abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobo
                     if ( bestDiff > diff && vecter.isNearly(v) ) {
                         logger.prospect4("D:%2.2f (%2.2f)%s D:%2.2f || (%2.2f)%s D:%2.2f", 
                                 diff,
-                                Math.toDegrees(v.x),robot,v.distance,
-                                Math.toDegrees(vecter.x),logEnemy(round,robot.name,pair.first.time),vecter.distance);
+                                v.x,robot,v.distance,
+                                vecter.x,logEnemy(round,robot.name,pair.first.time),vecter.distance);
                         bestDiff = diff;
                         best = pair.first;
                     }
@@ -541,11 +541,11 @@ abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobo
     }
     
     protected void evalSimplePattern(Enemy prevEnemy,Enemy constEnemy){
-long nnano = 0;        
-long pnano = 0;        
-long fnano = 0;    
-long dnano = 0;        
-long enano = 0;        
+//long nnano = 0;        
+//long pnano = 0;        
+//long fnano = 0;    
+//long dnano = 0;        
+//long enano = 0;        
         Score bestScore = null;
         long deltaTime = constEnemy.time - prevEnemy.time;
         for( Map.Entry<Integer,Map<String,Map<Long,Enemy>>> e : enemyLog.entrySet() ) {
@@ -555,9 +555,9 @@ long enano = 0;
                 continue;
             }
             for ( Map.Entry<Long,Enemy> te : logs.entrySet() ) {
-long nano0 = System.nanoTime();                
-long nano1 = System.nanoTime();                
-nnano += nano1 - nano0;
+//long nano0 = System.nanoTime();                
+//long nano1 = System.nanoTime();                
+//nnano += nano1 - nano0;
 
                 long absTime = te.getKey();
                 Enemy logEnemy = te.getValue();
@@ -579,26 +579,26 @@ nnano += nano1 - nano0;
                         continue;// TODO: remove
                     }
                 }
-long nano2 = System.nanoTime();                
-fnano += nano2 - nano1;
+//long nano2 = System.nanoTime();                
+//fnano += nano2 - nano1;
                 Score score = scores.get(scoreTime);
                 if ( score == null ) {
                     score = new Score(scoreTime, round);
                     scores.put(scoreTime,score);
                 }
-long nano3 = System.nanoTime();                 
-pnano += nano3 - nano2;
+//long nano3 = System.nanoTime();                 
+//pnano += nano3 - nano2;
                 RobotPoint prospectEnemy = new RobotPoint(prevEnemy);
                 prospectEnemy.setDelta(logEnemy.delta);
                 prospectEnemy.prospectNext(deltaTime);
-long nano4 = System.nanoTime();                
-dnano += nano4 - nano3;
+//long nano4 = System.nanoTime();                
+//dnano += nano4 - nano3;
                 RobotPoint prospectEnemy2 = new RobotPoint(prevEnemy);
                 prospectEnemy2.setDelta(logEnemy.delta);
                 Util.replayMove( prospectEnemy2,logEnemy);
 
-long nano5 = System.nanoTime();                
-enano += nano5 - nano4;
+//long nano5 = System.nanoTime();                
+//enano += nano5 - nano4;
                 double d = prospectEnemy.calcDistance(constEnemy);
                 score.updateScore(PERFECT_SCORE-d,SIMPLE_PATTERN_SCORE_ESTIMATE_LIMIT);
                 if ( bestScore == null || bestScore.score < score.score && score.scoreCount >= SIMPLE_PATTERN_SCORE_ESTIMATE_LIMIT ){
@@ -614,7 +614,7 @@ enano += nano5 - nano4;
 //            logger.log("BEST %d:%03d: %2.2f",bestScore.round,bestScore.time,bestScore.score);
 //        }
 
-logger.log("P: %2.2f %2.2f %2.2f %2.2f %2.2f",(double)nnano/1000000.0,(double)fnano/1000000.0,(double)pnano/1000000.0,(double)dnano/1000000.0,(double)enano/1000000.0);
+//logger.log("P: %2.2f %2.2f %2.2f %2.2f %2.2f",(double)nnano/1000000.0,(double)fnano/1000000.0,(double)pnano/1000000.0,(double)dnano/1000000.0,(double)enano/1000000.0);
 
     }
     @Override
@@ -699,7 +699,6 @@ if ( end-start > 5 ) {
             Pair<Long, Double> shot = calcShot(moveType, target, prevMy, info.src.velocity);
             MovingPoint bulletPoint = new MovingPoint(info.src);
             bulletPoint.headingRadians = shot.second;
-            bulletPoint.heading = Math.toDegrees(shot.second);
             // Validate on history
             double closest = Util.fieldFullDistance;
             // double closestDistance = Util.fieldFullDistance;
@@ -770,15 +769,16 @@ if ( end-start > 5 ) {
     protected Map.Entry<String, BulletInfo> cbBulletHit(BulletHitEvent e) {
         Map.Entry<String,BulletInfo> entry = super.cbBulletHit(e);
         Bullet bullet = e.getBullet();
-        Point dst = new Point(bullet.getX(),bullet.getY());
-        for ( Map.Entry<String,BulletInfo> ebi : enemyBulletList.entrySet() ) {
-            BulletInfo bulletInfo = ebi.getValue();
-            if ( e.getTime() == bulletInfo.src.timeStamp && bulletInfo.src.calcDegree(dst) < Util.tankSize ) {
-                logger.fire2("CANCEL BULLET() %s : %s ", dst,bulletInfo.src);
-                impactEnemyBulletInfo(bulletInfo.bulletName);
-                break;
-            }
-        }
+//        Point dst = new Point(bullet.getX(),bullet.getY());
+//        for ( Map.Entry<String,BulletInfo> ebi : enemyBulletList.entrySet() ) {
+//            BulletInfo bulletInfo = ebi.getValue();
+//            double diff = Util.calcPointToLineRange(bulletInfo.src, dst, bullet.getHeadingRadians());
+//            if ( e.getTime() == bulletInfo.src.timeStamp && diff < Util.tankSize ) {
+//                logger.fire2("CANCEL BULLET() %s : %s ", dst,bulletInfo.src);
+//                impactEnemyBulletInfo(bulletInfo.bulletName);
+//                break;
+//            }
+//        }
         if ( entry != null ) {
             BulletInfo info = entry.getValue();
             if ( bullet.getVictim().equals(info.targetName) ) {
@@ -934,7 +934,6 @@ if ( end-start > 5 ) {
         double radians = calcShot(shotType,prevMy,src,bulletVelocity).second; //
 
         src.headingRadians = radians;
-        src.heading  = Math.toDegrees(radians);
         src.velocity = bulletVelocity;
         return  new BulletInfo(enemyName,name,distance,src,shotType.type);
     }

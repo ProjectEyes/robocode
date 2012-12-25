@@ -35,7 +35,6 @@ public class RobotPoint extends MovingPoint {
         delta.x = x - prev.x;
         delta.y = y - prev.y;
         delta.time = time - prev.time;
-        delta.heading = Util.calcTurn(prev.heading,heading);
         delta.headingRadians = Util.calcTurnRadians(prev.headingRadians,headingRadians);
         delta.velocity = velocity - prev.velocity;
     }
@@ -66,12 +65,15 @@ public class RobotPoint extends MovingPoint {
             return inertia(1);
         }else {
             RobotPoint backup = new RobotPoint(this);
-            if (delta.heading != 0) {
-                double deltaHeading = delta.heading / delta.time;
-                deltaHeading = (Math.abs(deltaHeading)<Util.turnSpeed(velocity))?deltaHeading:Util.turnSpeed(velocity)*Math.abs(deltaHeading)/deltaHeading;
-                double deltaRadians = Math.toRadians(deltaHeading);
-                heading += deltaHeading;
-                headingRadians += deltaRadians;
+            if (delta.headingRadians != 0) {
+                double deltaHeadingRadians = delta.headingRadians / delta.time;
+                if ( Math.abs(deltaHeadingRadians)>Util.turnSpeedRadians(velocity) ) {
+                    deltaHeadingRadians = Util.turnSpeedRadians(velocity);
+                    if ( delta.headingRadians < 0 ) {
+                        deltaHeadingRadians *= -1;
+                    }
+                }
+                headingRadians += deltaHeadingRadians;
             }
             
             // Point deltaByTurn = Util.calcPoint(headingRadians, velocity); Move to after of velocity

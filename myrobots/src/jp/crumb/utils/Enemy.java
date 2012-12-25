@@ -30,7 +30,6 @@ public class Enemy extends RobotPoint {
         Point d =Util.calcPoint(bearingRadians, distance).add(my);
         this.x = d.x;
         this.y = d.y;
-        this.heading = e.getHeading();
         this.headingRadians = e.getHeadingRadians();
         this.velocity = e.getVelocity();
         this.energy = e.getEnergy();

@@ -4,10 +4,7 @@
  */
 package jp.crumb.develop;
 
-import jp.crumb.base.BaseContext;
-import jp.crumb.base.BaseRobo;
 import robocode.AdvancedRobot;
-import robocode.Robot;
 
 /**
  *
