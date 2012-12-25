@@ -483,6 +483,8 @@ abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobo
             if ( logEnemy != null && logEnemy.delta != null) {
                 logger.prospect4("%d: %d(%d) : %s",l,best.time,absLogTime,logEnemy.delta);
 //                logger.log("%d: %s(%d) : %s",l,s.name,absLogTime,logEnemy.delta);
+                // TODO: more perform
+                // Util.replayMove(robot, logEnemy);
                 robot.setDelta(logEnemy.delta);
                 robot.prospectNext(1);
                 if ( isPaint ) {
@@ -591,15 +593,17 @@ abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobo
                 RobotPoint prospectEnemy = new RobotPoint(prevEnemy);
                 prospectEnemy.setDelta(logEnemy.delta);
                 prospectEnemy.prospectNext(deltaTime);
+                double d = prospectEnemy.calcDistance(constEnemy);
+
 //long nano4 = System.nanoTime();                
 //dnano += nano4 - nano3;
-                RobotPoint prospectEnemy2 = new RobotPoint(prevEnemy);
-                prospectEnemy2.setDelta(logEnemy.delta);
-                Util.replayMove( prospectEnemy2,logEnemy);
+// TODO: more perform
+//                MovingPoint prospectEnemy2 = new MovingPoint(prevEnemy);
+//                Util.replayMove( prospectEnemy2,logEnemy);
+//                double d = prospectEnemy2.calcDistance(constEnemy);
 
 //long nano5 = System.nanoTime();                
 //enano += nano5 - nano4;
-                double d = prospectEnemy.calcDistance(constEnemy);
                 score.updateScore(PERFECT_SCORE-d,SIMPLE_PATTERN_SCORE_ESTIMATE_LIMIT);
                 if ( bestScore == null || bestScore.score < score.score && score.scoreCount >= SIMPLE_PATTERN_SCORE_ESTIMATE_LIMIT ){
                     bestScore = score;
@@ -627,40 +631,36 @@ abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobo
 long start = System.nanoTime();
         if ( ! isTeammate(constEnemy.name)) {
             updateLogEnemy(constEnemy);
-        }
 
-        if ( ! shotTypeMap.containsKey(constEnemy.name) ) {
-            shotTypeMap.put(constEnemy.name,initialShotTypeList());
-        }
-        if ( ! aimTypeMap.containsKey(constEnemy.name) ) {
-            aimTypeMap.put(constEnemy.name,initialAimTypeList());
-        }
-        if ( getAimType(enemy.name,MoveType.TYPE_SIMPLE_PATTERN_CENTER) != null ||
-                getAimType(enemy.name,MoveType.TYPE_SIMPLE_PATTERN_FIRST) != null ) {
-            initSimplePattern(enemy.name);
-        }
-
-long istart = 0;
-long iend = 0;
-        if ( prevEnemy != null ) {
-            // Aimed
-            if ( (prevEnemy.energy - enemy.energy) >= 0.1 && (prevEnemy.energy - enemy.energy) <= 3 ) {
-                enemyBullet(prevEnemy,enemy);
+            if ( ! shotTypeMap.containsKey(constEnemy.name) ) {
+                shotTypeMap.put(constEnemy.name,initialShotTypeList());
             }
-istart = System.nanoTime();
+            if ( ! aimTypeMap.containsKey(constEnemy.name) ) {
+                aimTypeMap.put(constEnemy.name,initialAimTypeList());
+            }
             if ( getAimType(enemy.name,MoveType.TYPE_SIMPLE_PATTERN_CENTER) != null ||
-                 getAimType(enemy.name,MoveType.TYPE_SIMPLE_PATTERN_FIRST) != null ) {
-                evalSimplePattern(prevEnemy, constEnemy);
+                    getAimType(enemy.name,MoveType.TYPE_SIMPLE_PATTERN_FIRST) != null ) {
+                initSimplePattern(enemy.name);
             }
-iend = System.nanoTime();
-            if ( getAimType(enemy.name,MoveType.TYPE_REACT_PATTERN_CENTER) != null ||
-                 getAimType(enemy.name,MoveType.TYPE_REACT_PATTERN_FIRST) != null ) {
-                evalReactPattern(prevEnemy, constEnemy);
+
+            if ( prevEnemy != null ) {
+                // Aimed
+                if ( (prevEnemy.energy - enemy.energy) >= 0.1 && (prevEnemy.energy - enemy.energy) <= 3 ) {
+                    enemyBullet(prevEnemy,enemy);
+                }
+                if ( getAimType(enemy.name,MoveType.TYPE_SIMPLE_PATTERN_CENTER) != null ||
+                        getAimType(enemy.name,MoveType.TYPE_SIMPLE_PATTERN_FIRST) != null ) {
+                    evalSimplePattern(prevEnemy, constEnemy);
+                }
+                if ( getAimType(enemy.name,MoveType.TYPE_REACT_PATTERN_CENTER) != null ||
+                        getAimType(enemy.name,MoveType.TYPE_REACT_PATTERN_FIRST) != null ) {
+                    evalReactPattern(prevEnemy, constEnemy);
+                }
             }
         }
 long end = System.nanoTime();
-if ( end-start > 5 ) {
-    logger.log("SCAN ADV : %2.2f %2.2f",(double)(end-start)/1000000.0,(double)(iend-istart)/1000000.0);
+if ( end-start > 5000000 ) {
+    logger.log("SCAN ADV : %2.2f",(double)(end-start)/1000000.0);
 }
 
         return constEnemy;

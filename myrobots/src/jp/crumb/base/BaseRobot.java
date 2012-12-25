@@ -534,9 +534,9 @@ abstract public class BaseRobot<T extends BaseContext> extends TeamRobot {
 
     static long past = 0;
     private static void timeLog(String message) {
-        long t = System.currentTimeMillis();
-        if ( t-past > 5 ) {
-            Logger.log("%s : %d",message,(t-past));
+        long t = System.nanoTime();
+        if ( t-past > 50000000 ) {
+            Logger.log("%s : %2.2f",message,(double)(t-past)/1000000.0);
         }
         past = t;
     }
@@ -544,7 +544,7 @@ abstract public class BaseRobot<T extends BaseContext> extends TeamRobot {
     boolean first = true;
     @Override
     public void onCustomEvent(CustomEvent event) {
-        long startTime = System.currentTimeMillis();
+        long startTime = System.nanoTime();
         this.setInterruptible(true);
         if (event.getCondition().equals(this.firstTickTimer) ) {
             //this.removeCustomEvent(firstTickTimer);
@@ -559,7 +559,7 @@ abstract public class BaseRobot<T extends BaseContext> extends TeamRobot {
             updateCurrent();
             sendMyInfo();
             
-            timeLog("");
+            timeLog("FIRST");
             for ( ScannedRobotEvent e: this.getScannedRobotEvents() ) {
                 this.preScannedRobot(e);
             }
@@ -617,9 +617,9 @@ abstract public class BaseRobot<T extends BaseContext> extends TeamRobot {
             timeLog("FIRE");
         }
         this.paint(getGraphics());
-        long endTime = System.currentTimeMillis();
-        if ( endTime-startTime > 10 ) {
-            logger.log("E : %d",(endTime-startTime));
+        long endTime = System.nanoTime();
+        if ( endTime-startTime > 10000000 ) {
+            logger.log("E : %2.2f",(double)(endTime-startTime)/1000000.0);
         }
         execute();
     }

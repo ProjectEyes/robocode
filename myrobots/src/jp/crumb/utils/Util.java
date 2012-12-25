@@ -237,6 +237,7 @@ public class Util {
         src.add(Util.calcPoint(r, d));
         src.headingRadians += log.delta.headingRadians;
         src.time += 1;
+        src.velocity += log.delta.velocity;
         return src;
     }
 }

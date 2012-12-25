@@ -42,7 +42,7 @@ public class Score implements Serializable{
         s = (s<0)?0:s;
         double count = scoreCount;
         if ( scoreCount == 0 ) {
-            score = s/1.2; // penalty
+            score = s/1.05; // penalty
             scoreCount++;
             return;
         }
