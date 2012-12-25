@@ -221,4 +221,27 @@ public class Util {
 //System.out.println("D1:" + d1 + " T1:" + t1 + " dt:" + (p1.velocity + p1.time) + " DT:" + (t1 - p2.time) );
         return Util.calcPoint(p1.headingRadians, d1).add(p1).calcDistance(new MovingPoint(p2).inertia(t1 - p2.time));
     }
+    
+    public static double calcRadians(double x,double y) {
+        if ( y == 0 ) {
+            return (x > 0) ? Math.PI / 2 : Math.PI / -2;
+        }else if ( y > 0 ) {
+            return Math.atan(x/y);
+        }else {
+            return Math.atan(x/y) - Math.PI;            
+        }
+    }
+    
+    public static double calcDistance(double x,double y) {
+        return Math.sqrt(x*x+y*y);
+    }
+    // TODO: more perform
+    public static MovingPoint replayMove(MovingPoint src , RobotPoint log){
+        double d = calcDistance(log.delta.x,log.delta.y);
+        double r = src.headingRadians - log.headingRadians + calcRadians(log.delta.x,log.delta.y);
+        src.add(Util.calcPoint(r, d));
+        src.headingRadians += log.delta.headingRadians;
+        src.time += 1;
+        return src;
+    }
 }

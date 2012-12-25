@@ -52,11 +52,8 @@ abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobo
     protected static final long SIMPLE_PATTERN_TERM_MIN = 15;
 
     protected static final double SIMPLE_PATTERN_SCORE_ESTIMATE_LIMIT = 7;
-    protected static final double SIMPLE_PATTERN_SCORE_ESTIMATE_MIN = 1;
     protected static final double SHOT_SCORE_ESTIMATE_LIMIT = 5;
-    protected static final double SHOT_SCORE_ESTIMATE_MIN = 5;
     protected static final double AIM_SCORE_ESTIMATE_LIMIT = 7;
-    protected static final double AIM_SCORE_ESTIMATE_MIN = 7;
 
 //    protected static final double PATTERN_SCORE_ESTIMATE_LIMIT = 10;
 //    protected static final double SHOT_SCORE_ESTIMATE_LIMIT = 10;
@@ -544,6 +541,11 @@ abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobo
     }
     
     protected void evalSimplePattern(Enemy prevEnemy,Enemy constEnemy){
+long nnano = 0;        
+long pnano = 0;        
+long fnano = 0;    
+long dnano = 0;        
+long enano = 0;        
         Score bestScore = null;
         long deltaTime = constEnemy.time - prevEnemy.time;
         for( Map.Entry<Integer,Map<String,Map<Long,Enemy>>> e : enemyLog.entrySet() ) {
@@ -553,6 +555,10 @@ abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobo
                 continue;
             }
             for ( Map.Entry<Long,Enemy> te : logs.entrySet() ) {
+long nano0 = System.nanoTime();                
+long nano1 = System.nanoTime();                
+nnano += nano1 - nano0;
+
                 long absTime = te.getKey();
                 Enemy logEnemy = te.getValue();
                 if ( logEnemy.delta == null ) {
@@ -573,28 +579,42 @@ abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobo
                         continue;// TODO: remove
                     }
                 }
-                if ( ! scores.containsKey(scoreTime) ) {
-                    scores.put(scoreTime,new Score(scoreTime, round));
-                }
+long nano2 = System.nanoTime();                
+fnano += nano2 - nano1;
                 Score score = scores.get(scoreTime);
-
+                if ( score == null ) {
+                    score = new Score(scoreTime, round);
+                    scores.put(scoreTime,score);
+                }
+long nano3 = System.nanoTime();                 
+pnano += nano3 - nano2;
                 RobotPoint prospectEnemy = new RobotPoint(prevEnemy);
                 prospectEnemy.setDelta(logEnemy.delta);
                 prospectEnemy.prospectNext(deltaTime);
-                double d = prospectEnemy.calcDistance(constEnemy);
+long nano4 = System.nanoTime();                
+dnano += nano4 - nano3;
+                RobotPoint prospectEnemy2 = new RobotPoint(prevEnemy);
+                prospectEnemy2.setDelta(logEnemy.delta);
+                Util.replayMove( prospectEnemy2,logEnemy);
 
-                score.updateScore(PERFECT_SCORE-d,SIMPLE_PATTERN_SCORE_ESTIMATE_LIMIT,SIMPLE_PATTERN_SCORE_ESTIMATE_LIMIT);
-                if ( bestScore == null || bestScore.score < score.score) {
+long nano5 = System.nanoTime();                
+enano += nano5 - nano4;
+                double d = prospectEnemy.calcDistance(constEnemy);
+                score.updateScore(PERFECT_SCORE-d,SIMPLE_PATTERN_SCORE_ESTIMATE_LIMIT);
+                if ( bestScore == null || bestScore.score < score.score && score.scoreCount >= SIMPLE_PATTERN_SCORE_ESTIMATE_LIMIT ){
                     bestScore = score;
                 }
-                logger.prospect4("REACT %d/%03d(%03d): %2.2f(%2.2f)",score.round,score.time,absTime,score.score,d);
-//                logger.log("REACT %d:%03d(%03d): %2.2f(%2.2f)",score.round,score.time,absTime,score.score,d);
+//                logger.prospect4("SIMPLE %d/%03d(%03d): %2.2f(%2.2f)",score.round,score.time,absTime,score.score,d);
+//                logger.log("SIMPLE %d:%03d(%03d): %2.2f(%2.2f)",score.round,score.time,absTime,score.score,d);
             }
         }
         // Update best
         simplePatternBestScoreMap.put(constEnemy.name, bestScore);
-//System.out.println("BEST : " + best.round + " : " + best.time + " : " + best.score);
+//        if ( bestScore != null ) {
+//            logger.log("BEST %d:%03d: %2.2f",bestScore.round,bestScore.time,bestScore.score);
+//        }
 
+logger.log("P: %2.2f %2.2f %2.2f %2.2f %2.2f",(double)nnano/1000000.0,(double)fnano/1000000.0,(double)pnano/1000000.0,(double)dnano/1000000.0,(double)enano/1000000.0);
 
     }
     @Override
@@ -604,7 +624,7 @@ abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobo
         if ( constEnemy == null ) {
             return null;
         }
-long start = System.currentTimeMillis();
+long start = System.nanoTime();
         if ( ! isTeammate(constEnemy.name)) {
             updateLogEnemy(constEnemy);
         }
@@ -627,20 +647,20 @@ long iend = 0;
             if ( (prevEnemy.energy - enemy.energy) >= 0.1 && (prevEnemy.energy - enemy.energy) <= 3 ) {
                 enemyBullet(prevEnemy,enemy);
             }
-istart = System.currentTimeMillis();
+istart = System.nanoTime();
             if ( getAimType(enemy.name,MoveType.TYPE_SIMPLE_PATTERN_CENTER) != null ||
                  getAimType(enemy.name,MoveType.TYPE_SIMPLE_PATTERN_FIRST) != null ) {
                 evalSimplePattern(prevEnemy, constEnemy);
             }
-iend = System.currentTimeMillis();
+iend = System.nanoTime();
             if ( getAimType(enemy.name,MoveType.TYPE_REACT_PATTERN_CENTER) != null ||
                  getAimType(enemy.name,MoveType.TYPE_REACT_PATTERN_FIRST) != null ) {
                 evalReactPattern(prevEnemy, constEnemy);
             }
         }
-long end = System.currentTimeMillis();
+long end = System.nanoTime();
 if ( end-start > 5 ) {
-    logger.log("SCAN ADV : %d %d",(end-start),(iend-istart));
+    logger.log("SCAN ADV : %2.2f %2.2f",(double)(end-start)/1000000.0,(double)(iend-istart)/1000000.0);
 }
 
         return constEnemy;
@@ -729,7 +749,7 @@ if ( end-start > 5 ) {
             // ndouble diffRadians = closest / closestDistance; // So use sin
             // diffRadians = (Math.abs(diffRadians) < BULLET_DIFF_THRESHOLD) ? diffRadians : BULLET_DIFF_THRESHOLD;
             //moveType.updateScore(Math.PI / 2 - diffRadians,AIM_SCORE_ESTIMATE_LIMIT,AIM_SCORE_ESTIMATE_MIN);a
-            moveType.updateScore(PERFECT_SCORE-closest,AIM_SCORE_ESTIMATE_LIMIT,AIM_SCORE_ESTIMATE_MIN);
+            moveType.updateScore(PERFECT_SCORE-closest,AIM_SCORE_ESTIMATE_LIMIT);
             logger.prospect1("AIMTYPE(x%03x)  s:%2.2f d:%03.1f %2.2f %% (%d/%d)", moveType.type,moveType.score,closest,moveType.avrage()*100.0,moveType.hitCount,moveType.aimCount);
         }
         broadcastMessage(new AimTypeEvent(info.targetName, aimTypeList));
@@ -822,7 +842,7 @@ if ( end-start > 5 ) {
             Pair<Long, Double> shot = calcShot(moveType, prevMy, info.src, bulletVelocity, deltaTime);
             Point bulletPoint = Util.calcPoint(shot.second, shot.first * bulletVelocity).add(info.src);
             double d = bulletPoint.calcDistance(ctx.my);
-            moveType.updateScore(PERFECT_SCORE - d, SHOT_SCORE_ESTIMATE_LIMIT, SHOT_SCORE_ESTIMATE_MIN);
+            moveType.updateScore(PERFECT_SCORE - d, SHOT_SCORE_ESTIMATE_LIMIT);
 //                double shotRadians =
 //                double diffRadians = Util.calcTurnRadians(bulletRadians,shotRadians);
 //                diffRadians = (Math.abs(diffRadians)<ENEMY_BULLET_DIFF_THRESHOLD)?diffRadians:ENEMY_BULLET_DIFF_THRESHOLD;

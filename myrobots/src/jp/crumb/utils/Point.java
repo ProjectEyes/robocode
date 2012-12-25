@@ -53,29 +53,15 @@ public class Point implements Serializable{
     }
 
 
-    
     public double calcDistance(Point dst) {
-        return Math.sqrt((this.x - dst.x) * (this.x - dst.x) + (this.y - dst.y) * (this.y - dst.y));
+        return Util.calcDistance((this.x - dst.x),(this.y - dst.y));
     }
-
     public double calcRadians(Point dst) {
-        if (dst.y == this.y) {
-            return (dst.x > this.x) ? Math.PI / 2 : Math.PI / -2;
-        } else if (dst.y > this.y) {
-            return Math.atan((this.x - dst.x) / (this.y - dst.y));
-        } else {
-            return Math.atan((this.x - dst.x) / (this.y - dst.y)) - Math.PI;
-        }
+        return Util.calcRadians((dst.x-this.x),(dst.y-this.y));
     }
 
     public double calcDegree(Point dst) {
-        if (this.y == dst.y) {
-            return (dst.x > this.x) ? 90 : -90;
-        } else if (dst.y > this.y) {
-            return Math.toDegrees(Math.atan((this.x-dst.x)/(this.y-dst.y)));
-        } else {
-            return Math.toDegrees(Math.atan((this.x-dst.x)/(this.y-dst.y))) - 180;
-        }
+        return Math.toDegrees(calcRadians(dst));
     }    
     @Override
     public String toString() {

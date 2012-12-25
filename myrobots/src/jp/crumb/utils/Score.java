@@ -38,22 +38,21 @@ public class Score implements Serializable{
         scoreCount = 0;
         score = 0;
     }
-    public void updateScore(double s,double limit,double min){
+    public void updateScore(double s,double limit){
         s = (s<0)?0:s;
         double count = scoreCount;
+        if ( scoreCount == 0 ) {
+            score = s/1.2; // penalty
+            scoreCount++;
+            return;
+        }
         if ( scoreCount > limit ) {
             count = limit;
         }
-        if ( count < min ) {
-            count = min;
-        }
         double sumScore = count * score + s;
+        score = sumScore/(count+1);
         scoreCount++;
-        count++;
-        score = sumScore/(double)count;
-    }
-    public void updateScore(double s){
-        updateScore((s<0)?0:s,Double.POSITIVE_INFINITY,0);
+        // score = sumScore/(double)count;
     }
     public static <T extends Score> T getByScore(Collection<T> list) {
         T ret = null;

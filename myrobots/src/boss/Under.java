@@ -57,7 +57,6 @@ public abstract class Under extends AdvCrumbRobot<AdbCrumbContext> implements Dr
         }
         Enemy boss = enemyMap.get(leader);
         if ( boss != null ) {
-            System.out.println(boss.name+ " : " );
             dst.diff(Util.getGrabity(ctx.my,boss, -5,0));
         }
         return dst;
