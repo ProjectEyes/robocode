@@ -125,9 +125,6 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobot<T> {
     protected boolean prospectNextRobotReactPattern(RobotPoint robot,long term,ProspectContext context){
         throw new UnsupportedOperationException("[ReactPattern] Not supported yet");
     }
-    protected boolean prospectNextRobotRecentPattern(RobotPoint robot,long term,ProspectContext context){
-        throw new UnsupportedOperationException("[RecenttPattern] Not supported yet");
-    }
 
     protected boolean prospectNextRobot(RobotPoint robot,MoveType moveType,long term) {
         return prospectNextRobot(robot, moveType, term ,null);
@@ -143,8 +140,6 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobot<T> {
             return prospectNextRobotSimplePattern(robot,term,context);
         }else if ( moveType.isTypeReactPattern()) {
             return prospectNextRobotReactPattern(robot,term,context);
-        }else if ( moveType.isTypeRecentPattern()) {
-            return prospectNextRobotRecentPattern(robot,term,context);
         }else {
             throw new UnsupportedOperationException("Unknown MoveType : " + moveType.type);
         }
@@ -181,9 +176,8 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobot<T> {
             BulletInfo info = e.getValue();
             if ( ! info.owner.equals(name) ){
                 MovingPoint bullet = new MovingPoint(info.src);
-                double power = Util.bultPower(bullet.velocity);
                 for ( int i = 0 ; i < BULLET_PROSPECT_TIME;i++) {
-                    dst.diff(Util.getGrabity(ctx.my,bullet, BULLET_WEIGHT*power,BULLET_DIM));
+                    dst.diff(Util.getGrabity(ctx.my,bullet, BULLET_WEIGHT*info.threat,BULLET_DIM));
                     bullet.inertia(1);
                 }
             }
@@ -360,6 +354,9 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobot<T> {
         long   retTime = 0;
         if ( moveType.isTypePinPoint() ) {
             retRadians = src.calcRadians(target);
+            retTime    = (long)Math.ceil(Math.abs(distance/bulletVelocity));
+        }else if ( moveType.isTypeUnknown() ) {
+            retRadians = src.calcRadians(target) + Math.PI/6*(Math.random()-0.5);
             retTime    = (long)Math.ceil(Math.abs(distance/bulletVelocity));
         }else {
             // ((deltaTime>0)?deltaTime:(long)Math.ceil(Math.abs(distance/velocity)))

@@ -47,11 +47,11 @@ import robocode.WinEvent;
  * @author crumb
  */
 abstract public class BaseRobot<T extends BaseContext> extends TeamRobot {
-    protected static final boolean isPaint = false;
-    protected Logger logger = new Logger(0);
-//    protected Logger logger = new Logger(
-//            Logger.LOGLV_PROSPECT1 | Logger.LOGLV_FIRE1
-//            );
+    protected static final boolean isPaint = true;
+//    protected Logger logger = new Logger(0);
+    protected Logger logger = new Logger(
+            Logger.LOGLV_PROSPECT1 | Logger.LOGLV_FIRE1
+            );
 
 
     protected static final double MOVE_COMPLETE_THRESHOLD = 1.0;
@@ -252,7 +252,7 @@ abstract public class BaseRobot<T extends BaseContext> extends TeamRobot {
         }
     }
 
-    private void goPoint(){
+    protected void goPoint(){
         Pair<Double,Double> go = calcGoPoint();
         if ( go == null ) {
             return;
@@ -399,7 +399,7 @@ abstract public class BaseRobot<T extends BaseContext> extends TeamRobot {
                 ctx.curGunHeadingRadians,
                 bulletVelocity
         );
-        BulletInfo bulletInfo = new BulletInfo(name,targetName,distance,src,type);
+        BulletInfo bulletInfo = new BulletInfo(name,targetName,distance,src,type,power);
         addBulletInfo(bulletInfo);
         broadcastMessage(new BulletEvent(bulletInfo));
         super.fire(power); // No return
