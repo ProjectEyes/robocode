@@ -520,9 +520,10 @@ abstract public class BaseRobot<T extends BaseContext> extends TeamRobot {
     public void onDeath(DeathEvent event) {
         dumpLog();
     }
-
+    static int WIN = 0;
     @Override
     public void onWin(WinEvent event) {
+        WIN++;
         dumpLog();
     }
     
@@ -538,11 +539,11 @@ abstract public class BaseRobot<T extends BaseContext> extends TeamRobot {
 
     static long past = 0;
     private static void timeLog(String message) {
-        long t = System.nanoTime();
-        if ( t-past > 50000000 ) {
-            Logger.log("%s : %2.2f",message,(double)(t-past)/1000000.0);
-        }
-        past = t;
+//        long t = System.nanoTime();
+//        if ( t-past > 50000000 ) {
+//            Logger.log("%s : %2.2f",message,(double)(t-past)/1000000.0);
+//        }
+//        past = t;
     }
 
     boolean first = true;
@@ -721,6 +722,7 @@ abstract public class BaseRobot<T extends BaseContext> extends TeamRobot {
     }
 
     protected void dumpLog(){
+        logger.log("*** %d/%d ***",WIN,getRoundNum()+1);
     }
 
     
