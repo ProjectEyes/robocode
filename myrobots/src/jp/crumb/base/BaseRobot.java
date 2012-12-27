@@ -181,7 +181,6 @@ abstract public class BaseRobot<T extends BaseContext> extends TeamRobot {
         BulletInfo info = null;
         Map.Entry<String,BulletInfo> entry = Util.calcBulletSrc(ctx.my.time,bullet,bulletList);
         if ( entry == null ) {
-            logger.fire1("Unknown bullet hit: ");
             logger.fire1("HIT (by chance): %s: %2.2f(%2.2f)  %s => %s",victim,aimDistance,range,"NULL",dst);
         }else{
             impactBullet(entry.getKey());
@@ -381,13 +380,10 @@ abstract public class BaseRobot<T extends BaseContext> extends TeamRobot {
         return curContext;
     }
 
-
-
-
-    protected void doFire(double power, double distance,String targetName ) {
-        doFire(power, distance, targetName,0);
-    }
-    protected void doFire(double power, double distance,String targetName, int type) {
+//    protected void doFire(double power, double distance,String targetName ) {
+//        doFire(power, distance, targetName,0);
+//    }
+    protected void doFire(double power, double distance,RobotPoint target, int type) {
         if ( ctx.gunHeat != 0 ) {
             return;
         }
@@ -399,7 +395,7 @@ abstract public class BaseRobot<T extends BaseContext> extends TeamRobot {
                 ctx.curGunHeadingRadians,
                 bulletVelocity
         );
-        BulletInfo bulletInfo = new BulletInfo(name,targetName,distance,src,type,power);
+        BulletInfo bulletInfo = new BulletInfo(name,target.name,distance,src,type,power);
         addBulletInfo(bulletInfo);
         broadcastMessage(new BulletEvent(bulletInfo));
         super.fire(power); // No return
@@ -638,17 +634,17 @@ abstract public class BaseRobot<T extends BaseContext> extends TeamRobot {
     protected static final float PAINT_OPACITY=0.5f;
     protected void paint(Graphics2D g) {
         if (isPaint) {
-            g.setColor(new Color(0, 0.7f, 0, PAINT_OPACITY));
-            g.setStroke(new BasicStroke(1.0f));
-            drawRound(g, ctx.my.x, ctx.my.y, 400 * 2);
-            drawRound(g, ctx.my.x, ctx.my.y, 600 * 2);
-            float[] dash = new float[2];
-            dash[0] = 0.1f;
-            dash[1] = 0.1f;
-            g.setStroke(new BasicStroke(1.0f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_BEVEL, 1.0f, dash, 0.0f));
-            drawRound(g, ctx.my.x, ctx.my.y, 100 * 2);
-            drawRound(g, ctx.my.x, ctx.my.y, 300 * 2);
-            drawRound(g, ctx.my.x, ctx.my.y, 500 * 2);
+//            g.setColor(new Color(0, 0.7f, 0, PAINT_OPACITY));
+//            g.setStroke(new BasicStroke(1.0f));
+//            drawRound(g, ctx.my.x, ctx.my.y, 400 * 2);
+//            drawRound(g, ctx.my.x, ctx.my.y, 600 * 2);
+//            float[] dash = new float[2];
+//            dash[0] = 0.1f;
+//            dash[1] = 0.1f;
+//            g.setStroke(new BasicStroke(1.0f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_BEVEL, 1.0f, dash, 0.0f));
+//            drawRound(g, ctx.my.x, ctx.my.y, 100 * 2);
+//            drawRound(g, ctx.my.x, ctx.my.y, 300 * 2);
+//            drawRound(g, ctx.my.x, ctx.my.y, 500 * 2);
 
             g.setStroke(new BasicStroke(1.0f));
             g.setColor(new Color(0, 0.7f, 0, PAINT_OPACITY));
@@ -679,9 +675,9 @@ abstract public class BaseRobot<T extends BaseContext> extends TeamRobot {
 
             g.setStroke(new BasicStroke(1.0f));
             g.setColor(new Color(0, 1.0f, 0, PAINT_OPACITY));
-            g.drawString(String.format("( %2.2f , %2.2f )", ctx.my.x, ctx.my.y), (int) ctx.my.x - 20, (int) ctx.my.y - 55);
-            g.drawString(String.format("heat: %2.2f", getGunHeat()), (int) ctx.my.x - 20, (int) ctx.my.y - 65);
-            g.drawString(String.format("velo: %2.1f", getVelocity()), (int) ctx.my.x - 20, (int) ctx.my.y - 75);
+//            g.drawString(String.format("( %2.2f , %2.2f )", ctx.my.x, ctx.my.y), (int) ctx.my.x - 20, (int) ctx.my.y - 55);
+//            g.drawString(String.format("heat: %2.2f", getGunHeat()), (int) ctx.my.x - 20, (int) ctx.my.y - 65);
+//            g.drawString(String.format("velo: %2.1f", getVelocity()), (int) ctx.my.x - 20, (int) ctx.my.y - 75);
             RobotPoint mypoint = new RobotPoint(ctx.my);
             T curCtx = null;
             for (int i = 1; i <= 20; i++) {
@@ -699,13 +695,13 @@ abstract public class BaseRobot<T extends BaseContext> extends TeamRobot {
                 Enemy r = e.getValue();
                 g.setColor(new Color(0, 1.0f, 0, PAINT_OPACITY));
                 drawRound(g, r.x, r.y, 35);
-                g.drawString(String.format("%s : %s", r.name, r), (int) r.x - 20, (int) r.y - 30);
+//                g.drawString(String.format("%s : %s", r.name, r), (int) r.x - 20, (int) r.y - 30);
             }
             for (Map.Entry<String, Enemy> e : enemyMap.entrySet()) {
                 Enemy r = e.getValue();
                 g.setColor(new Color(0, 1.0f, 1.0f, PAINT_OPACITY));
                 drawRound(g, r.x, r.y, 35);
-                g.drawString(String.format("%s : %s", r.name, r), (int) r.x - 20, (int) r.y - 30);
+//                g.drawString(String.format("%s : %s", r.name, r), (int) r.x - 20, (int) r.y - 30);
             }
             for (Map.Entry<String, BulletInfo> e : bulletList.entrySet()) {
                 BulletInfo info = e.getValue();

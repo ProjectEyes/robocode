@@ -19,7 +19,7 @@ public class Enemy extends RobotPoint {
 
     public boolean scanned;
     public int role;
-
+    public double heat;
     public Enemy(MovingPoint my, ScannedRobotEvent e) {
         super(); // default constractor
         this.time = e.getTime();
@@ -35,6 +35,7 @@ public class Enemy extends RobotPoint {
         this.energy = e.getEnergy();
         this.scanned = true;
         this.role   = 0;
+        this.heat = 0;
     }
     public Enemy(Enemy in ) {
         this.set(in);
@@ -44,16 +45,9 @@ public class Enemy extends RobotPoint {
         super.set(in);
         this.scanned = in.scanned;
         this.role = in.role;
+        this.heat = in.heat;
     }
 
     public Enemy() {
     }
-    @Override
-    public boolean prospectNext() {
-        if ( this.energy == 0 ) {
-            return false;
-        }
-        return super.prospectNext();
-    }
-
 }

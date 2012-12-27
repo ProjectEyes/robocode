@@ -4,7 +4,9 @@
  */
 package jp.crumb.utils;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import jp.crumb.base.BulletInfo;
 import robocode.Bullet;
@@ -65,6 +67,9 @@ public class Util {
             return 0.0;
         }
         return power;
+    }
+    public static double bultHeat(double power ) {
+        return 1 + power/5;
     }
     public static double damageByPower(double power) {
         if ( power > 1.0 ) {
@@ -173,6 +178,13 @@ public class Util {
         HashMap<K,V> ret = new HashMap<>(50,0.95f);
         for ( Map.Entry<K,V> e : in.entrySet() ) {
             ret.put(e.getKey(), copy.copy(e.getValue()) );
+        }
+        return ret;
+    }
+    public static <V> ArrayList<V> deepCopyArrayList(List<V> in , Copy<V> copy){
+        ArrayList<V> ret = new ArrayList<>();
+        for ( V v : in ) {
+            ret.add(copy.copy(v) );
         }
         return ret;
     }

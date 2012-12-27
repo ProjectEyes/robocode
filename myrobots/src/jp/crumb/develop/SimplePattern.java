@@ -23,7 +23,7 @@ public class SimplePattern extends AdvCrumbRobot<AdbCrumbContext> {
     public void run() {
         super.run();
         setColors(new Color(0,0,0), new Color(0, 0,0), new Color(255, 255, 150)); // body,gun,radar
-        this.setBulletColor(new Color(0,0,0));
+        this.setBulletColor(new Color(0,255,0));
     }
     
 
@@ -36,7 +36,7 @@ public class SimplePattern extends AdvCrumbRobot<AdbCrumbContext> {
         moveType = new MoveType(MoveType.TYPE_PINPOINT);
         moveTypeList.add(moveType);
         moveType = new MoveType(MoveType.TYPE_SIMPLE_PATTERN_CENTER);
-        moveType.score = 1000000000000000000000000000.0;
+        moveType.score = Double.POSITIVE_INFINITY;
         moveType.scoreCount = 10;
         moveTypeList.add(moveType);
         return moveTypeList;

@@ -24,7 +24,7 @@ public class ReactPattern extends AdvCrumbRobot<AdbCrumbContext> {
     public void run() {
         super.run();
         setColors(new Color(0,0,0), new Color(0, 0,0), new Color(255, 255, 150)); // body,gun,radar
-        this.setBulletColor(new Color(0,0,0));
+        this.setBulletColor(new Color(0,255,0));
     }
     
 

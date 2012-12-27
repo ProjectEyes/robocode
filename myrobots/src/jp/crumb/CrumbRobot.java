@@ -334,16 +334,15 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobot<T> {
         double maxPower = 0.0;
         double aimDistance = Util.fieldFullDistance;
         MoveType aimType = null;
-        String targetName = "";
+        Enemy target = null;
         for (Map.Entry<String, Enemy> e : ctx.nextEnemyMap.entrySet()) {
-            Enemy target = e.getValue();
+            target = e.getValue();
             if ( ! isStale(target) ) {
                 MoveType aimtype = getBestAimType(target);
                 Pair<Double,Double> result = calcFire(target,aimtype,deltaThreshold,recentThreshold);
                 if ( aimDistance > result.second ) {
                     maxPower = result.first;
                     aimDistance = result.second;
-                    targetName = target.name;
                     aimType = aimtype;
                 }
             }
@@ -354,7 +353,7 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobot<T> {
                 normalMode();
             }
             aimType.updateAim();
-            doFire(maxPower,aimDistance,targetName,aimType.type);
+            doFire(maxPower,aimDistance,target,aimType.type);
         }
     }
     
@@ -371,10 +370,10 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobot<T> {
         long   retTime = 0;
         if ( moveType.isTypePinPoint() ) {
             retRadians = src.calcRadians(target);
-            retTime    = (long)Math.ceil(Math.abs(distance/bulletVelocity));
+            retTime    = (long)Math.ceil(distance/bulletVelocity);
         }else if ( moveType.isTypeUnknown() ) {
             retRadians = src.calcRadians(target) + Math.PI/6*(Math.random()-0.5);
-            retTime    = (long)Math.ceil(Math.abs(distance/bulletVelocity));
+            retTime    = (long)Math.ceil(distance/bulletVelocity);
         }else {
             // ((deltaTime>0)?deltaTime:(long)Math.ceil(Math.abs(distance/velocity)))
             //  - Calc only fixed time ( hitted )
@@ -388,13 +387,20 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobot<T> {
                 throw new UnsupportedOperationException("Unknown type : " + moveType.type);
             }
             RobotPoint cpTarget = new RobotPoint(target);
+            double closest = Util.fieldFullDistance;
+            double radians = 0.0;
+            long time = 0;
             for ( Point targetPoint : prospectNextRobot(cpTarget,moveType,deltaTime) ) {
-                retTime++;
+                time++;
                 distance = src.calcDistance(targetPoint);
-                retRadians = src.calcRadians(targetPoint);
-                if ( distance - Math.abs(bulletVelocity*retTime) < hitArea ) { // hit ?
-                    logger.prospect4("TYPE(x%02x) : %2.2f  (%2.2f - %2.2f = %2.2f)" ,moveType.type,Math.toDegrees(retRadians),distance,Math.abs(bulletVelocity*retTime),distance - Math.abs(bulletVelocity*retTime));
-                    break;
+                radians  = src.calcRadians(targetPoint);
+                double diff = Math.abs(distance - bulletVelocity*time);
+                if ( diff < hitArea && closest > diff ) { // hit ?
+                    closest = diff;
+                    retTime = time;
+                    retRadians = radians;
+                    logger.prospect4("TYPE(x%02x) : %2.2f  (%2.2f - %2.2f = %2.2f)" ,moveType.type,Math.toDegrees(retRadians),distance,Math.abs(bulletVelocity*retTime),diff);
+//                    break;
                 }
             }
 //            if ( deltaTime == 0 ) {
@@ -560,6 +566,7 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobot<T> {
             Enemy enemy = e.getValue();
             MoveType aimType = getBestAimType(enemy);
             prospectNextRobot(enemy, aimType, 1);
+            enemy.heat -= Util.gunCoolingRate;
         }
 
         for (Map.Entry<String, BulletInfo> e : ctx.nextBulletList.entrySet()) {
@@ -603,7 +610,7 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobot<T> {
                 broadcastMessage(new LockonEvent(lockonTarget));
             }
         }else{
-            lockOnTarget = ctx.nextEnemyMap.get(ctx.lockonTarget);
+            lockOnTarget = getNextEnemy(ctx.lockonTarget);
 //            for (Map.Entry<String, Enemy> e : ctx.nextEnemyMap.entrySet()) {
 //                Enemy r = e.getValue();
 //                if ( isStale(r) ) {
@@ -742,6 +749,7 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobot<T> {
         if ( constEnemy == null ) {
             return null;
         }
+        
         ctx.nextEnemyMap.put(constEnemy.name, new Enemy(constEnemy));
         return constEnemy;
     }
@@ -869,7 +877,7 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobot<T> {
             }
             g.setColor(stringColor);
             if (ctx.lockonTarget != null) {
-                g.drawString(String.format("targ: %s", ctx.lockonTarget), (int) ctx.my.x - 20, (int) ctx.my.y - 40);
+//                g.drawString(String.format("targ: %s", ctx.lockonTarget), (int) ctx.my.x - 20, (int) ctx.my.y - 40);
             }
             for (Map.Entry<String, Enemy> e : ctx.nextEnemyMap.entrySet()) {
                 Enemy base = enemyMap.get(e.getKey());
@@ -882,19 +890,19 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobot<T> {
                 g.drawLine((int) enemy.x, (int) enemy.y, (int) priority.x, (int) priority.y);
                 double enemyDistance = ctx.my.calcDistance(enemy);
                 double enemyBearingRadians  = ctx.my.calcRadians(enemy);
-                g.drawString(String.format("%s : %s", enemy.name, enemy), (int) base.x - 20, (int) base.y - 40);
-                g.drawString(String.format("dist(degr): %2.2f(%2.2f)", enemyDistance,Math.toDegrees(enemyBearingRadians)), (int) base.x - 20, (int) base.y - 50);
-                g.drawString(String.format("head(velo): %2.2f(%2.2f)", Math.toDegrees(enemy.headingRadians), enemy.velocity), (int) base.x - 20, (int) base.y - 60);
-                g.drawString(String.format("%2.2f", calcPriority(enemy)), (int) base.x - 20, (int) base.y - 70);
+//                g.drawString(String.format("%s : %s", enemy.name, enemy), (int) base.x - 20, (int) base.y - 40);
+//                g.drawString(String.format("dist(degr): %2.2f(%2.2f)", enemyDistance,Math.toDegrees(enemyBearingRadians)), (int) base.x - 20, (int) base.y - 50);
+//                g.drawString(String.format("head(velo): %2.2f(%2.2f)", Math.toDegrees(enemy.headingRadians), enemy.velocity), (int) base.x - 20, (int) base.y - 60);
+//                g.drawString(String.format("%2.2f", calcPriority(enemy)), (int) base.x - 20, (int) base.y - 70);
                 g.setColor(new Color(0.2f, 1.0f, 0.7f, PAINT_OPACITY));
                 drawRound(g, enemy.x, enemy.y, 35);
 
                 g.setColor(new Color(0.3f, 0.5f, 1.0f,PAINT_OPACITY));
                 Enemy next = new Enemy(enemy);
                 MoveType aimType = getBestAimType(next);
-                for (Point p : prospectNextRobot(next, aimType,20) ) {
-                    drawRound(g, p.x, p.y, 2);
-                }
+//                for (Point p : prospectNextRobot(next, aimType,20) ) {
+//                    drawRound(g, p.x, p.y, 2);
+//                }
             }
             // Bullet
             g.setColor(new Color(0, 0, 0, PAINT_OPACITY));
