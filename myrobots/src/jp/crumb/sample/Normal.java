@@ -34,14 +34,10 @@ public class Normal extends AdvCrumbRobot<AdbCrumbContext> {
         List<MoveType> moveTypeList = new ArrayList<>(5);
         MoveType moveType = new MoveType(MoveType.TYPE_PINPOINT);
         moveTypeList.add(moveType);
-        moveType = new MoveType(MoveType.TYPE_INERTIA_FIRST);
+        moveType = new MoveType(MoveType.TYPE_INERTIA);
         moveTypeList.add(moveType);
-        moveType = new MoveType(MoveType.TYPE_INERTIA_CENTER);
-        moveTypeList.add(moveType);
-        moveType = new MoveType(MoveType.TYPE_ACCELERATION_FIRST);
+        moveType = new MoveType(MoveType.TYPE_ACCELERATION);
         moveType.score = 0.001; // Initial type (will be overrided by first hit!!)
-        moveTypeList.add(moveType);
-        moveType = new MoveType(MoveType.TYPE_ACCELERATION_CENTER);
         moveTypeList.add(moveType);
         return moveTypeList;
     }

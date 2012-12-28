@@ -56,9 +56,9 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobot<T> {
     protected static final double DEFAULT_ENEMY_DIM = 1.8;
     protected static final double DEFAULT_MATE_WEIGHT = 600;
     protected static final double DEFAULT_MATE_DIM = 1.6;
-    protected static final double DEFAULT_G_WEIGHT = 50;
+    protected static final double DEFAULT_G_WEIGHT = 10;
     protected static final double DEFAULT_G_DIM = 1.1;
-    protected static final double DEFAULT_GT_WEIGHT = 400;
+    protected static final double DEFAULT_GT_WEIGHT = 100;
     protected static final double DEFAULT_GT_DIM = 2.8;
     protected static final long   DEFAULT_G_EXPIRE = 5;
     protected static final long   DEFAULT_G_DISTANCE_THRESHIOLD = 80;
@@ -94,7 +94,7 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobot<T> {
     }
 
     protected MoveType getBestAimType(RobotPoint target) {
-        return new MoveType(MoveType.TYPE_ACCELERATION_FIRST);
+        return new MoveType(MoveType.TYPE_ACCELERATION);
     }
     
     @Override
@@ -268,7 +268,7 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobot<T> {
                 if ( isPaint ) {
                     getGraphics().setStroke(new BasicStroke(2.0f));
                     getGraphics().setColor(new Color(0,0,255));
-                    drawRound(getGraphics(),targetPoint.x,targetPoint.y,5);
+                    drawRound(getGraphics(),targetPoint.x,targetPoint.y,1);
                 }
                 double d = Util.calcPointToLineRange(ctx.my,targetPoint,ctx.curGunHeadingRadians);
                 if ( d < (Util.tankWidth/2) ) { // crossing shot line
@@ -378,14 +378,7 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobot<T> {
             // ((deltaTime>0)?deltaTime:(long)Math.ceil(Math.abs(distance/velocity)))
             //  - Calc only fixed time ( hitted )
             //  - for prospecting time ( shoting ) =>  with updating distance each ticks.
-            double hitArea;
-            if ( moveType.isTypeFirst() ) {
-                hitArea = 0;
-            }else if ( moveType.isTypeCenter() ) {
-                hitArea = (Util.tankWidth/2);                
-            }else{
-                throw new UnsupportedOperationException("Unknown type : " + moveType.type);
-            }
+            double hitArea = (Util.tankWidth/2); 
             RobotPoint cpTarget = new RobotPoint(target);
             double closest = Util.fieldFullDistance;
             double radians = 0.0;
@@ -854,8 +847,8 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobot<T> {
         if ( isPaint) {
             super.paint(g);
             g.setStroke(new BasicStroke(1.0f));
-            g.setColor(new Color(0.7f, 0.7f, 0, PAINT_OPACITY));
-            drawRound(g, ctx.my.x, ctx.my.y, RANGE_RADAR_LOCKON * 2);
+//            g.setColor(new Color(0.7f, 0.7f, 0, PAINT_OPACITY));
+//            drawRound(g, ctx.my.x, ctx.my.y, RANGE_RADAR_LOCKON * 2);
 
             Color stringColor = new Color(0, 1.0f, 0, PAINT_OPACITY);
             if (ctx.isRadarMode(ctx.MODE_RADAR_LOCKON)) {

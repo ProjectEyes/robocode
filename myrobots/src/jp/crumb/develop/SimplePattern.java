@@ -35,7 +35,7 @@ public class SimplePattern extends AdvCrumbRobot<AdbCrumbContext> {
 //        moveTypeList.add(moveType);
         moveType = new MoveType(MoveType.TYPE_PINPOINT);
         moveTypeList.add(moveType);
-        moveType = new MoveType(MoveType.TYPE_SIMPLE_PATTERN_CENTER);
+        moveType = new MoveType(MoveType.TYPE_SIMPLE_PATTERN);
         moveType.score = Double.POSITIVE_INFINITY;
         moveType.scoreCount = 10;
         moveTypeList.add(moveType);

@@ -35,7 +35,7 @@ public class Acceleration extends AdvCrumbRobot<AdbCrumbContext> {
     @Override
     protected List<MoveType> initialAimTypeList() {
         List<MoveType> moveTypeList = new ArrayList<>(2);
-        MoveType moveType = new MoveType(MoveType.TYPE_ACCELERATION_CENTER);
+        MoveType moveType = new MoveType(MoveType.TYPE_ACCELERATION);
         moveType.score = 0.001; // Initial type (will be overrided by first hit!!)
         moveTypeList.add(moveType);
         return moveTypeList;
@@ -44,7 +44,7 @@ public class Acceleration extends AdvCrumbRobot<AdbCrumbContext> {
     @Override
     protected List<MoveType> initialShotTypeList() {
        List<MoveType> moveTypeList = new ArrayList<>(2);
-       MoveType moveType = new MoveType(MoveType.TYPE_ACCELERATION_CENTER);
+       MoveType moveType = new MoveType(MoveType.TYPE_ACCELERATION);
        moveTypeList.add(moveType);
        return moveTypeList;
      }

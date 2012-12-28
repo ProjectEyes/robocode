@@ -57,20 +57,10 @@ public class MoveType extends Score implements Comparable<MoveType> , Serializab
 //    static public final int TYPE_UNKNOWN   = 0xF000;
     static public final int TYPE_UNKNOWN          = 0x8000;
     static public final int TYPE_PINPOINT          = 0x0010;
-    static private final int TYPE_INERTIA          = 0x0020;
-    static private final int TYPE_ACCELERATION         = 0x0040;
-    static private final int TYPE_SIMPLE_PATTERN   = 0x0100;
-    static private final int TYPE_REACT_PATTERN    = 0x0200;
-    static private final int TYPE_FIRST            = 0x0001;
-    static private final int TYPE_CENTER           = 0x0002;
-    static public final int TYPE_INERTIA_FIRST  = TYPE_INERTIA | TYPE_FIRST;
-    static public final int TYPE_INERTIA_CENTER = TYPE_INERTIA | TYPE_CENTER;
-    static public final int TYPE_ACCELERATION_FIRST = TYPE_ACCELERATION | TYPE_FIRST;
-    static public final int TYPE_ACCELERATION_CENTER = TYPE_ACCELERATION | TYPE_CENTER;
-    static public final int TYPE_SIMPLE_PATTERN_FIRST = TYPE_SIMPLE_PATTERN | TYPE_FIRST;
-    static public final int TYPE_SIMPLE_PATTERN_CENTER = TYPE_SIMPLE_PATTERN | TYPE_CENTER;
-    static public final int TYPE_REACT_PATTERN_FIRST = TYPE_REACT_PATTERN | TYPE_FIRST;
-    static public final int TYPE_REACT_PATTERN_CENTER = TYPE_REACT_PATTERN | TYPE_CENTER;
+    static public final int TYPE_INERTIA          = 0x0020;
+    static public final int TYPE_ACCELERATION         = 0x0040;
+    static public final int TYPE_SIMPLE_PATTERN   = 0x0100;
+    static public final int TYPE_REACT_PATTERN    = 0x0200;
 
     public boolean isTypeUnknown(){
         return (type & TYPE_UNKNOWN) != 0;
@@ -90,11 +80,4 @@ public class MoveType extends Score implements Comparable<MoveType> , Serializab
     public boolean isTypeReactPattern(){
         return (type & TYPE_REACT_PATTERN) != 0;
     }
-    public boolean isTypeFirst(){
-        return (type & TYPE_FIRST) != 0;
-    }
-    public boolean isTypeCenter(){
-        return (type & TYPE_CENTER) != 0;
-    }
-    
 }

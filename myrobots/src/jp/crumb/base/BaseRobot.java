@@ -47,11 +47,11 @@ import robocode.WinEvent;
  * @author crumb
  */
 abstract public class BaseRobot<T extends BaseContext> extends TeamRobot {
-    protected static final boolean isPaint = true;
-//    protected Logger logger = new Logger(0);
-    protected Logger logger = new Logger(
-            Logger.LOGLV_PROSPECT1 | Logger.LOGLV_FIRE1
-            );
+    protected static final boolean isPaint = false;
+    protected Logger logger = new Logger(0);
+//    protected Logger logger = new Logger(
+//            Logger.LOGLV_PROSPECT1 | Logger.LOGLV_FIRE1
+//            );
 
 
     protected static final double MOVE_COMPLETE_THRESHOLD = 1.0;

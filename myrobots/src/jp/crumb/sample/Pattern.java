@@ -32,14 +32,10 @@ public class Pattern extends AdvCrumbRobot<AdbCrumbContext> {
     @Override
     protected List<MoveType> initialAimTypeList() {
         List<MoveType> moveTypeList = new ArrayList<>(2);
-        MoveType moveType = new MoveType(MoveType.TYPE_SIMPLE_PATTERN_FIRST);
+        MoveType moveType = new MoveType(MoveType.TYPE_SIMPLE_PATTERN);
         moveTypeList.add(moveType);
-//        moveType = new MoveType(MoveType.TYPE_SIMPLE_PATTERN_CENTER);
-//        moveTypeList.add(moveType);
-        moveType = new MoveType(MoveType.TYPE_REACT_PATTERN_FIRST);
+        moveType = new MoveType(MoveType.TYPE_REACT_PATTERN);
         moveTypeList.add(moveType);
-//        moveType = new MoveType(MoveType.TYPE_REACT_PATTERN_CENTER);
-//        moveTypeList.add(moveType);
         return moveTypeList;
     }
 
