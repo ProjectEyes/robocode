@@ -24,34 +24,37 @@ public class Turn extends BaseRobot<BaseContext> {
     @Override
     protected void cbFirst() {
         super.cbFirst();
+        range = 250 + Math.random()*150;
     }
     
     @Override
     protected BaseContext createContext(BaseContext in) {
         return defalutCreateContext(in);
     }
-
-    int t = 1;
-    int i = 5;
+    boolean start = true;
+    double range = 200;
     @Override
     protected void cbMoving() {
-        doAhead(-100);
-        doTurnRightRadians(Math.toRadians(100));
-        if( i <= 1 || i >= 8 ) {
-            t*=-1;
+        if ( start ) {
+            setDestination(new Point(200,200));
+            if ( ctx.my.calcDistance(new Point(200,200)) < 1 ) {
+                start = false;
+            }
         }
-        if ( t > 0 ) {
-            i++;
-        }else {
-            i--;
+        if ( ctx.my.calcDistance(new Point(200,200)) < 1 ) {
+            setDestination(new Point(200,range));
+        }else if ( ctx.my.calcDistance(new Point(200,range)) < 1 ) {
+            setDestination(new Point(range,range));
+        }else if ( ctx.my.calcDistance(new Point(range,range)) < 1 ) {
+            setDestination(new Point(range,200));
+        }else if ( ctx.my.calcDistance(new Point(range,200)) < 1 ) {
+            setDestination(new Point(200,200));
         }
-        setMaxVelocity(i);
-        setDestination(null);
     }
 
     @Override
     protected void cbFiring() {
-
+        doFire(0.001,0,null,0);
     }
     
 }

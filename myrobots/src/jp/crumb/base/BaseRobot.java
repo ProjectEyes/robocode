@@ -47,11 +47,11 @@ import robocode.WinEvent;
  * @author crumb
  */
 abstract public class BaseRobot<T extends BaseContext> extends TeamRobot {
-    protected static final boolean isPaint = false;
-    protected Logger logger = new Logger(0);
-//    protected Logger logger = new Logger(
-//            Logger.LOGLV_PROSPECT1 | Logger.LOGLV_FIRE1
-//            );
+    protected static final boolean isPaint = true;
+//    protected Logger logger = new Logger(0);
+    protected Logger logger = new Logger(
+            Logger.LOGLV_PROSPECT1 | Logger.LOGLV_FIRE1
+            );
 
 
     protected static final double MOVE_COMPLETE_THRESHOLD = 1.0;
@@ -313,6 +313,9 @@ abstract public class BaseRobot<T extends BaseContext> extends TeamRobot {
         if ( ctx.destination == null ) {
             return null;
         }
+        if ( ctx.destination.calcDistance(ctx.my) < 1 ) {
+            return new Pair<>(0.0,0.0);
+        }
         double bearingRadians = ctx.my.calcRadians(ctx.destination);
         double distance = ctx.my.calcDistance(ctx.destination);
 
@@ -387,17 +390,19 @@ abstract public class BaseRobot<T extends BaseContext> extends TeamRobot {
         if ( ctx.gunHeat != 0 ) {
             return;
         }
-        logger.fire1("FIRE(x%02x): ( %2.2f ) => %2.2f d : %2.2f",type,power,Math.toDegrees(ctx.curGunHeadingRadians),distance);
+        if( target != null ) {
+            logger.fire1("FIRE(x%02x): ( %2.2f ) => %2.2f d : %2.2f",type,power,Math.toDegrees(ctx.curGunHeadingRadians),distance);
+            double bulletVelocity = Util.bultSpeed(power);
+            MovingPoint src = new MovingPoint(
+                    ctx.my.x , ctx.my.y , ctx.my.time,
+                    ctx.curGunHeadingRadians,
+                    bulletVelocity
+                    );
+            BulletInfo bulletInfo = new BulletInfo(name,target.name,distance,src,type,power);
+            addBulletInfo(bulletInfo);
+            broadcastMessage(new BulletEvent(bulletInfo));
+        }
         this.paint(getGraphics());
-        double bulletVelocity = Util.bultSpeed(power);
-        MovingPoint src = new MovingPoint(
-                ctx.my.x , ctx.my.y , ctx.my.time,
-                ctx.curGunHeadingRadians,
-                bulletVelocity
-        );
-        BulletInfo bulletInfo = new BulletInfo(name,target.name,distance,src,type,power);
-        addBulletInfo(bulletInfo);
-        broadcastMessage(new BulletEvent(bulletInfo));
         super.fire(power); // No return
     }
 

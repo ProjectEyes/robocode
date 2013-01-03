@@ -202,9 +202,7 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobot<T> {
         return dst;
     }
     
-    protected final double decideBulletPowerFromDistance(double distance,long time){
-        return Util.bultPower( distance/time );
-    }
+
 
     protected double powerLimit(double enemyEnergy,MoveType aimType) {
         double limit = ctx.my.energy / 10;
@@ -252,8 +250,6 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobot<T> {
             }
             limit = 3.0;
         }
-        double limitError = limit*POWER_LIMIT_ERROR;
-        limitError = (limitError>POWER_LIMIT_ERROR_MIN)?limitError:POWER_LIMIT_ERROR_MIN;
 
         
         long term = (long)Math.ceil(ctx.my.calcDistance(target)/Util.bultSpeed(limit)) + 10;
@@ -273,7 +269,15 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobot<T> {
                 double d = Util.calcPointToLineRange(ctx.my,targetPoint,ctx.curGunHeadingRadians);
                 if ( d < (Util.tankWidth/2) ) { // crossing shot line
                     double bultDistance = Util.calcPointToLineDistance(ctx.my, targetPoint, ctx.curGunHeadingRadians);
-                    double power = decideBulletPowerFromDistance(bultDistance, t);
+                    double power = Util.bultPower( bultDistance/t );
+                    if (power > limit) {
+                        d = Util.calcPoint(ctx.curGunHeadingRadians,Util.bultSpeed(limit)*t).add(ctx.my).calcDistance(targetPoint);
+                        if ( d >= (Util.tankWidth/2) ) { // crossing shot line
+                            break;
+                        }
+                        power = limit;
+                    }
+
                     if (maxPower < power) { // hit ? : power more than 0.0
                         logger.fire3("POWER(%s): (%2.2f) => (%2.2f)", target.name, maxPower, power);
                         // Check collision
@@ -300,16 +304,6 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobot<T> {
                         }
                         maxPower = power;
                         aimDistance = bultDistance;
-                        if (power > limit) {
-                            if (power - limit > limitError) {
-                                maxPower = 0.0;
-                                aimDistance = Util.fieldFullDistance;
-                                logger.fire1("exceeded limit error %2.2f(%2.2f) => %2.2f", limit, limitError, power);
-                                break;
-                            }
-                            logger.fire1("limit errors %2.2f(%2.2f) => %2.2f", limit, limitError, power);
-                            break;
-                        }
                     }
                 }
             }
@@ -358,7 +352,7 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobot<T> {
     }
     
     protected double selectPowerFromDistance(double targetEnergy,MoveType aimType,double distance) {
-        double power = decideBulletPowerFromDistance(distance,SELECT_POWER_RANGE_TIME);
+        double power = Util.bultPower(distance/SELECT_POWER_RANGE_TIME);
         double limit = powerLimit(targetEnergy,aimType);
         power = (limit<power)?limit:power;
         return (power==0.0)?0.01:power;
