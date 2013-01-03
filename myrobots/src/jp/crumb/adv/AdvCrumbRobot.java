@@ -106,6 +106,7 @@ abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobo
     protected Map<String,List<Score>> simplePatternBestScoreMap = new HashMap<>(15,0.95f);
     protected static Map<String,Map<Integer, TreeMap<Long,DistancePoint>>> reactPatternScoreMap = new HashMap<>(15,0.95f);
     protected static Map<String,Map<Integer, TreeMap<Long,AimLog>>> bulletLogMap = new HashMap<>(15,0.95f);
+    Point ANTI_UNKNOWN = null;
 
     protected static class AimLog {
         List<Score> simple;
@@ -313,7 +314,6 @@ abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobo
     protected RobotPoint logEnemy(String name,long absTime) {
         return logEnemy(logRound,name,absTime);
     }
-
     @Override
     protected void cbMoving() {
         if ( ctx.enemies == 1 && ctx.lockonTarget != null ){
@@ -323,6 +323,10 @@ abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobo
                 if ( lockOnTarget != null && lockOnTarget.energy < 0.1 && ctx.my.energy > 0.6 ) {
                     setFireMode(ctx.MODE_FIRE_CLOSE);
                     setDestination(lockOnTarget);
+                    return;
+                }
+                if ( ANTI_UNKNOWN != null ) {
+                    setDestination(ANTI_UNKNOWN);
                     return;
                 }
                 if ( lockOnTarget != null ) {
@@ -954,7 +958,7 @@ abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobo
         }
         if ( shotUnknownType != null ) {
             if ( closest < Util.tankSize ) {
-                closest = Util.tankWidth*2;
+                closest = Util.tankSize;
             }else {
                 closest = 0;
             }
@@ -982,7 +986,7 @@ abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobo
             if ( binfo.type != shotType.type ) {
                 // update bullet
                 removeEnemyBulletInfo(e.getKey());
-                BulletInfo bulletInfo = calcEnemyBullet(enemyName,binfo.src,Util.bultPower(binfo.src.velocity));
+                BulletInfo bulletInfo = calcEnemyBullet(enemyName,binfo.src,Util.bultPower(binfo.src.velocity),shotType);
                 BulletInfo nextBulletInfo = new BulletInfo(bulletInfo);
                 nextBulletInfo.src.inertia(ctx.my.time - binfo.src.time);
                 addEnemyBulletInfo(bulletInfo,nextBulletInfo);
@@ -1008,16 +1012,53 @@ abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobo
         prospectNextRobot(cpPrev, aimType,1); // Next turn of past scan.
         MovingPoint src = new MovingPoint(cpPrev);
         double power = prev.energy-enemy.energy;
-        BulletInfo bulletInfo = calcEnemyBullet(enemy.name,src,power);
+        MoveType shotType =MoveType.getByScore(shotTypeMap.get(enemy.name));
+        BulletInfo bulletInfo = calcEnemyBullet(enemy.name,src,power,shotType);
         addEnemyBulletInfo(bulletInfo);
+        if ( ctx.enemies == 1 && shotType.isTypeUnknown() ) {
+            double distance = ctx.my.calcDistance(src);
+            double term = distance/Util.bultSpeed(power);
+            double forwardDistance = 0;
+            double forwardVelocity = ctx.my.velocity;
+            double backDistance = 0;
+            double backVelocity = ctx.my.velocity;
+            for ( int i = 0 ; i < term;i++ ) {
+                forwardDistance += forwardVelocity;
+                backDistance    += backVelocity;
+                if ( forwardVelocity >= 0 ) {
+                    forwardVelocity = (forwardVelocity>8)?8:forwardVelocity+1;
+                }else{
+                    forwardVelocity += 2;
+                }
+                if ( backVelocity > 0 ) {
+                    backVelocity -= 2;
+                }else{
+                    backVelocity = (backVelocity<-8)?-8:backVelocity-1;
+                }
+            }
+            double dstDistance = -backDistance + Math.random()*(forwardDistance+backDistance);
+            double dstRadian = dstDistance/distance; // D/2PR*2P = D/R
+            @@@
+System.out.println(ctx.my.velocity + " = " + forwardDistance + " : " + backDistance);
+            double angle = ctx.my.calcRadians(enemy);
+            double turn1 = Util.calcTurnRadians(ctx.my.headingRadians, angle + Math.PI/2);
+            double turn2 = Util.calcTurnRadians(ctx.my.headingRadians, angle - Math.PI/2);
+            double rightAngle = angle-Math.PI/2;
+            if ( Math.abs(turn1) < Math.abs(turn2) ) {
+                rightAngle = angle+Math.PI/2;
+            }
+
+//            ANTI_UNKNOWN = Util.calcPoint(rightAngle,dstDistance).add(ctx.my);
+        }else{
+            ANTI_UNKNOWN = null;
+        }
     }
-    BulletInfo calcEnemyBullet(String enemyName,MovingPoint src,double power) {
+    BulletInfo calcEnemyBullet(String enemyName,MovingPoint src,double power,MoveType shotType) {
         RobotPoint prevMy = logMy(src.time-1); // Detect enemy-firing after one turn from actual.
         if ( prevMy == null ) {
             prevMy = ctx.my; // No data
         }
         double distance = src.calcDistance(prevMy);
-        MoveType shotType =MoveType.getByScore(shotTypeMap.get(enemyName));
         double bulletVelocity = Util.bultSpeed(power);
         logger.fire1("ENEMY(fire): x%02x : %s(%2.2f)", shotType.type,power, bulletVelocity);
         long maxTerm = (long)Math.ceil(distance/(bulletVelocity-8));
@@ -1134,14 +1175,21 @@ abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobo
     @Override
     protected double powerLimit(double enemyEnergy, MoveType aimType) {
         // TODO : limit
-        double limit = ctx.my.energy / 10;
-        limit = (limit > 4)?4:limit; // TODO: tune bullet power limit
+        double limit = 6;
+        if ( ctx.my.energy < 10 ) {
+            limit = 1;
+        }else if ( ctx.my.energy < 1 ) {
+            limit = 0.1;
+        }
         limit = limit*aimType.score/PERFECT_SCORE;
         double need = Util.powerByDamage(enemyEnergy);
         if ( need < limit ) {
             limit = need;
         }
-        if ( limit < 0.02 && ctx.my.energy < 0.2 && enemyEnergy != 0.0 ) { // last 1 shot limitter
+        if ( (ctx.my.energy - limit) < 0.2 && enemyEnergy != 0.0 ) { // last 1 shot limitter
+            return 0.0;
+        }
+        if ( ctx.enemies == 1 && ctx.my.energy < 5 && enemyEnergy < ctx.my.energy && enemyEnergy > (ctx.my.energy - limit) ) {
             return 0.0;
         }
         return limit;
