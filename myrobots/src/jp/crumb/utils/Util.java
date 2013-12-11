@@ -36,10 +36,14 @@ public class Util {
         Util.tankHeight = tankWidth;
         Util.tankSize = new Point(Util.tankWidth,0).calcDistance(new Point(0,Util.tankHeight));
         Util.gunCoolingRate = gunCoolingRate;
-        Util.runnableMinX = 17.9;
-        Util.runnableMaxX = battleFieldWidth - 17.9;
-        Util.runnableMinY = 17.9;
-        Util.runnableMaxY = battleFieldHeight - 17.9;
+//        Util.runnableMinX = 17.9;
+//        Util.runnableMaxX = battleFieldWidth - 17.9;
+//        Util.runnableMinY = 17.9;
+//        Util.runnableMaxY = battleFieldHeight - 17.9;
+        Util.runnableMinX = tankWidth;
+        Util.runnableMaxX = battleFieldWidth - tankWidth;
+        Util.runnableMinY = tankWidth;
+        Util.runnableMaxY = battleFieldHeight - tankWidth;
         Util.fieldFullDistance = new Point(Util.battleFieldWidth,Util.battleFieldHeight).calcDistance(new Point());
 
     }
@@ -80,13 +84,13 @@ public class Util {
     }
     public static double powerByDamage(double damage) {
         if ( damage <= 0.0 ) {
-            return 0.00001;
+            return 0.1;
         }else if ( damage < 4.0 ) {
-            return (damage/4.0) * 1.00001;
+            return (damage/4.0) * 1.1;
         }else if ( damage > 16.0 ) {
             return 3.0;
         }else {
-            return ((damage+2)/6)* 1.00001;
+            return ((damage+2)/6)* 1.1;
         }
     }
 

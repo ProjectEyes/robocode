@@ -60,6 +60,25 @@ public class Point implements Serializable{
         return Util.calcRadians((dst.x-this.x),(dst.y-this.y));
     }
 
+    public boolean isLimit() {
+        if (    x < Util.runnableMinX ||
+                x > Util.runnableMaxX ||
+                y < Util.runnableMinY ||
+                y > Util.runnableMaxY) {
+            return true;
+        }
+        return false;
+    }
+    public boolean isOutOfField() {
+        if (    x < 0 ||
+                x > Util.battleFieldWidth ||
+                y < 0 ||
+                y > Util.battleFieldHeight) {
+            return true;
+        }
+        return false;
+    }
+
     @Override
     public String toString() {
         return String.format("(%2.2f,%2.2f)", x, y);

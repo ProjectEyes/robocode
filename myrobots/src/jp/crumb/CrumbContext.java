@@ -44,6 +44,7 @@ public class CrumbContext extends BaseContext {
     public TimedPoint GT;
     public Point lockOnPoint; // for view
     public String lockonTarget;
+    public String leaderTarget;
 //  public Enemy lockOnTarget;
     
     public Map<String, Enemy> nextEnemyMap = new HashMap<>(15,0.95f);
@@ -82,6 +83,12 @@ public class CrumbContext extends BaseContext {
             }
         });
     
+    }
+    public boolean isLeaderTarget(String name) {
+        return leaderTarget != null && name.compareTo(leaderTarget) == 0;
+    }
+    public void setLeaderTarget(String leaderTarget) {
+        this.leaderTarget = leaderTarget;
     }
     public void setLockonTarget(String lockonTarget) {
         this.lockonTarget = lockonTarget;

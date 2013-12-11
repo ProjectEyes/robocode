@@ -69,24 +69,6 @@ public class MovingPoint extends TimedPoint {
         time += Math.ceil(interval);
         return this;
     }
-    public boolean isLimit() {
-        if (    x < Util.runnableMinX ||
-                x > Util.runnableMaxX ||
-                y < Util.runnableMinY ||
-                y > Util.runnableMaxY) {
-            return true;
-        }
-        return false;
-    }
-    public boolean isOutOfField() {
-        if (    x < 0 ||
-                x > Util.battleFieldWidth ||
-                y < 0 ||
-                y > Util.battleFieldHeight) {
-            return true;
-        }
-        return false;
-    }
     @Override
     public String toString() {
         return String.format("t(%d/%d): d[%2.2f] dr[%2.2f] p(%2.2f,%2.2f) v:%2.2f", time,timeStamp,Math.toDegrees(headingRadians),headingRadians,x, y,velocity);
