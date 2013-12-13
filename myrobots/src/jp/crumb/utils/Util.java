@@ -162,8 +162,11 @@ public class Util {
     }
     
     public static Point getGrabity(Point base,Point target,double weight,double dim){
+        return getGrabity(base,target,weight,dim,tankSize);
+    }
+    public static Point getGrabity(Point base,Point target,double weight,double dim, double threshold ){
         double distance = base.calcDistance(target);
-        distance = (distance<tankSize)?tankWidth:distance;
+        distance = (distance<threshold)?threshold:distance;
         double radians  = base.calcRadians(target);
         double force = weight/Math.pow(distance/10,dim)*10;
         return calcPoint(radians, force);

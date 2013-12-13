@@ -85,13 +85,13 @@ public class RobotPoint extends MovingPoint {
             velocity = (velocity > 8) ? 8 : velocity;
             velocity = (velocity < -8) ? -8 : velocity;
             Point deltaByTurn = Util.calcPoint(headingRadians, velocity);
-            x += deltaByTurn.x;
-            y += deltaByTurn.y;
+            add(deltaByTurn);
             time +=1;
-            if ( isLimit()) {
-                this.set(backup);
-                return false;
-            }
+//@@@
+//            if ( isLimit()) {
+//                this.set(backup);
+//                return false;
+//            }
             return true;
         }
     }

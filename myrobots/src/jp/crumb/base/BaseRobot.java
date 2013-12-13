@@ -167,7 +167,7 @@ abstract public class BaseRobot<T extends BaseContext> extends TeamRobot {
         }else{
             impactBullet(entry.getKey());
        }
-        logger.fire1("MISS: %s",dst);
+        logger.fire3("MISS: %s",dst);
         return entry;
     }
     

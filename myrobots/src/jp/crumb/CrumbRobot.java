@@ -43,10 +43,10 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobot<T> {
     protected int MAX_HIT_TIME = DEFAULT_MAX_HIT_TIME;
 
 //    protected static final long SELECT_POWER_RANGE_TIME = 17;
-    protected static final long SELECT_POWER_RANGE_TIME = 12;
+//    protected static final long SELECT_POWER_RANGE_TIME = 12;
 
     //
-    protected static final double ENEMY_PRIORITY_DIM = 1.5;
+    protected static final double ENEMY_PRIORITY_DIM = 2;
     protected static final double ENEMY_PRIORITY_LEADER_BOOST = 300;
 
     // For gun
@@ -171,18 +171,18 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobot<T> {
     protected Point movingBase(){
         // Wall
         Point dst = new Point(ctx.my);
-        dst.diff(Util.getGrabity(ctx.my, new Point(Util.battleFieldWidth,ctx.my.y), WALL_WEIGHT,WALL_DIM));
-        dst.diff(Util.getGrabity(ctx.my, new Point(0,ctx.my.y), WALL_WEIGHT,WALL_DIM));
-        dst.diff(Util.getGrabity(ctx.my, new Point(ctx.my.x,Util.battleFieldHeight), WALL_WEIGHT,WALL_DIM));
-        dst.diff(Util.getGrabity(ctx.my, new Point(ctx.my.x,0), WALL_WEIGHT,WALL_DIM));
+        dst.diff(Util.getGrabity(ctx.my, new Point(Util.battleFieldWidth,ctx.my.y), WALL_WEIGHT,WALL_DIM,1));
+        dst.diff(Util.getGrabity(ctx.my, new Point(0,ctx.my.y), WALL_WEIGHT,WALL_DIM,1));
+        dst.diff(Util.getGrabity(ctx.my, new Point(ctx.my.x,Util.battleFieldHeight), WALL_WEIGHT,WALL_DIM,1));
+        dst.diff(Util.getGrabity(ctx.my, new Point(ctx.my.x,0), WALL_WEIGHT,WALL_DIM,1));
         // Mate
         for (Map.Entry<String, Enemy> e : ctx.nextMateMap.entrySet()) {
-            dst.diff(Util.getGrabity(ctx.my,e.getValue(), MATE_WEIGHT,MATE_DIM));
+            dst.diff(Util.getGrabity(ctx.my,e.getValue(), MATE_WEIGHT,MATE_DIM,1));
         }
         // Enemy
         for (Map.Entry<String, Enemy> e : ctx.nextEnemyMap.entrySet()) {
             if ( ! isStale(e.getValue() ) ) {
-                dst.diff(Util.getGrabity(ctx.my,e.getValue(), ENEMY_WEIGHT,ENEMY_DIM));
+                dst.diff(Util.getGrabity(ctx.my,e.getValue(), ENEMY_WEIGHT,ENEMY_DIM,5));
             }
         }
         // Bullet
@@ -205,12 +205,30 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobot<T> {
         return dst;
     }
     
-
-
-    protected double powerLimit(RobotPoint enemy,MoveType aimType) {
-        double limit = ctx.my.energy / 10;
+    protected double powerLimit(RobotPoint enemy, MoveType aimType) {
+        // TODO : limit
+        double limit = 6;
         double need = Util.powerByDamage(enemy.energy);
-        limit = ( need < limit ) ? need : limit;
+        if ( need < limit ) {
+            limit = need;
+        }
+        if (ctx.enemies == 1) {
+            if ( ctx.my.energy < 10  && enemy.energy > ctx.my.energy * 2 ) {
+                return 0.0;
+            }
+            if ( ctx.my.energy < 30 && enemy.energy < ctx.my.energy && enemy.energy > (ctx.my.energy - limit) ) {
+                return 0.0;
+            }
+            if ( ctx.my.energy < 20 && enemy.energy * 2 < ctx.my.energy && enemy.energy * 2 > (ctx.my.energy - limit)) {
+                return 0.1;
+            }
+            if ( ctx.my.energy < 20 && enemy.energy     > ctx.my.energy * 2 ) {
+                return 0.1;
+            }
+            if ( (ctx.my.energy - limit) < 0.2 && enemy.energy >= 0.1 ) { // last 1 shot limitter
+                return 0.0;
+            }
+        }
         return limit;
     }
 
@@ -238,40 +256,56 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobot<T> {
         return new Pair<>(distance1,t2);
     }
 
-    protected static double POWER_LIMIT_ERROR = 0.5;
-    protected static double POWER_LIMIT_ERROR_MIN = 0.3;
-    protected double calcPowr(Enemy target,MoveType aimType){
+    protected double calcPower(Enemy target,MoveType aimType, double distance){
         double powerFromScore = 3.0*aimType.score/PERFECT_SCORE;
         double powerFromDistance = 0.0;
-        double distance = ctx.my.calcDistance(target);
-        if ( distance < 100 ) {
+        if ( distance < 80 ) {
             powerFromDistance = 3.0;
+//@@@
         }else if ( distance < 200 ) {
             powerFromDistance = 3.0 - (distance - 100) / 100.0;
         }else if ( distance < 400 ) {
             powerFromDistance = 2.0 - (distance - 200) / 400.0;
         }else if ( distance < 700 ) {
             powerFromDistance = 1.5 - (distance - 400) / 200.0;
+//        }else if ( distance < 180 ) {
+//            powerFromDistance = 3.0 - (distance - 80) / 200.0;
+//        }else if ( distance < 280 ) {
+//            powerFromDistance = 2.5 - (distance - 180) / 400.0;
+//        }else if ( distance < 380 ) {
+//            powerFromDistance = 2.25 - (distance - 280) / 400.0;
+//        }else if ( distance < 480 ) {
+//            powerFromDistance = 2.00 - (distance - 380) / 400.0;
+//        }else if ( distance < 580 ) {
+//            powerFromDistance = 1.75 - (distance - 480) / 400.0;
+//        }else if ( distance < 680 ) {
+//            powerFromDistance = 1.50 - (distance - 580) / 400.0;
+//        }else if ( distance < 780 ) {
+//            powerFromDistance = 1.25 - (distance - 680) / 200.0;
+//        }else if ( distance < 880 ) {
+//            powerFromDistance = 0.75 - (distance - 780) / 150.0;
         }else{
             powerFromDistance = 0.1;
         }
-        return (powerFromScore > powerFromDistance)? powerFromScore : powerFromDistance;
+        double power = (powerFromScore > powerFromDistance)? powerFromScore : powerFromDistance;
+
+        double limit = powerLimit(target,aimType);
+        if ( limit == 0.0 ) {
+            if ( ctx.my.calcDistance(target) < 90 ) { // Prevent ram bonus
+                limit = 3.0;
+            }
+        }
+        return (limit < power) ? limit : power;
     }
 
     protected Pair<Double,Double> calcFire(Enemy target,MoveType aimType,long deltaThreshold,long recentThreshold){
         if ( target.delta == null || target.delta.time > deltaThreshold || (ctx.my.timeStamp - target.timeStamp) > recentThreshold ) {
             return new Pair<>(0.0,Util.fieldFullDistance);
         }
-        double tmpLimit = calcPowr(target,aimType);
-        double limit = powerLimit(target,aimType);
+        double limit = calcPower(target, aimType,ctx.my.calcDistance(target));
         if ( limit == 0.0 ) {
-            if ( ctx.my.calcDistance(target) > 90 ) { // Prevent ram bonus
-                return new Pair<>(0.0,Util.fieldFullDistance);
-            }
-            limit = 3.0;
+            return new Pair<>(0.0,Util.fieldFullDistance);
         }
-        limit = (limit < tmpLimit) ? limit : tmpLimit;
-        
         long term = (long)Math.ceil(ctx.my.calcDistance(target)/Util.bultSpeed(limit)) + 10;
         // TODO: k-nearlest
         for ( int i = 0 ; i < MAX_CALC ; i++ ) {
@@ -371,13 +405,6 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobot<T> {
         }
     }
     
-    protected double selectPowerFromDistance(RobotPoint target,MoveType aimType,double distance) {
-        double power = Util.bultPower(distance/SELECT_POWER_RANGE_TIME);
-        double limit = powerLimit(target,aimType);
-        power = (limit<power)?limit:power;
-        return (power==0.0)?0.01:power;
-    }
-
     protected Pair<Long,Double> calcShot(MoveType moveType,RobotPoint target,Point src,double bulletVelocity,long deltaTime){
         double distance = src.calcDistance(target);
         double retRadians = 0;
@@ -454,7 +481,7 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobot<T> {
 //            prospectNextRobot(prospectTarget, aimType, gunTurnTime);
             // 
             double distance = prospectMy.calcDistance(lockOnTarget);
-            double power = this.selectPowerFromDistance(lockOnTarget,aimType,distance);
+            double power = this.calcPower(lockOnTarget,aimType,distance);
             double bulletVelocity = Util.bultSpeed(power);
             long term = (long)Math.ceil(prospectMy.calcDistance(lockOnTarget)/bulletVelocity) + gunTurnTime + 10;
             Pair<Long,Double> shot = calcShot(aimType,lockOnTarget,prospectMy,bulletVelocity,term);
