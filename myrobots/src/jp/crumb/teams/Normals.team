@@ -1,6 +1,6 @@
 #Robocode robot team
 #Tue Dec 04 03:08:38 JST 2012
-team.members=jp.crumb.sample.NormalLeader*,jp.crumb.sample.NormalSlave*,jp.crumb.sample.NormalDroid1*
+team.members=jp.crumb.sample.NormalLeader*,jp.crumb.sample.NormalDroid1*,jp.crumb.sample.NormalDroid2*
 team.author.name=crumb.jp
 robocode.version=1.7.4.4
 team.description=normal trio

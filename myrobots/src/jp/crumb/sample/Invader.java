@@ -9,6 +9,8 @@ import java.io.Serializable;
 import jp.crumb.CrumbContext;
 import jp.crumb.CrumbRobot;
 import jp.crumb.LockonEvent;
+import jp.crumb.utils.Enemy;
+import jp.crumb.utils.MoveType;
 import jp.crumb.utils.Point;
 import jp.crumb.utils.TimedPoint;
 import jp.crumb.utils.Util;
@@ -110,9 +112,12 @@ abstract public class Invader extends CrumbRobot<CrumbContext> {
         super.cbThinking();
     }    
 
-    
     private void openFire () {
         setFireMode(ctx.MODE_FIRE_AUTO);
         setCustomMode(MODE_CUSTOM_GO);
+    }
+    @Override
+    protected double calcPower(Enemy target,MoveType aimType, double distance){
+        return 1.5;
     }
 }

@@ -184,12 +184,12 @@ abstract public class AdvCrumbRobot<T extends AdbCrumbContext> extends CrumbRobo
     protected List<MoveType> initialAimTypeList(){
         List<MoveType> moveTypeList = new ArrayList<>(10);
         MoveType moveType = null;
-//        moveType = new MoveType(MoveType.TYPE_PINPOINT);
-//        moveTypeList.add(moveType);
-//        moveType = new MoveType(MoveType.TYPE_INERTIA);
-//        moveTypeList.add(moveType);
-//        moveType = new MoveType(MoveType.TYPE_ACCELERATION);
-//        moveTypeList.add(moveType);
+        moveType = new MoveType(MoveType.TYPE_PINPOINT);
+        moveTypeList.add(moveType);
+        moveType = new MoveType(MoveType.TYPE_INERTIA);
+        moveTypeList.add(moveType);
+        moveType = new MoveType(MoveType.TYPE_ACCELERATION);
+        moveTypeList.add(moveType);
         moveType = new MoveType(MoveType.TYPE_SIMPLE_PATTERN);
         moveTypeList.add(moveType);
         moveType.score = 100.0; // Initial type (will be overrided by first hit!!)

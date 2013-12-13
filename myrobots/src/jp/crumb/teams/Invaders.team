@@ -3,4 +3,4 @@
 team.members=jp.crumb.sample.InvaderLeader*,jp.crumb.sample.InvaderDroid1*,jp.crumb.sample.InvaderDroid2*
 team.author.name=crumb.jp
 robocode.version=1.7.4.4
-team.description=Invader trio
+team.description=Invaders

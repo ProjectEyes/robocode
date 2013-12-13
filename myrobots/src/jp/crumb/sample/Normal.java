@@ -37,7 +37,7 @@ public class Normal extends AdvCrumbRobot<AdbCrumbContext> {
         moveType = new MoveType(MoveType.TYPE_INERTIA);
         moveTypeList.add(moveType);
         moveType = new MoveType(MoveType.TYPE_ACCELERATION);
-        moveType.score = 0.001; // Initial type (will be overrided by first hit!!)
+        moveType.score = 100; // Initial type (will be overrided by first hit!!)
         moveTypeList.add(moveType);
         return moveTypeList;
     }

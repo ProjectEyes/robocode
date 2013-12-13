@@ -64,7 +64,7 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobot<T> {
     protected static final double DEFAULT_GT_WEIGHT = 100;
     protected static final double DEFAULT_GT_DIM = 2.8;
     protected static final long   DEFAULT_G_EXPIRE = 5;
-    protected static final long   DEFAULT_G_DISTANCE_THRESHIOLD = 80;
+    protected static final long   DEFAULT_G_DISTANCE_THRESHIOLD = 20;
     protected static final double DEFAULT_LOCKON_APPROACH = 12;
     protected static final long   DEFAULT_BULLET_PROSPECT_TIME = 12;
     protected static final double DEFAULT_BULLET_WEIGHT = 1000;
@@ -695,7 +695,7 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobot<T> {
             ctx.G = new TimedPoint(Util.getRandomPoint(ctx.my,5),ctx.my.time);
         }
         
-        if ( ctx.destination != null && (G_DISTANCE_THRESHIOLD > 20 || ctx.my.time - ctx.G.time > G_EXPIRE) ) {
+        if ( ctx.destination != null && ( ctx.G.calcDistance(ctx.my) > G_DISTANCE_THRESHIOLD || ctx.my.time - ctx.G.time > G_EXPIRE) ) {
             double gr = ctx.my.calcRadians(ctx.destination);
             //Point g = Util.calcPoint(gr,50).prod(-1).add(ctx.my);
             Point g = Util.calcPoint(gr,10).prod(-1).add(ctx.my);

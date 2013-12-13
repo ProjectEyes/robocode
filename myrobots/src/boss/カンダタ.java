@@ -1,9 +1,6 @@
 package boss;
 
 import jp.crumb.utils.Enemy;
-import jp.crumb.utils.MoveType;
-import jp.crumb.utils.Point;
-import jp.crumb.utils.Util;
 
 /*
  * To change this template, choose Tools | Templates
