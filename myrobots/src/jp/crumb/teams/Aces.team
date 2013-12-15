@@ -1,6 +1,0 @@
-#Robocode robot team
-#Tue Dec 04 03:08:38 JST 2012
-team.members=jp.crumb.sample.AceLeader*,jp.crumb.sample.AceDroid1*,jp.crumb.sample.AceDroid2*
-team.author.name=crumb.jp
-robocode.version=1.7.4.4
-team.description=Ace trio

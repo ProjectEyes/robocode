@@ -12,6 +12,7 @@ import robocode.ScannedRobotEvent;
  * @author crumb
  */
 public class Enemy extends RobotPoint {
+    static public final int ROLE_UNKNOWN   = 0;
     static public final int ROLE_DROID   = 1;
     static public final int ROLE_ROBOT   = 2;
     static public final int ROLE_LEADER  = 3;
@@ -34,7 +35,7 @@ public class Enemy extends RobotPoint {
         this.velocity = e.getVelocity();
         this.energy = e.getEnergy();
         this.scanned = true;
-        this.role   = 0;
+        this.role   = ROLE_UNKNOWN;
         this.heat = 0;
     }
     public Enemy(Enemy in ) {

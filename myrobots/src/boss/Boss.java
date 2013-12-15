@@ -9,11 +9,11 @@ package boss;
 import java.awt.Color;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import jp.crumb.adv.AdbCrumbContext;
 import jp.crumb.adv.AdvCrumbRobot;
+import jp.crumb.utils.Enemy;
 import jp.crumb.utils.MoveType;
-
-
 
 /**
  *
@@ -38,4 +38,14 @@ public abstract class Boss extends AdvCrumbRobot<AdbCrumbContext> {
         return moveTypeList;
     }
 
+    @Override
+    protected Enemy calcLockOnTarget() {
+        for (Map.Entry<String, Enemy> e : ctx.nextEnemyMap.entrySet()) {
+            Enemy r = e.getValue();
+            if ( r.role == Enemy.ROLE_LEADER ) {
+                return r;
+            }
+        }
+        return super.calcLockOnTarget();
+    }
 }

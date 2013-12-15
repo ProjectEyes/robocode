@@ -13,7 +13,7 @@ import robocode.Droid;
  *
  * @author crumb
  */
-public class AceSlave extends Ace implements Droid{
+public class JugemSlave extends Jugem implements Droid{
 
     @Override
     protected void cbFiring() {

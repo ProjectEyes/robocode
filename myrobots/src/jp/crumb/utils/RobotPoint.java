@@ -38,6 +38,7 @@ public class RobotPoint extends MovingPoint {
         delta.headingRadians = Util.calcTurnRadians(prev.headingRadians,headingRadians);
         delta.velocity = velocity - prev.velocity;
     }
+    
     public void setDelta(MovingPoint delta) {
         this.delta = delta;
     }

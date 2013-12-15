@@ -7,15 +7,11 @@ import jp.crumb.utils.Enemy;
  * and open the template in the editor.
  */
 
-
-
-
-
 /**
  *
  * @author crumb
  */
-public class カンダタ extends Boss {
+public class Smith extends Boss {
     @Override
     protected void cbFirst() {
         super.cbFirst();

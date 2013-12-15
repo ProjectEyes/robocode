@@ -14,7 +14,7 @@ import robocode.Droid;
  *
  * @author crumb
  */
-public class AceDroid2 extends Ace implements Droid {
+public class JugemDroid1 extends Jugem implements Droid {
 
 //    @Override
 //    protected void cbThinking() {

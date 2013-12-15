@@ -651,7 +651,6 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobot<T> {
         Enemy lockOnTarget = null;
         if (isLeader || teammate.isEmpty() || ctx.nextMateMap.get(leader) == null ) {
             lockOnTarget = calcLockOnTarget();
-
             String lockOnTargetName = null;
             if (lockOnTarget != null) {
                 if ( ! ctx.isMoveMode(ctx.MODE_MOVE_MANUAL )) {
@@ -667,7 +666,6 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobot<T> {
             lockOnTarget = getNextEnemy(ctx.lockonTarget);
         }
         if ( lockOnTarget != null ) {
-            double distance = ctx.my.calcDistance(lockOnTarget);
             if (    ctx.enemies == 1 ||
                     (ctx.gunHeat/Util.gunCoolingRate) < PREPARE_LOCK_TIME ){
                 if ( ! ctx.isGunMode(ctx.MODE_GUN_MANUAL )) {
@@ -718,6 +716,9 @@ abstract public class CrumbRobot<T extends CrumbContext> extends BaseRobot<T> {
 
 //                Point horming = Util.calcPoint(tr+turn,approaching).add(ctx.my);
                 Point horming = Util.calcPoint(tr,approaching).add(Util.calcPoint(turn,50)).add(ctx.my);
+                if ( isLeader && lockOnTarget.energy > ctx.my.energy) {
+                    horming = Util.calcPoint(tr,approaching).add(Util.calcPoint(turn,30)).prod(-1).add(ctx.my);
+                }
 
 //logger.log("%2.2f , %2.2f", Math.toDegrees(turn1),Math.toDegrees(turn2));
 //                if ( ctx.destination != null ) {

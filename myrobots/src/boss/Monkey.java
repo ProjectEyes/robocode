@@ -1,5 +1,6 @@
 package boss;
 
+
 /*
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
@@ -13,5 +14,6 @@ package boss;
  *
  * @author crumb
  */
-public class カンダタ子分２ extends Under {
+public class Monkey extends Under {
+
 }

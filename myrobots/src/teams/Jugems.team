@@ -1,0 +1,6 @@
+#Robocode robot team
+#Tue Dec 04 03:08:38 JST 2012
+team.members=jp.crumb.sample.JugemLeader*,jp.crumb.sample.JugemDroid1*,jp.crumb.sample.JugemDroid2*
+team.author.name=crumb.jp
+robocode.version=1.7.4.4
+team.description=Jugem

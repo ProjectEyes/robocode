@@ -288,6 +288,7 @@ abstract public class BaseRobot<T extends BaseContext> extends TeamRobot {
             if ( prevEnemy.time == enemy.time ) {
                 return null;
             }else if ((enemy.time-prevEnemy.timeStamp) < SCAN_STALE ) {
+                enemy.role = prevEnemy.role;
                 enemy.setPrev(prevEnemy);
             }
         }
@@ -458,7 +459,7 @@ abstract public class BaseRobot<T extends BaseContext> extends TeamRobot {
         name = getName();
         String [] array =this.getTeammates();
         if ( array != null ) {
-            teammate.addAll(Arrays.asList(array));
+            teammate = Arrays.asList(array);
             if ( getEnergy() == 200 ) {
                 isLeader = true;
                 leader = name;

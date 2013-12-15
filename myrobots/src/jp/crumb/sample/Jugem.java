@@ -13,19 +13,18 @@ import jp.crumb.adv.AdbCrumbContext;
 import jp.crumb.adv.AdvCrumbRobot;
 import jp.crumb.utils.MoveType;
 
-
-
 /**
  *
  * @author crumb
  */
-public abstract class Ace extends AdvCrumbRobot<AdbCrumbContext> {
+public abstract class Jugem extends AdvCrumbRobot<AdbCrumbContext> {
     @Override
     public void run() {
         super.run();
-        setColors(new Color(70,20,20), new Color(0, 0,0), new Color(255, 255, 150)); // body,gun,radar
-        this.setBulletColor(new Color(0,255,0));
+        setColors(new Color(20,20,20), new Color(50, 50,20), new Color(255, 155, 255)); // body,gun,radar
+        this.setBulletColor(new Color(255,180,180));
     }
+
     protected List<MoveType> initialAimTypeList(){
         List<MoveType> moveTypeList = new ArrayList<>(10);
         MoveType moveType = null;
@@ -36,5 +35,5 @@ public abstract class Ace extends AdvCrumbRobot<AdbCrumbContext> {
         moveTypeList.add(moveType);
         return moveTypeList;
     }
-  
+
 }
